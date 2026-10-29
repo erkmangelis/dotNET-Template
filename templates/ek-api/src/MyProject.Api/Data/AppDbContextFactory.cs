@@ -16,7 +16,13 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
     public AppDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+#if (UsePostgres)
             ?? "Host=localhost;Database=design_time";
+#elif (UseSqlServer)
+            ?? "Server=localhost;Database=design_time;TrustServerCertificate=True";
+#else
+            ?? "Data Source=design_time.db";
+#endif
 
 #if (UseIdentity)
         // Identity picks its tables from IdentityOptions, so give the design-time context the app's schema version.
@@ -25,11 +31,11 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
             .BuildServiceProvider();
 
         return new(new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString)
+            .UseAppDatabase(connectionString)
             .UseApplicationServiceProvider(identityOptions)
             .Options);
 #else
-        return new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);
+        return new(new DbContextOptionsBuilder<AppDbContext>().UseAppDatabase(connectionString).Options);
 #endif
     }
 }

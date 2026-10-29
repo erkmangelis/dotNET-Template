@@ -22,7 +22,7 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
             .BuildServiceProvider();
 
         return new(new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString)
+            .UseAppDatabase(connectionString)
             .UseApplicationServiceProvider(identityOptions)
             .Options);
     }

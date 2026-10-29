@@ -18,6 +18,10 @@ services:
       Api__UseHttpsRedirection: "false"
 #if (UsePostgres)
       ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+#elif (UseSqlServer)
+      ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
+#elif (UseSqlite)
+      ConnectionStrings__Default: Data Source=/data/app.db
 #endif
 #if (UseExternal)
       ExternalAuth__Providers__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
@@ -41,7 +45,11 @@ services:
     ports:
       - "${API_PORT:-8080}:8080"
     stop_grace_period: 35s
-#if (UsePostgres)
+#if (UseSqlite)
+    volumes:
+      - app-data:/data
+#endif
+#if (UseDatabase)
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -52,11 +60,24 @@ services:
       target: migrator
     image: ${API_IMAGE:-ek-app-slug-api}-migrator:${API_TAG:-local}
     environment:
+#if (UsePostgres)
       ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     depends_on:
       db:
         condition: service_healthy
+#elif (UseSqlServer)
+      ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
+    depends_on:
+      db:
+        condition: service_healthy
+#else
+      ConnectionStrings__Default: Data Source=/data/app.db
+    volumes:
+      - app-data:/data
+#endif
     restart: "no"
+#endif
+#if (UsePostgres)
 
   db:
     image: postgres:18-alpine
@@ -75,6 +96,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+#elif (UseSqlServer)
+
+  db:
+    # Runs on amd64 only: there is no SQL Server image for ARM (a Raspberry Pi).
+    image: mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${MSSQL_ACCEPT_EULA:?set MSSQL_ACCEPT_EULA=Y in .env to accept the SQL Server licence}
+      MSSQL_PID: ${MSSQL_PID:-Express}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    # Loopback only: reachable from `dotnet run` on this machine, never from the network.
+    ports:
+      - "127.0.0.1:${MSSQL_PORT:-1433}:1433"
+    volumes:
+      - db-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
 #endif
 
 #if (UseOidc)
@@ -115,8 +157,12 @@ services:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on:
       - api
-#if (UsePostgres)
+#if (UsePostgres || UseSqlServer)
 
 volumes:
   db-data:
+#elif (UseSqlite)
+
+volumes:
+  app-data:
 #endif

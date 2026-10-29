@@ -14,13 +14,30 @@ internal static class DatabaseSetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        builder.Services.AddDbContext<AppDbContext>((services, options) =>
-            options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString));
+        builder.Services.AddSingleton<AuditableEntityInterceptor>();
+        builder.Services.AddDbContext<AppDbContext>((services, options) => options
+            .UseAppDatabase(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString)
+            .AddInterceptors(services.GetRequiredService<AuditableEntityInterceptor>()));
 
         builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>(tags: [Observability.ReadyTag]);
+        builder.Services.AddScoped<AuditLog>();
         builder.Services.AddScoped<DevelopmentSeeder>();
 
         return builder;
+    }
+
+    /// <summary>The database provider, in one place for the app and <see cref="AppDbContextFactory"/>.</summary>
+    public static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string? connectionString)
+        where TBuilder : DbContextOptionsBuilder
+    {
+#if (UsePostgres)
+        options.UseNpgsql(connectionString);
+#elif (UseSqlServer)
+        options.UseSqlServer(connectionString);
+#else
+        options.UseSqlite(connectionString);
+#endif
+        return options;
     }
 
     /// <summary>Applies migrations and development seed data when the settings ask for it.</summary>

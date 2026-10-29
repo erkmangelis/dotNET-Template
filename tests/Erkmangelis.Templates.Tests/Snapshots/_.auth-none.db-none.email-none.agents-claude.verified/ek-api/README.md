@@ -9,6 +9,7 @@ dotnet run --project src/Acme.Notes.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries.
 
 ## Test it
 
@@ -26,7 +27,8 @@ CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 src/Acme.Notes.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
-  Common/                 shared types such as paging
+  Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage
 tests/Acme.Notes.Api.UnitTests/
 tests/Acme.Notes.Api.IntegrationTests/

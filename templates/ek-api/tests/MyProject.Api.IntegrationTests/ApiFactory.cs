@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 #if (UseAuth)
 using Microsoft.AspNetCore.TestHost;
 #endif
+#if (UseSqlite)
+using Microsoft.Data.Sqlite;
+#endif
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -17,6 +20,8 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 #endif
 #if (UsePostgres)
 using Testcontainers.PostgreSql;
+#elif (UseSqlServer)
+using Testcontainers.MsSql;
 #endif
 
 [assembly: AssemblyFixture(typeof(MyProject.Api.IntegrationTests.ApiFactory))]
@@ -27,12 +32,22 @@ namespace MyProject.Api.IntegrationTests;
 /// One running API for the whole test assembly, in the Testing environment.
 #if (UsePostgres)
 /// It owns a throwaway PostgreSQL container and applies the migrations once before the first test.
+#elif (UseSqlServer)
+/// It owns a throwaway SQL Server container and applies the migrations once before the first test.
+#elif (UseSqlite)
+/// It owns a throwaway SQLite file and applies the migrations once before the first test.
 #endif
 /// </summary>
 public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
 #if (UsePostgres)
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18-alpine").Build();
+    private readonly PostgreSqlContainer _database = new PostgreSqlBuilder("postgres:18-alpine").Build();
+
+#elif (UseSqlServer)
+    private readonly MsSqlContainer _database = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04").Build();
+
+#elif (UseSqlite)
+    private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"MyProject-tests-{Guid.NewGuid():N}.db");
 
 #endif
 #if (UseIdentity)
@@ -41,10 +56,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
     public FakeLogCollector Logs => Services.GetFakeLogCollector();
 
-#if (UsePostgres)
+#if (UsePostgres || UseSqlServer)
     public async ValueTask InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await _database.StartAsync();
 
         // Starts the host, which applies the migrations.
         _ = Server;
@@ -53,7 +68,24 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
-        await _postgres.DisposeAsync();
+        await _database.DisposeAsync();
+    }
+#elif (UseSqlite)
+    public ValueTask InitializeAsync()
+    {
+        // Starts the host, which creates the file and applies the migrations.
+        _ = Server;
+        return ValueTask.CompletedTask;
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        SqliteConnection.ClearAllPools();
+        foreach (var suffix in new[] { "", "-wal", "-shm" })
+        {
+            File.Delete(_databasePath + suffix);
+        }
     }
 #else
     public ValueTask InitializeAsync()
@@ -68,8 +100,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseEnvironment("Testing");
         builder.UseSetting("RateLimiting:Enabled", "false");
         builder.UseSetting("Api:UseHttpsRedirection", "false");
-#if (UsePostgres)
-        builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
+#if (UseDatabase)
+#if (UseSqlite)
+        builder.UseSetting("ConnectionStrings:Default", $"Data Source={_databasePath}");
+#else
+        builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
+#endif
         builder.UseSetting("Database:MigrateOnStartup", "true");
 #endif
 #if (UseExternal)

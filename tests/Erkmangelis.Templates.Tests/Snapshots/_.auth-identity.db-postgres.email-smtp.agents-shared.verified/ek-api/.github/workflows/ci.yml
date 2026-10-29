@@ -40,7 +40,7 @@ jobs:
           docker compose up -d --build
       - name: Wait for /health/ready
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -fsS http://localhost:8080/health/ready && exit 0
             sleep 2
           done

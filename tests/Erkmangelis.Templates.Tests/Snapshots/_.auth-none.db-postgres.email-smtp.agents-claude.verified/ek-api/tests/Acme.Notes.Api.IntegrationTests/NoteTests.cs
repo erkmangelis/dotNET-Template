@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -91,6 +92,145 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_update_replaces_the_content_and_moves_only_the_updated_time()
+    {
+        var note = await CreateAsync(UniqueTitle());
+        var title = UniqueTitle();
+        var forgedDate = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title, content = "Changed", createdAt = forgedDate, updatedAt = forgedDate },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+        Assert.NotNull(updated);
+        Assert.Equal((note.Id, title, "Changed", note.CreatedAt), (updated.Id, updated.Title, updated.Content, updated.CreatedAt));
+        Assert.True(updated.UpdatedAt > note.UpdatedAt);
+        Assert.Equal(note.CreatedAt, note.UpdatedAt);
+        Assert.Equal(updated, await _client.GetFromJsonAsync<NoteResponse>($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task An_update_based_on_an_old_version_answers_409_and_changes_nothing()
+    {
+        var note = await CreateAsync(UniqueTitle());
+        var first = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title = UniqueTitle(), version = note.Version },
+            TestContext.Current.CancellationToken);
+        var saved = await first.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+
+        // A second client still holding the first version.
+        var second = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title = UniqueTitle(), version = note.Version },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.NotEqual(note.Version, saved!.Version);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        var problem = await second.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal("Edit conflict", problem.GetProperty("title").GetString());
+        Assert.Equal(saved, await _client.GetFromJsonAsync<NoteResponse>($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task An_unchanged_note_answers_304_to_its_etag()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var etag = created.Headers.ETag;
+        Assert.NotNull(etag);
+        Assert.False(etag.IsWeak);
+
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, created.Headers.Location);
+        conditional.Headers.IfNoneMatch.Add(etag);
+        var unchanged = await _client.SendAsync(conditional, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        Assert.Empty(await unchanged.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(etag, unchanged.Headers.ETag);
+    }
+
+    [Fact]
+    public async Task An_update_with_an_old_etag_in_if_match_answers_412_and_changes_nothing()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var original = created.Headers.ETag!;
+        var first = await SendWithIfMatchAsync(HttpMethod.Put, created.Headers.Location!, original, new { title = UniqueTitle() });
+
+        var second = await SendWithIfMatchAsync(HttpMethod.Put, created.Headers.Location!, original, new { title = UniqueTitle() });
+        var delete = await SendWithIfMatchAsync(HttpMethod.Delete, created.Headers.Location!, original, body: null);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.NotEqual(original, first.Headers.ETag);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, second.StatusCode);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, delete.StatusCode);
+        var current = await _client.GetAsync(created.Headers.Location, TestContext.Current.CancellationToken);
+        Assert.Equal(first.Headers.ETag, current.Headers.ETag);
+        var deleted = await SendWithIfMatchAsync(HttpMethod.Delete, created.Headers.Location!, current.Headers.ETag!, body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_export_streams_every_matching_note_in_order()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        // More than one page, to show the export is not paged.
+        var titles = Enumerable.Range(0, Paging.DefaultPageSize + 5).Select(i => $"{marker} {i:D3}").ToList();
+        foreach (var title in titles)
+        {
+            await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        }
+
+        var exported = await _client.GetFromJsonAsync<List<NoteResponse>>(
+            $"/v1/notes/export?search={marker}&sort=title",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(titles, exported!.Select(note => note.Title));
+    }
+
+    [Fact]
+    public async Task Updating_to_another_notes_title_answers_409()
+    {
+        var first = await CreateAsync(UniqueTitle());
+        var second = await CreateAsync(UniqueTitle());
+
+        var response = await _client.PutAsJsonAsync($"/v1/notes/{second.Id}", new { title = first.Title }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Updating_a_missing_note_answers_404()
+    {
+        var response = await _client.PutAsJsonAsync($"/v1/notes/{Guid.NewGuid()}", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_deleted_note_is_gone_and_its_title_free_again()
+    {
+        var note = await CreateAsync(UniqueTitle());
+
+        var deleted = await _client.DeleteAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        var fetched = await _client.GetAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?search={Uri.EscapeDataString(note.Title)}",
+            TestContext.Current.CancellationToken);
+        Assert.Empty(page!.Items);
+        var again = await _client.DeleteAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        var reused = await _client.PostAsJsonAsync("/v1/notes", new { title = note.Title }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Created, reused.StatusCode);
+    }
+
+    [Fact]
     public async Task The_list_is_paged_newest_first()
     {
         for (var i = 0; i < 3; i++)
@@ -115,6 +255,75 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
         var response = await _client.GetAsync(url, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_list_filters_by_title_and_sorts_by_allowed_fields()
+    {
+        // A marker no other test uses, with LIKE wildcards in it that must match literally.
+        var marker = $"m%_{Guid.NewGuid():N}";
+        string[] titles = [$"b {marker}", $"A {marker.ToUpperInvariant()}", $"c {marker}", "unrelated"];
+        foreach (var title in titles)
+        {
+            await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        }
+
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?search={Uri.EscapeDataString(marker)}&sort=-title",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(page);
+        Assert.Equal([titles[2], titles[0], titles[1]], page.Items.Select(note => note.Title));
+    }
+
+    [Fact]
+    public async Task The_list_filters_by_creation_time()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var note = await created.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+        Assert.NotNull(note);
+        var from = Uri.EscapeDataString(note.CreatedAt.ToString("O"));
+        var before = Uri.EscapeDataString(note.CreatedAt.AddTicks(10).ToString("O"));
+
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?createdFrom={from}&createdBefore={before}",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(page);
+        Assert.Contains(page.Items, item => item.Id == note.Id);
+        Assert.All(page.Items, item => Assert.InRange(item.CreatedAt, note.CreatedAt, note.CreatedAt.AddTicks(9)));
+    }
+
+    [Theory]
+    [InlineData("/v1/notes?sort=content")]
+    [InlineData("/v1/notes?sort=title,title")]
+    [InlineData("/v1/notes?sort=createdAt,title,-createdAt,id")]
+    public async Task Sorting_by_anything_not_allowed_answers_400(string url)
+    {
+        var response = await _client.GetAsync(url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.True(problem.GetProperty("errors").TryGetProperty("Sort", out _));
+    }
+
+    private async Task<HttpResponseMessage> SendWithIfMatchAsync(HttpMethod method, Uri location, EntityTagHeaderValue etag, object? body)
+    {
+        using var request = new HttpRequestMessage(method, location);
+        request.Headers.IfMatch.Add(etag);
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
+    }
+
+    private async Task<NoteResponse> CreateAsync(string title)
+    {
+        var response = await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken))!;
     }
 
     private static string UniqueTitle() => $"Note {Guid.NewGuid():N}";

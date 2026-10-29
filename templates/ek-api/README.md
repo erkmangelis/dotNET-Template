@@ -9,11 +9,16 @@ An HTTP API on .NET 10, generated from the `ek-api` template (see `template-orig
 cp .env.example .env                 # set POSTGRES_PASSWORD
 docker compose up -d db
 dotnet user-secrets set ConnectionStrings:Default "Host=localhost;Database=app;Username=app;Password=<the same password>" --project src/MyProject.Api
+<!--#elif (UseSqlServer) -->
+cp .env.example .env                 # set MSSQL_ACCEPT_EULA=Y and MSSQL_SA_PASSWORD
+docker compose up -d db
+dotnet user-secrets set ConnectionStrings:Default "Server=localhost;Database=app;User Id=sa;Password=<the same password>;TrustServerCertificate=True" --project src/MyProject.Api
 <!--#endif -->
 dotnet run --project src/MyProject.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries.
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -157,6 +162,10 @@ dotnet test
 
 <!--#if (UsePostgres) -->
 Integration tests start a throwaway PostgreSQL container with Testcontainers, so Docker must be running.
+<!--#elif (UseSqlServer) -->
+Integration tests start a throwaway SQL Server container with Testcontainers, so Docker must be running.
+<!--#elif (UseSqlite) -->
+Integration tests use a throwaway SQLite file, so they need no Docker.
 <!--#endif -->
 CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 
@@ -166,10 +175,11 @@ CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
+  Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
 <!--#endif -->
-  Common/                 shared types such as paging
+  Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage
 <!--#if (UseExternal) -->
   Features/Auth/          ASP.NET Core Identity setup, email senders, Google/Apple/Microsoft sign-in
@@ -178,8 +188,9 @@ src/MyProject.Api/
 <!--#elif (UseOidc) -->
   Features/Auth/          access-token validation for the OpenID Connect provider
 <!--#endif -->
-<!--#if (UsePostgres) -->
-  Data/                   AppDbContext, entity configuration, migrations, development seed
+<!--#if (UseDatabase) -->
+  Data/                   AppDbContext, entity configuration, audit interceptor, migrations, development seed
+  Features/Audit/         audit history endpoints
 <!--#endif -->
 tests/MyProject.Api.UnitTests/
 tests/MyProject.Api.IntegrationTests/
@@ -192,8 +203,9 @@ register it in `Program.cs` the way Notes is.
 
 `docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
 covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
-<!--#if (UsePostgres) -->
-[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups.
+<!--#if (UseDatabase) -->
+[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups, and
+[docs/dapper.md](docs/dapper.md) hand-written SQL for a hot read path.
 <!--#endif -->
 
 ## Secrets

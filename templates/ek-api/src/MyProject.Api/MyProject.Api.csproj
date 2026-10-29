@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Asp.Versioning.Http" />
+    <PackageReference Include="Asp.Versioning.OpenApi" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
@@ -22,10 +24,17 @@
 <!--#if (UseSmtp) -->
     <PackageReference Include="MailKit" />
 <!--#endif -->
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+<!--#if (UsePostgres) -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+<!--#elif (UseSqlServer) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+<!--#elif (UseSqlite) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+<!--#endif -->
 <!--#endif -->
 <!--#if (UseIdentity) -->
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />

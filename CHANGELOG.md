@@ -2,6 +2,63 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - Unreleased
+
+R03, Data and API depth.
+
+### Added
+
+- Filtering and sorting on `GET /v1/notes` (and the admin list): `search` matches titles ignoring
+  case with LIKE wildcards taken literally, `createdFrom` and `createdBefore` bound the creation
+  time, and `sort` takes up to three allowlisted fields (`createdAt`, `updatedAt`, `title`), each with an optional
+  `-` for descending. Anything else answers 400. `SortFields<T>` is the reusable allowlist.
+- Record metadata: `CreatedAt`, `UpdatedAt` and, with sign-in, `CreatedBy` and `UpdatedBy`, filled
+  in by an EF Core `SaveChangesInterceptor` (and the in-memory store) from `TimeProvider` and the
+  signed-in user, never from a request. `PUT /v1/notes/{id}` replaces a note's title and content.
+- `scripts/add-migration.sh` regenerates a migration for every shipped migration set.
+- Soft delete: `DELETE /v1/notes/{id}` marks the note deleted (`DeletedAt`, and `DeletedBy` with
+  sign-in) through the same interceptor; a named `SoftDelete` query filter hides it, and unique
+  indexes cover only rows that are not deleted, so the title can be used again.
+- Audit history: every change to an `IAudited` entity writes an `AuditEntry` in the same transaction
+  with each changed value before and after, the actor and the trace id. `GET /v1/notes/{id}/history`
+  for the owner; `GET /v1/admin/audit` for roles with the new `audit.read` permission (admin, auditor).
+- Optimistic concurrency: notes carry a `version` (PostgreSQL's `xmin` through Npgsql's row version).
+  An update can send the version it read; the save's `UPDATE` matches only that version, so a stale
+  update or a change racing between read and write answers 409 ProblemDetails ("Edit conflict")
+  instead of overwriting someone else's change.
+- Idempotency keys: `.WithIdempotency()` endpoints (`POST /v1/notes`) honour `Idempotency-Key`. A
+  retry with the same key and request replays the stored response (`Idempotent-Replayed: true`), a
+  different request with the key answers 422, a retry while the first runs answers 409, and 5xx
+  responses are not kept. Keys are per caller, stored in the database (in memory with `--db none`)
+  for `Idempotency:RetentionHours` and cleaned up hourly.
+- Conditional requests: notes answer with a strong `ETag` from their version; `If-None-Match` on
+  `GET /v1/notes/{id}` answers 304, and `If-Match` on `PUT` and `DELETE` answers 412 when the note
+  changed. `ETags` in `Common/` parses both headers for any feature.
+- Streaming: `GET /v1/notes/export` streams every note matching the list's filters as one JSON array
+  through `IAsyncEnumerable`, never holding the result in memory.
+- API versions: Asp.Versioning (MIT) with the version in the URL, one OpenAPI document per version,
+  both in the Scalar reference, and `api-supported-versions` on responses. Notes serve v1 and v2;
+  `GET /v2/notes` drops the total count (`PageSlice<T>`), everything else is unchanged in v2.
+  Location headers follow the requested version.
+- `docs/api.md` in generated projects: the API conventions above, for clients and for new features.
+- `--db sqlserver`: SQL Server 2022 through Microsoft.Data.SqlClient, with a `rowversion` for the
+  note version, Testcontainers, a compose service (Express edition by default; `MSSQL_ACCEPT_EULA`
+  in `.env` accepts the licence, so the template never does), and `BACKUP DATABASE` backups. The
+  image is amd64 only.
+- `--db sqlite`: one database file on the `app-data` volume, no database server. The note version is
+  a concurrency token the store increments, `DateTimeOffset` values are stored as UTC ticks so they
+  sort, integration tests use a temporary file, and backups use SQLite's online backup.
+- `docs/dapper.md`: a Dapper recipe for hot read paths, for each provider, that keeps the
+  soft-delete and owner filters and is checked against EF by a test.
+
+### Changed
+
+- Notes gain `PUT` and `DELETE`, and responses gain `updatedAt` and `version`.
+- `/v1` routes are mapped through Asp.Versioning instead of a plain route group.
+- The template's migration sets live under `.migrations/<provider>/`; `scripts/add-migration.sh`
+  covers all nine and starts a new set with `InitialCreate`.
+- CI runs eighteen combinations: every auth mode on SQL Server and SQLite as well.
+
 ## [0.2.0] - Unreleased
 
 R02, Accounts.

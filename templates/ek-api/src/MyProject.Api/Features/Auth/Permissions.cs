@@ -26,6 +26,7 @@ internal static class Permissions
     public const string ClaimType = "permission";
 
     public const string NotesReadAll = "notes.read.all";
+    public const string AuditRead = "audit.read";
 #if (UseIdentity)
     public const string UsersRead = "users.read";
     public const string UsersManageRoles = "users.roles.manage";
@@ -34,11 +35,11 @@ internal static class Permissions
     public static readonly IReadOnlyDictionary<string, string[]> ByRole = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
 #if (UseIdentity)
-        [Roles.Admin] = [NotesReadAll, UsersRead, UsersManageRoles],
-        [Roles.Auditor] = [NotesReadAll, UsersRead],
+        [Roles.Admin] = [NotesReadAll, AuditRead, UsersRead, UsersManageRoles],
+        [Roles.Auditor] = [NotesReadAll, AuditRead, UsersRead],
 #else
-        [Roles.Admin] = [NotesReadAll],
-        [Roles.Auditor] = [NotesReadAll],
+        [Roles.Admin] = [NotesReadAll, AuditRead],
+        [Roles.Auditor] = [NotesReadAll, AuditRead],
 #endif
     };
 

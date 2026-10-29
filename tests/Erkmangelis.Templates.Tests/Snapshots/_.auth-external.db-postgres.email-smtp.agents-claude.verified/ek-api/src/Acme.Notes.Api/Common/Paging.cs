@@ -19,3 +19,16 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSi
 
     public PagedResult<TOut> Map<TOut>(Func<T, TOut> map) => new([.. Items.Select(map)], Page, PageSize, TotalCount);
 }
+
+/// <summary>
+/// One page of results without the total count, which costs a full scan on a large table. Stores
+/// read one item more than the page holds to tell whether another page follows.
+/// </summary>
+public sealed record PageSlice<T>(IReadOnlyList<T> Items, int Page, int PageSize, bool HasNextPage)
+{
+    /// <summary>Builds a page from up to <paramref name="pageSize"/> + 1 items read from the store.</summary>
+    internal static PageSlice<T> FromOneExtra(List<T> items, int page, int pageSize) =>
+        new([.. items.Take(pageSize)], page, pageSize, items.Count > pageSize);
+
+    public PageSlice<TOut> Map<TOut>(Func<T, TOut> map) => new([.. Items.Select(map)], Page, PageSize, HasNextPage);
+}

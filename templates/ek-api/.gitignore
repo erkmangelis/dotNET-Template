@@ -3,6 +3,12 @@ obj/
 artifacts/
 TestResults/
 backups/
+#if (UseSqlite)
+# The development database.
+*.db
+*.db-shm
+*.db-wal
+#endif
 *.user
 *.suo
 .vs/

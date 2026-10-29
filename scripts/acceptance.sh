@@ -9,7 +9,7 @@
 #   --email smtp, a confirmation email reaches the bundled Mailpit.
 #
 # Usage:
-#   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres \
+#   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
 #       --email none|smtp --agents none|shared|claude \
 #       [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep]
 set -euo pipefail
@@ -33,8 +33,8 @@ WORK="$(mktemp -d "${RUNNER_TEMP:-/tmp}/ek-acceptance.XXXXXX")"
 HIVE="$WORK/hive"
 NAME="Acme.Notes"
 OUT="$WORK/$NAME"
-# Every sign-in mode stores users' data, so any --auth but none turns PostgreSQL on.
-EFFECTIVE_DB="$DB"; [[ "$AUTH" != none ]] && EFFECTIVE_DB=postgres
+# Every sign-in mode stores users' data, so any --auth but none turns PostgreSQL on when --db is none.
+EFFECTIVE_DB="$DB"; [[ "$AUTH" != none && "$DB" == none ]] && EFFECTIVE_DB=postgres
 ACCOUNTS=false; [[ "$AUTH" == identity || "$AUTH" == external ]] && ACCOUNTS=true
 
 cleanup() {
@@ -71,10 +71,21 @@ if grep -rnE '^\s*(//)?#(if|else|elif|elseif|endif)\b|<!--#(if|else|endif)|MyPro
 fi
 
 step "No leftovers from unselected options"
-leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**'; then fail "$2"; fi; }
+# leftover <pattern> <message> [extra pathspecs to skip]
+leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**' "${@:3}"; then fail "$2"; fi; }
 if [[ "$EFFECTIVE_DB" == none ]]; then
   leftover 'Npgsql|EntityFramework|ConnectionStrings|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none"
   [[ ! -e src/$NAME.Api/Data && ! -e .config && ! -e docs/database.md && ! -e scripts ]] || fail "database folders left with --db none"
+fi
+if [[ "$EFFECTIVE_DB" != postgres ]]; then
+  # The SSO guide's Keycloak runs on its own PostgreSQL, whatever the API uses.
+  leftover 'Npgsql|PostgreSql|POSTGRES_|pg_dump|xmin' "PostgreSQL code or settings left with --db $EFFECTIVE_DB" ':!docs/enterprise-sso.md'
+fi
+if [[ "$EFFECTIVE_DB" != sqlserver ]]; then
+  leftover 'SqlServer|SqlClient|MsSql|MSSQL_|sqlcmd' "SQL Server code or settings left with --db $EFFECTIVE_DB"
+fi
+if [[ "$EFFECTIVE_DB" != sqlite ]]; then
+  leftover 'Sqlite|app-data' "SQLite code or settings left with --db $EFFECTIVE_DB"
 fi
 if [[ "$AUTH" == none ]]; then
   leftover 'Identity|Bearer|RequireAuthorization|OwnerId|AppUser|ApiKey' "identity code or settings left with --auth none"
@@ -135,9 +146,11 @@ rm "src/$NAME.Api/StyleViolation.cs"
 if [[ "$COMPOSE" == true ]]; then
   step "docker compose up and /health/ready"
   : > .env
-  if [[ "$EFFECTIVE_DB" == postgres ]]; then
-    echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
-  fi
+  case "$EFFECTIVE_DB" in
+    postgres) echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env ;;
+    # Upper and lower case, digits and a symbol, as SQL Server's password policy needs.
+    sqlserver) printf 'MSSQL_ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=Acc-%s\n' "$(openssl rand -hex 16)" >> .env ;;
+  esac
   if [[ "$AUTH" == oidc ]]; then
     # Tokens are only checked on requests, so the provider need not exist for the API to start.
     printf 'OIDC_AUTHORITY=https://auth.example.com/realms/acme\nOIDC_AUDIENCE=acme-notes-api\n' >> .env

@@ -16,6 +16,8 @@
 <!--#endif -->
 <!--#if (UsePostgres) -->
     <PackageReference Include="Testcontainers.PostgreSql" />
+<!--#elif (UseSqlServer) -->
+    <PackageReference Include="Testcontainers.MsSql" />
 <!--#endif -->
     <PackageReference Include="xunit.v3" />
   </ItemGroup>

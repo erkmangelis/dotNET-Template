@@ -6,6 +6,10 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
 {
     public DbSet<Note> Notes => Set<Note>();
 
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 #endif
 using Microsoft.EntityFrameworkCore;
+#if (UseSqlite)
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+#endif
 
 namespace MyProject.Api.Data;
 
@@ -14,6 +17,10 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
 #endif
 {
     public DbSet<Note> Notes => Set<Note>();
+
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 #if (UseAuth)
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
@@ -24,6 +31,21 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
 #if (UseIdentity)
     /// <summary>Keys that sign bearer tokens, kept in the database so tokens survive restarts.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+#endif
+#if (UseSqlite)
+    /// <summary>
+    /// SQLite cannot compare or sort <see cref="DateTimeOffset"/> values, so they are stored as UTC ticks.
+    /// Every time the app writes is UTC already.
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcTicksConverter>();
+    }
+
+    private sealed class UtcTicksConverter() : ValueConverter<DateTimeOffset, long>(
+        value => value.UtcTicks,
+        ticks => new DateTimeOffset(ticks, TimeSpan.Zero));
 
 #endif
     protected override void OnModelCreating(ModelBuilder modelBuilder)

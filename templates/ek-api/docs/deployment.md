@@ -6,9 +6,15 @@ management. Any other TLS-terminating proxy (Caddy, Traefik, Tailscale Funnel) w
 
 ```text
 client --HTTPS--> Cloudflare --tunnel--> cloudflared --HTTP--> api:8080
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
                                                                    |
+<!--#if (UsePostgres) -->
                                                                    db (PostgreSQL 18)
+<!--#elif (UseSqlServer) -->
+                                                                   db (SQL Server 2022)
+<!--#else -->
+                                                                   app-data volume (SQLite file)
+<!--#endif -->
 <!--#endif -->
 ```
 
@@ -16,7 +22,12 @@ client --HTTPS--> Cloudflare --tunnel--> cloudflared --HTTP--> api:8080
 
 - Raspberry Pi 5 with 64-bit Raspberry Pi OS, or a VPS with Debian or Ubuntu.
 - Install Docker Engine and the compose plugin: <https://docs.docker.com/engine/install/>.
+<!--#if (UseSqlServer) -->
+- SQL Server has no ARM image, so a Raspberry Pi cannot run it: use an amd64 VPS, or point
+  `ConnectionStrings__Default` at a managed SQL Server (Azure SQL) and remove the `db` service.
+<!--#else -->
 - On a Pi, boot from an SSD rather than the SD card if the database is busy.
+<!--#endif -->
 
 ## 2. Get the code and secrets on the machine
 
@@ -28,6 +39,10 @@ cp .env.example .env && chmod 600 .env
 
 <!--#if (UsePostgres) -->
 Fill in `.env`: `POSTGRES_PASSWORD` (`openssl rand -base64 32`) and, for step 4, `TUNNEL_TOKEN`.
+<!--#elif (UseSqlServer) -->
+Fill in `.env`: `MSSQL_ACCEPT_EULA=Y` once you have read the licence terms, `MSSQL_SA_PASSWORD`
+(`openssl rand -base64 32`), and, for step 4, `TUNNEL_TOKEN`. `MSSQL_PID=Express` is free in
+production up to 10 GB per database; a bigger edition needs a licence.
 <!--#else -->
 Fill in `TUNNEL_TOKEN` in `.env` for step 4.
 <!--#endif -->
@@ -39,7 +54,7 @@ docker compose up -d --build
 curl -fsS http://localhost:8080/health/ready
 ```
 
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
 `migrate` applies database migrations and exits; `api` starts after it succeeds.
 <!--#endif -->
 Building on the Pi works but is slow. To build elsewhere instead, push images from CI (the
@@ -69,7 +84,7 @@ reachable only through it.
 
 - Updates: `git pull && docker compose up -d --build` (or `pull` with CI images).
 - Logs: `docker compose logs -f api`. Logs are JSON, one event per line, with trace ids.
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
 - Backups: schedule `scripts/backup.sh` as described in [database.md](database.md).
 <!--#endif -->
 - Telemetry: set `OTEL_EXPORTER_OTLP_ENDPOINT` in `.env` to send traces, metrics and logs to an
@@ -89,8 +104,14 @@ All settings can be set as environment variables with `__` between sections.
 | `RateLimiting__PermitLimit` | `100` | Requests per caller per window |
 | `RateLimiting__WindowSeconds` | `60` | Rate limit window |
 | `ForwardedHeaders__KnownNetworks__0` | none | Proxy networks trusted for `X-Forwarded-*` |
+<!--#if (UseDatabase) -->
 <!--#if (UsePostgres) -->
 | `ConnectionStrings__Default` | none, required | PostgreSQL connection string |
+<!--#elif (UseSqlServer) -->
+| `ConnectionStrings__Default` | none, required | SQL Server connection string |
+<!--#else -->
+| `ConnectionStrings__Default` | `Data Source=/data/app.db` in compose | SQLite file |
+<!--#endif -->
 <!--#endif -->
 <!--#if (UseIdentity) -->
 | `Identity__SignIn__RequireConfirmedEmail` | `true` | Users must confirm their email before signing in |

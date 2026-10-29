@@ -2,3 +2,4 @@
 global using Acme.Notes.Api.Common;
 global using Acme.Notes.Api.Features.Notes;
 global using Acme.Notes.Api.Infrastructure;
+global using Acme.Notes.Api.Infrastructure.Idempotency;

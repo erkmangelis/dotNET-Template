@@ -1,7 +1,11 @@
 namespace MyProject.Api.Features.Notes;
 
 /// <summary>The example feature: a short text note.</summary>
-internal sealed class Note
+#if (UseDatabase)
+internal sealed class Note : IRecordMetadata, ISoftDeletable, IAudited
+#else
+internal sealed class Note : IRecordMetadata, ISoftDeletable
+#endif
 {
     public const int TitleMaxLength = 200;
     public const int ContentMaxLength = 10_000;
@@ -14,9 +18,40 @@ internal sealed class Note
 
 #endif
     /// <summary>Unique per owner.</summary>
-    public required string Title { get; init; }
+    public required string Title { get; set; }
 
-    public string? Content { get; init; }
+    public string? Content { get; set; }
 
-    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
+#if (UseAuth)
+
+    public string? CreatedBy { get; set; }
+
+    public string? UpdatedBy { get; set; }
+#endif
+
+    public DateTimeOffset? DeletedAt { get; set; }
+
+#if (UsePostgres)
+    /// <summary>Changes on every save: PostgreSQL's <c>xmin</c> row version. A save that expects an older one fails.</summary>
+    public uint Version { get; set; }
+#elif (UseSqlServer)
+    /// <summary>Changes on every save: SQL Server's <c>rowversion</c>. A save that expects an older one fails.</summary>
+    public ulong Version { get; set; }
+#elif (UseSqlite)
+    /// <summary>Changes on every save: <see cref="EfNoteStore"/> increments it. A save that expects an older one fails.</summary>
+    public ulong Version { get; set; }
+#else
+    /// <summary>Changes on every save. A save that expects an older one fails.</summary>
+    public uint Version { get; set; }
+#endif
+#if (UseAuth)
+
+    public string? DeletedBy { get; set; }
+#endif
+
+    /// <summary>A copy, so a caller can change it without touching the stored one.</summary>
+    public Note Clone() => (Note)MemberwiseClone();
 }

@@ -30,12 +30,18 @@ Never edit a migration that has been merged.
 
 - One project, feature folders: `src/Acme.Notes.Api/Features/<Feature>/` holds that feature's
   contracts, endpoints and storage. Cross-cutting setup lives in `Infrastructure/`.
-- Routes are versioned: map new endpoints on the `/v1` group in `Program.cs`.
+- Routes are versioned with Asp.Versioning (`Infrastructure/ApiVersions.cs`): map new endpoints on a
+  versioned group in `Program.cs`. Add a version only for a breaking change, and map only the
+  endpoints that change to it with `MapToApiVersion`; see `docs/api.md`.
 - Endpoints return `TypedResults`. Errors are ProblemDetails (`TypedResults.Problem`), never plain strings.
 - Validate request contracts with DataAnnotations; the built-in validation runs them.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+- Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
+  a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
+- Queries go through EF Core. Hand-written SQL (Dapper) is only for a measured hot read path; follow
+  `docs/dapper.md`, which keeps the soft-delete filter and parameters.
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with

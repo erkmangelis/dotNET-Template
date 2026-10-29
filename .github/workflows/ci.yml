@@ -41,8 +41,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The ten combinations that change code. --agents only adds or removes AGENTS.md and
-        # CLAUDE.md (a snapshot test proves it), so each value runs on a share of them.
+        # The combinations that change code. --agents only adds or removes AGENTS.md and
+        # CLAUDE.md (a snapshot test proves it), so each value runs on a share of them. SQL Server
+        # and SQLite run with every --auth mode; --email does not touch the database code.
         include:
           - { auth: none, db: none, email: none, agents: none }
           - { auth: none, db: none, email: smtp, agents: shared }
@@ -54,6 +55,14 @@ jobs:
           - { auth: external, db: postgres, email: smtp, agents: shared }
           - { auth: oidc, db: postgres, email: none, agents: claude }
           - { auth: oidc, db: postgres, email: smtp, agents: none }
+          - { auth: none, db: sqlserver, email: none, agents: shared }
+          - { auth: identity, db: sqlserver, email: smtp, agents: claude }
+          - { auth: external, db: sqlserver, email: none, agents: none }
+          - { auth: oidc, db: sqlserver, email: none, agents: shared }
+          - { auth: none, db: sqlite, email: smtp, agents: claude }
+          - { auth: identity, db: sqlite, email: none, agents: none }
+          - { auth: external, db: sqlite, email: smtp, agents: shared }
+          - { auth: oidc, db: sqlite, email: none, agents: claude }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5

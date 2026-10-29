@@ -12,7 +12,7 @@ COPY .editorconfig ./
 COPY src/ src/
 RUN dotnet publish src/MyProject.Api/MyProject.Api.csproj -c Release -a $TARGETARCH --no-restore -o /app/publish -p:UseAppHost=false
 
-#if (UsePostgres)
+#if (UseDatabase)
 # Migration bundle: a single executable that applies pending migrations, run before the API starts.
 FROM build AS bundle
 ARG TARGETARCH
@@ -24,6 +24,10 @@ RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")"
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS migrator
 COPY --from=bundle /app/efbundle /app/efbundle
+#if (UseSqlite)
+# The database file lives on the app-data volume; the volume takes this folder's owner.
+RUN mkdir /data && chown $APP_UID /data
+#endif
 USER $APP_UID
 ENTRYPOINT ["/app/efbundle"]
 
@@ -33,6 +37,9 @@ WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 COPY --from=build /app/publish .
+#if (UseSqlite)
+RUN mkdir /data && chown $APP_UID /data
+#endif
 # Runs as the image's non-root "app" user.
 USER $APP_UID
 ENTRYPOINT ["dotnet", "MyProject.Api.dll"]

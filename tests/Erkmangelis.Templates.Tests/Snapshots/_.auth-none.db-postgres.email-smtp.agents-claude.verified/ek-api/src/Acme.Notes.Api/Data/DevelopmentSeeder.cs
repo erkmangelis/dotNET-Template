@@ -7,7 +7,7 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
 {
     public async Task SeedAsync(CancellationToken cancellationToken)
     {
-        if (await db.Notes.AnyAsync(cancellationToken))
+        if (await db.Notes.IgnoreQueryFilters([SoftDelete.Filter]).AnyAsync(cancellationToken))
         {
             return;
         }

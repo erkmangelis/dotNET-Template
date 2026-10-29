@@ -1,17 +1,51 @@
 namespace MyProject.Api.Features.Notes;
 
+internal enum NoteSaveResult
+{
+    Saved,
+
+    /// <summary>The owner already has another note with that title.</summary>
+    DuplicateTitle,
+
+    /// <summary>The note changed since it was read: its <see cref="Note.Version"/> is no longer current.</summary>
+    Stale,
+}
+
 internal interface INoteStore
 {
     /// <summary>Saves a new note. Returns false when the owner already has a note with that title.</summary>
     Task<bool> TryAddAsync(Note note, CancellationToken cancellationToken);
 
+    /// <summary>A copy of the note: changing it changes nothing until it is passed to <see cref="TryUpdateAsync"/>.</summary>
+    /// <remarks>Deleted notes are never found.</remarks>
     Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Saves changes to a note read with <see cref="FindAsync"/>, only if its <see cref="Note.Version"/> is still current.</summary>
+    Task<NoteSaveResult> TryUpdateAsync(Note note, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Marks a note read with <see cref="FindAsync"/> deleted, only if its <see cref="Note.Version"/> is
+    /// still current. From then on no read returns it.
+    /// </summary>
+    Task<NoteSaveResult> TryDeleteAsync(Note note, CancellationToken cancellationToken);
+
 #if (UseAuth)
-    /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, newest first.</summary>
-    Task<PagedResult<Note>> ListAsync(string? ownerId, int page, int pageSize, CancellationToken cancellationToken);
+    /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, filtered and sorted by <paramref name="query"/>.</summary>
+    Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Like <see cref="ListAsync"/>, without counting every match.</summary>
+    Task<PageSlice<Note>> ListSliceAsync(string ownerId, NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>All of the owner's notes that match <paramref name="filter"/>, one at a time, without loading them all into memory.</summary>
+    IAsyncEnumerable<Note> StreamAsync(string ownerId, NoteFilter filter);
 #else
-    /// <summary>All notes, newest first.</summary>
-    Task<PagedResult<Note>> ListAsync(int page, int pageSize, CancellationToken cancellationToken);
+    /// <summary>All notes, filtered and sorted by <paramref name="query"/>.</summary>
+    Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>Like <see cref="ListAsync"/>, without counting every match.</summary>
+    Task<PageSlice<Note>> ListSliceAsync(NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>All notes that match <paramref name="filter"/>, one at a time, without loading them all into memory.</summary>
+    IAsyncEnumerable<Note> StreamAsync(NoteFilter filter);
 #endif
 }

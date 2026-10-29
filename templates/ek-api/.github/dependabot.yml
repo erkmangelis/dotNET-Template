@@ -10,7 +10,7 @@ updates:
       opentelemetry:
         patterns: ["OpenTelemetry*"]
       tests:
-#if (UsePostgres)
+#if (UsePostgres || UseSqlServer)
         patterns: ["xunit*", "Testcontainers*"]
 #else
         patterns: ["xunit*"]

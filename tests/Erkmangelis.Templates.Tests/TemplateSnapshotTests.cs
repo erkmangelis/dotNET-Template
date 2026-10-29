@@ -12,7 +12,7 @@ namespace Erkmangelis.Templates.Tests;
 public sealed partial class TemplateSnapshotTests
 {
     /// <summary>
-    /// The ten combinations that change code. <c>--agents</c> only adds or removes AGENTS.md and
+    /// The combinations that change code. <c>--agents</c> only adds or removes AGENTS.md and
     /// CLAUDE.md, so these use <c>claude</c> and the agents tests below cover the other two values.
     /// </summary>
     public static TheoryData<string, string, string> Combinations => new()
@@ -27,6 +27,12 @@ public sealed partial class TemplateSnapshotTests
         { "external", "postgres", "smtp" },
         { "oidc", "postgres", "none" },
         { "oidc", "postgres", "smtp" },
+        { "none", "sqlserver", "none" },
+        { "identity", "sqlserver", "none" },
+        { "oidc", "sqlserver", "none" },
+        { "none", "sqlite", "none" },
+        { "identity", "sqlite", "none" },
+        { "oidc", "sqlite", "none" },
     };
 
     [Theory]
