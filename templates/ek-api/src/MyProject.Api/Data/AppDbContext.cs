@@ -17,6 +17,8 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
 #if (UseAuth)
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
 #endif
 
 #if (UseIdentity)

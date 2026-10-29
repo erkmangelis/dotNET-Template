@@ -46,6 +46,22 @@ namespace MyProject.Api.Data.Migrations
                     table.PrimaryKey("PK_Notes", x => x.Id);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserProfiles",
+                columns: table => new
+                {
+                    UserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    DisplayName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    TimeZone = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    Locale = table.Column<string>(type: "character varying(35)", maxLength: 35, nullable: false),
+                    Theme = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserProfiles", x => x.UserId);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_ApiKeys_LookupId",
                 table: "ApiKeys",
@@ -77,6 +93,9 @@ namespace MyProject.Api.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Notes");
+
+            migrationBuilder.DropTable(
+                name: "UserProfiles");
         }
     }
 }

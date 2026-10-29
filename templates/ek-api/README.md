@@ -139,6 +139,13 @@ Send it as the `X-Api-Key` header. A key acts as its owner but only within its s
 hash is stored. `POST /v1/api-keys/{id}/rotate` issues a replacement and keeps the old key working
 for `overlapHours` (default 0), and `DELETE /v1/api-keys/{id}` revokes it.
 
+### Profile and preferences
+
+`GET /v1/me` returns the signed-in user's id, email, roles, permissions and profile, so a frontend
+can shape its UI in one call. `PUT /v1/me/profile` replaces the profile: `displayName`, `timeZone`
+(IANA, such as `Europe/Istanbul`), `locale` (such as `tr-TR`) and `theme` (`system`, `light` or
+`dark`). Users without a saved profile get UTC, `en` and `system`.
+
 <!--#endif -->
 ## Test it
 

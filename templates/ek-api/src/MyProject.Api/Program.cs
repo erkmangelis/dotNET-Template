@@ -30,6 +30,7 @@ v1.MapAuthEndpoints();
 v1.MapNoteEndpoints();
 #if (UseAuth)
 v1.MapApiKeyEndpoints();
+v1.MapProfileEndpoints();
 
 var admin = v1.MapGroup("/admin").WithTags("Admin");
 admin.MapNoteAdminEndpoints();
