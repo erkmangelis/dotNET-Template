@@ -71,13 +71,15 @@ if grep -rnE '^\s*(//)?#(if|else|elif|elseif|endif)\b|<!--#(if|else|endif)|MyPro
 fi
 
 step "No leftovers from unselected options"
-leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**'; then fail "$2"; fi; }
+# leftover <pattern> <message> [extra pathspecs to skip]
+leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**' "${@:3}"; then fail "$2"; fi; }
 if [[ "$EFFECTIVE_DB" == none ]]; then
   leftover 'Npgsql|EntityFramework|ConnectionStrings|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none"
   [[ ! -e src/$NAME.Api/Data && ! -e .config && ! -e docs/database.md && ! -e scripts ]] || fail "database folders left with --db none"
 fi
 if [[ "$EFFECTIVE_DB" != postgres ]]; then
-  leftover 'Npgsql|PostgreSql|POSTGRES_|pg_dump|xmin' "PostgreSQL code or settings left with --db $EFFECTIVE_DB"
+  # The SSO guide's Keycloak runs on its own PostgreSQL, whatever the API uses.
+  leftover 'Npgsql|PostgreSql|POSTGRES_|pg_dump|xmin' "PostgreSQL code or settings left with --db $EFFECTIVE_DB" ':!docs/enterprise-sso.md'
 fi
 if [[ "$EFFECTIVE_DB" != sqlserver ]]; then
   leftover 'SqlServer|SqlClient|MsSql|MSSQL_|sqlcmd' "SQL Server code or settings left with --db $EFFECTIVE_DB"
