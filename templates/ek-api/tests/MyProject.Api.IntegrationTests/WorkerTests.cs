@@ -54,6 +54,10 @@ public sealed class WorkerTests(ApiFactory api)
             builder.UseSetting("ConnectionStrings:Default", connectionString);
             builder.UseSetting("Jobs:Queue", queue);
             builder.UseSetting("Jobs:PollIntervalSeconds", "1");
+            // Hangfire keeps the retry filter in a static, so the worker's settings would replace the
+            // test API's for every job in this process; keep them the same.
+            builder.UseSetting("Jobs:MaxAttempts", "2");
+            builder.UseSetting("Jobs:RetryDelaySeconds", "0");
 #if (UseSmtp)
             builder.UseSetting("Email:Transport", "Log");
             builder.UseSetting("Email:FromAddress", "noreply@example.com");
