@@ -77,6 +77,23 @@ services:
       retries: 10
 #endif
 
+#if (UseOidc)
+  # A development OpenID Connect provider: docker compose --profile sso up -d keycloak. It imports
+  # keycloak/realm.json (user dev@example.com, password dev-password, role admin) and forgets
+  # everything on restart. Admin console: http://localhost:8081 (admin / admin). Never deploy it.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    profiles: ["sso"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
+#endif
 #if (UseSmtp)
   # Catches mail for local testing: docker compose --profile mail up -d, with SMTP_HOST=mailpit,
   # SMTP_PORT=1025 and SMTP_SECURITY=None. Read the mail at http://localhost:8025.

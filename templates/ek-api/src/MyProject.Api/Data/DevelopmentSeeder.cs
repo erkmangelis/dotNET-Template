@@ -59,7 +59,8 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
 
         var ownerId = user.Id;
 #elif (UseOidc)
-        // Accounts live in the provider, so the notes go to the subject you name in user secrets:
+        // Accounts live in the provider, so the notes go to the subject named in configuration. The
+        // default is the dev user in keycloak/realm.json; for another provider set your own sub:
         // dotnet user-secrets set DevelopmentSeed:Subject "<your sub claim>"
         var ownerId = configuration["DevelopmentSeed:Subject"];
         if (string.IsNullOrEmpty(ownerId))

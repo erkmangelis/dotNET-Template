@@ -22,7 +22,16 @@ Accounts live in your OpenID Connect provider (Keycloak, Entra ID, Auth0 and so 
 there and call the API with the provider's access token: `Authorization: Bearer <accessToken>`.
 Set `Oidc:Authority` (the issuer) and `Oidc:Audience` (the `aud` the provider gives this API), and
 `Oidc:RoleClaim` if roles are not in a `roles` claim. Development points at a Keycloak realm on
-<http://localhost:8081>.
+<http://localhost:8081>; start it with `docker compose --profile sso up -d keycloak` and get a token
+for the seeded user:
+
+```bash
+curl -s -d grant_type=password -d client_id=ek-app-slug-web -d username=dev@example.com \
+  -d password=dev-password http://localhost:8081/realms/ek-app-slug/protocol/openid-connect/token
+```
+
+Customers who sign in with their company's SAML or OIDC identity provider go through the same
+provider: see [docs/enterprise-sso.md](docs/enterprise-sso.md).
 <!--#endif -->
 <!--#if (UseIdentity) -->
 

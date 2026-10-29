@@ -245,6 +245,8 @@
         {
           "condition": "(!UseOidc)",
           "exclude": [
+            "keycloak/**",
+            "docs/enterprise-sso.md",
             "src/MyProject.Api/Features/Auth/Oidc*.cs",
             "tests/MyProject.Api.IntegrationTests/OidcTests.cs",
             "tests/MyProject.Api.UnitTests/Features/Auth/Oidc*.cs"
