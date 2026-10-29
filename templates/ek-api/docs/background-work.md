@@ -51,6 +51,32 @@ service in its constructor.
 Change a schedule without a deploy through settings, for example
 `Jobs__Schedules__purge-deleted-notes="0 4 * * *"`. Five fields: minute, hour, day of month, month,
 day of week.
+
+### Retries and failed jobs
+
+A job that throws runs again, up to `Jobs:MaxAttempts` times in all (default 5). The first retry
+waits `Jobs:RetryDelaySeconds` (default 10), and each later one twice as long, up to an hour. A job
+that fails every attempt is kept as failed and logged as an error; it never retries on its own again.
+<!--#if (UseAuth) -->
+
+Once you have fixed the cause, look at failed jobs and run one again (the `jobs.manage` permission,
+which the `admin` role has):
+
+```http
+GET /v1/admin/jobs/failed?count=50
+POST /v1/admin/jobs/failed/{id}/requeue
+```
+
+A requeued job gets all its attempts again.
+<!--#endif -->
+<!--#if (UseHostedJobs) -->
+In this app failed jobs are kept in memory, the last 100 of them, until they are requeued or the app
+stops.
+<!--#endif -->
+<!--#if (UseHangfire) -->
+Hangfire keeps failed jobs in the database until someone requeues or deletes them; the dashboard
+shows them with their exceptions.
+<!--#endif -->
 <!--#if (UseHostedJobs) -->
 
 ### How they run here: in process

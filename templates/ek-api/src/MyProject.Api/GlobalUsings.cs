@@ -12,6 +12,9 @@ global using MyProject.Api.Features.Audit;
 #if (UseAuth)
 global using MyProject.Api.Features.Auth;
 #endif
+#if (UseAuth && UseJobs)
+global using MyProject.Api.Features.Jobs;
+#endif
 global using MyProject.Api.Features.Notes;
 #if (UseAuth)
 global using MyProject.Api.Features.Profiles;

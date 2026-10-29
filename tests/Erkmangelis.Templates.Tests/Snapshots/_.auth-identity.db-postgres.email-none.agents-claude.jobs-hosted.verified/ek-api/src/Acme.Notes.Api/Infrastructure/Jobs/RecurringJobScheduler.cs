@@ -4,13 +4,12 @@ using Microsoft.Extensions.Options;
 namespace Acme.Notes.Api.Infrastructure.Jobs;
 
 /// <summary>
-/// Runs each <see cref="RecurringJobDefinition"/> at the times its cron schedule gives, in UTC, each run
-/// in its own scope. A run that is still going when the next time comes delays that run; missed times
-/// while the app was down are not made up.
+/// Queues each <see cref="RecurringJobDefinition"/> at the times its cron schedule gives, in UTC, so it
+/// runs and retries like any queued job. Times missed while the app was down are not made up.
 /// </summary>
 internal sealed partial class RecurringJobScheduler(
     IEnumerable<RecurringJobDefinition> jobs,
-    IServiceScopeFactory scopes,
+    InProcessJobQueue queue,
     TimeProvider time,
     IOptions<JobsOptions> options,
     ILogger<RecurringJobScheduler> logger) : BackgroundService
@@ -34,31 +33,15 @@ internal sealed partial class RecurringJobScheduler(
                 await Task.Delay(wait < _longestWait ? wait : _longestWait, time, stoppingToken);
             }
 
-            await RunAsync(job, stoppingToken);
+            var run = new QueuedJob(
+                Guid.CreateVersion7().ToString(),
+                job.Name,
+                (services, token) => ((IRecurringJob)services.GetRequiredService(job.JobType)).RunAsync(token));
+            await queue.EnqueueAsync(run, stoppingToken);
+            LogQueued(logger, job.Name, run.Id);
         }
     }
 
-    private async Task RunAsync(RecurringJobDefinition job, CancellationToken stoppingToken)
-    {
-        try
-        {
-            await using var scope = scopes.CreateAsyncScope();
-            await ((IRecurringJob)scope.ServiceProvider.GetRequiredService(job.JobType)).RunAsync(stoppingToken);
-            LogSucceeded(logger, job.Name);
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            LogFailed(logger, job.Name, exception);
-        }
-    }
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Recurring job {Name} succeeded")]
-    private static partial void LogSucceeded(ILogger logger, string name);
-
-    [LoggerMessage(Level = LogLevel.Error, Message = "Recurring job {Name} failed; it runs again at its next scheduled time")]
-    private static partial void LogFailed(ILogger logger, string name, Exception exception);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Recurring job {Name} is due; queued as {JobId}")]
+    private static partial void LogQueued(ILogger logger, string name, string jobId);
 }

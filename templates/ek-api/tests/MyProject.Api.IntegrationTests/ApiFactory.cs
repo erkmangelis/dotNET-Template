@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 #endif
 using Microsoft.AspNetCore.Mvc.Testing;
-#if (UseAuth || UseHangfire)
+#if (UseAuth || UseJobs)
 using Microsoft.AspNetCore.TestHost;
 #endif
 #if (UseSqlite)
@@ -138,6 +138,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
         builder.UseSetting("Database:MigrateOnStartup", "true");
 #endif
+#if (UseJobs)
+        builder.UseSetting("Jobs:MaxAttempts", "2");
+        builder.UseSetting("Jobs:RetryDelaySeconds", "0");
+#endif
 #if (UseHangfire)
         builder.UseSetting("Jobs:Dashboard", "true");
         builder.UseSetting("Jobs:PollIntervalSeconds", "1");
@@ -158,9 +162,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Email:FromAddress", "noreply@example.com");
 #endif
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
-#if (UseAuth || UseHangfire)
+#if (UseAuth || UseJobs)
         builder.ConfigureTestServices(services =>
         {
+#if (UseJobs)
+            services.AddScoped<FlakyJob>();
+#endif
 #if (UseHangfire)
             // Hangfire logs through a static that every app it starts replaces. An app a test starts
             // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.

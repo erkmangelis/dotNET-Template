@@ -262,6 +262,7 @@
             "src/MyProject.Api/Common/CurrentActor.cs",
             "src/MyProject.Api/Features/ApiKeys/**",
             "src/MyProject.Api/Features/Auth/**",
+            "src/MyProject.Api/Features/Jobs/**",
             "src/MyProject.Api/Features/Profiles/**",
             "src/MyProject.Api/Data/ApiKeyConfiguration.cs",
             "src/MyProject.Api/Data/UserProfileConfiguration.cs",
@@ -343,8 +344,12 @@
             "src/MyProject.Api/Infrastructure/Jobs/JobsOptions.cs",
             "src/MyProject.Api/Infrastructure/Jobs/JobsSetup.cs",
             "src/MyProject.Api/Features/Notes/NoteJobs.cs",
+            "src/MyProject.Api/Features/Jobs/**",
             "tests/MyProject.Api.IntegrationTests/Eventually.cs",
-            "tests/MyProject.Api.IntegrationTests/JobTests.cs"
+            "tests/MyProject.Api.IntegrationTests/JobTests.cs",
+            "tests/MyProject.Api.IntegrationTests/JobFailureTests.cs",
+            "tests/MyProject.Api.IntegrationTests/FlakyJob.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/JobsOptionsTests.cs"
           ]
         },
         {
@@ -352,7 +357,8 @@
           "exclude": [
             "src/MyProject.Api/Infrastructure/Jobs/InProcessJobQueue.cs",
             "src/MyProject.Api/Infrastructure/Jobs/RecurringJobScheduler.cs",
-            "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/RecurringJobSchedulerTests.cs"
+            "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/RecurringJobSchedulerTests.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/InProcessJobRunnerTests.cs"
           ]
         },
         {

@@ -41,6 +41,9 @@ v1.MapProfileEndpoints();
 var admin = v1.MapGroup("/admin").WithTags("Admin");
 admin.MapNoteAdminEndpoints();
 admin.MapAuditAdminEndpoints();
+#if (UseJobs)
+admin.MapJobAdminEndpoints();
+#endif
 #if (UseIdentity)
 admin.MapUserAdminEndpoints();
 #endif

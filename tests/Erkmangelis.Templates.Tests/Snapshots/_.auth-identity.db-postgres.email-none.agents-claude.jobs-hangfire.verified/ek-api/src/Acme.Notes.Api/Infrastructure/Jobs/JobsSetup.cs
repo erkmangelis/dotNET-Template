@@ -19,7 +19,17 @@ internal static class JobsSetup
         services.AddHangfire((provider, hangfire) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;
-            var pollInterval = TimeSpan.FromSeconds(provider.GetRequiredService<IOptions<JobsOptions>>().Value.PollIntervalSeconds);
+            var options = provider.GetRequiredService<IOptions<JobsOptions>>().Value;
+            var pollInterval = TimeSpan.FromSeconds(options.PollIntervalSeconds);
+
+            // Replaces Hangfire's default of ten retries over about a day with the Jobs settings.
+            GlobalJobFilters.Filters.Remove<AutomaticRetryAttribute>();
+            hangfire.UseFilter(new AutomaticRetryAttribute
+            {
+                Attempts = options.MaxAttempts - 1,
+                DelaysInSeconds = [.. Enumerable.Range(2, Math.Max(options.MaxAttempts - 1, 1)).Select(attempt => (int)options.RetryDelayBefore(attempt).TotalSeconds)],
+                OnAttemptsExceeded = AttemptsExceededAction.Fail,
+            });
             hangfire
                 .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                 .UseSimpleAssemblyNameTypeSerializer()
@@ -38,10 +48,13 @@ internal static class JobsSetup
             {
                 server.Queues = [jobs.Queue];
                 server.WorkerCount = jobs.WorkerCount;
+                // Retries wait in the scheduled state; check for due ones as often as for new jobs.
+                server.SchedulePollingInterval = TimeSpan.FromSeconds(jobs.PollIntervalSeconds);
             });
         }
 
         services.AddSingleton<IJobQueue, HangfireJobQueue>();
+        services.AddSingleton<IFailedJobs, HangfireFailedJobs>();
         services.AddHostedService<HangfireRecurringJobs>();
         return builder;
     }

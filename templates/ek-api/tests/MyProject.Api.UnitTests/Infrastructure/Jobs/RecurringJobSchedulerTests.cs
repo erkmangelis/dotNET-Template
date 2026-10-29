@@ -17,30 +17,34 @@ public sealed class RecurringJobSchedulerTests
         Assert.Equal(valid, RecurringJobScheduler.IsValidCron(cron));
 
     [Fact]
-    public async Task Runs_a_job_at_the_time_its_schedule_gives_and_not_before()
+    public async Task Queues_a_job_at_the_time_its_schedule_gives_and_not_before()
     {
         var time = new WatchedTime(new DateTimeOffset(2026, 1, 1, 2, 59, 30, TimeSpan.Zero));
-        var runs = Channel.CreateUnbounded<DateTimeOffset>();
+        var options = Options.Create(new JobsOptions());
+        var queue = new InProcessJobQueue(options);
         await using var services = new ServiceCollection()
             .AddSingleton<TimeProvider>(time)
-            .AddSingleton(runs)
+            .AddSingleton(Channel.CreateUnbounded<DateTimeOffset>())
             .AddRecurringJob<CountingJob>("counting", "0 3 * * *")
             .BuildServiceProvider();
         using var scheduler = new RecurringJobScheduler(
-            services.GetServices<RecurringJobDefinition>(),
-            services.GetRequiredService<IServiceScopeFactory>(),
-            time,
-            Options.Create(new JobsOptions()),
-            NullLogger<RecurringJobScheduler>.Instance);
+            services.GetServices<RecurringJobDefinition>(), queue, time, options, NullLogger<RecurringJobScheduler>.Instance);
 
         await scheduler.StartAsync(TestContext.Current.CancellationToken);
         // The scheduler starts on a thread of its own: wait until it waits for 03:00.
         await time.Timers.Reader.ReadAsync(TestContext.Current.CancellationToken);
         time.Advance(TimeSpan.FromSeconds(29));
-        Assert.False(runs.Reader.TryRead(out _));
+        Assert.False(queue.Reader.TryRead(out _));
 
         time.Advance(TimeSpan.FromSeconds(1));
-        Assert.Equal(new DateTimeOffset(2026, 1, 1, 3, 0, 0, TimeSpan.Zero), await NextRunAsync(runs));
+        var due = await NextAsync(queue.Reader);
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await due.RunAsync(scope.ServiceProvider, TestContext.Current.CancellationToken);
+        }
+
+        Assert.Equal("counting", due.Name);
+        Assert.Equal(new DateTimeOffset(2026, 1, 1, 3, 0, 0, TimeSpan.Zero), await NextAsync(services.GetRequiredService<Channel<DateTimeOffset>>().Reader));
         await scheduler.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -53,11 +57,11 @@ public sealed class RecurringJobSchedulerTests
         Assert.Equal("0 3 * * *", options.ScheduleFor(new RecurringJobDefinition("other", typeof(CountingJob), "0 3 * * *")));
     }
 
-    private static async Task<DateTimeOffset> NextRunAsync(Channel<DateTimeOffset> runs)
+    private static async Task<T> NextAsync<T>(ChannelReader<T> reader)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(10));
-        return await runs.Reader.ReadAsync(timeout.Token);
+        return await reader.ReadAsync(timeout.Token);
     }
 
     /// <summary>Fake time that reports each timer the scheduler sets, such as the one behind a delay.</summary>

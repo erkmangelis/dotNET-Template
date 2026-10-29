@@ -16,6 +16,8 @@ internal static class JobsSetup
 
         services.AddSingleton<InProcessJobQueue>();
         services.AddSingleton<IJobQueue>(provider => provider.GetRequiredService<InProcessJobQueue>());
+        services.AddSingleton<InProcessFailedJobs>();
+        services.AddSingleton<IFailedJobs>(provider => provider.GetRequiredService<InProcessFailedJobs>());
         services.AddHostedService<InProcessJobRunner>();
         services.AddHostedService<RecurringJobScheduler>();
         return builder;

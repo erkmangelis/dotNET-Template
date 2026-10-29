@@ -51,6 +51,14 @@ Change a schedule without a deploy through settings, for example
 `Jobs__Schedules__purge-deleted-notes="0 4 * * *"`. Five fields: minute, hour, day of month, month,
 day of week.
 
+### Retries and failed jobs
+
+A job that throws runs again, up to `Jobs:MaxAttempts` times in all (default 5). The first retry
+waits `Jobs:RetryDelaySeconds` (default 10), and each later one twice as long, up to an hour. A job
+that fails every attempt is kept as failed and logged as an error; it never retries on its own again.
+Hangfire keeps failed jobs in the database until someone requeues or deletes them; the dashboard
+shows them with their exceptions.
+
 ### How they run here: Hangfire
 
 This app runs jobs with [Hangfire](https://www.hangfire.io) (LGPL-3.0, free for commercial use), which

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -26,6 +27,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseEnvironment("Testing");
         builder.UseSetting("RateLimiting:Enabled", "false");
         builder.UseSetting("Api:UseHttpsRedirection", "false");
+        builder.UseSetting("Jobs:MaxAttempts", "2");
+        builder.UseSetting("Jobs:RetryDelaySeconds", "0");
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
+        builder.ConfigureTestServices(services =>
+        {
+            services.AddScoped<FlakyJob>();
+        });
     }
 }

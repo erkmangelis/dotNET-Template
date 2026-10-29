@@ -4,6 +4,7 @@ global using Acme.Notes.Api.Data;
 global using Acme.Notes.Api.Features.ApiKeys;
 global using Acme.Notes.Api.Features.Audit;
 global using Acme.Notes.Api.Features.Auth;
+global using Acme.Notes.Api.Features.Jobs;
 global using Acme.Notes.Api.Features.Notes;
 global using Acme.Notes.Api.Features.Profiles;
 global using Acme.Notes.Api.Infrastructure;

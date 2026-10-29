@@ -51,6 +51,14 @@ Change a schedule without a deploy through settings, for example
 `Jobs__Schedules__purge-deleted-notes="0 4 * * *"`. Five fields: minute, hour, day of month, month,
 day of week.
 
+### Retries and failed jobs
+
+A job that throws runs again, up to `Jobs:MaxAttempts` times in all (default 5). The first retry
+waits `Jobs:RetryDelaySeconds` (default 10), and each later one twice as long, up to an hour. A job
+that fails every attempt is kept as failed and logged as an error; it never retries on its own again.
+In this app failed jobs are kept in memory, the last 100 of them, until they are requeued or the app
+stops.
+
 ### How they run here: in process
 
 This app runs jobs on hosted services (`--jobs hosted`): `InProcessJobQueue` keeps queued jobs in

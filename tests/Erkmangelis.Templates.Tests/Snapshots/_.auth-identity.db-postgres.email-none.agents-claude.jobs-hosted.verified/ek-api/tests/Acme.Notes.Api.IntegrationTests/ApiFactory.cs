@@ -44,9 +44,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Api:UseHttpsRedirection", "false");
         builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
+        builder.UseSetting("Jobs:MaxAttempts", "2");
+        builder.UseSetting("Jobs:RetryDelaySeconds", "0");
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
+            services.AddScoped<FlakyJob>();
             services.AddSingleton<IEmailSender<AppUser>>(Emails);
         });
     }

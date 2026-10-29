@@ -52,6 +52,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Api:UseHttpsRedirection", "false");
         builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
+        builder.UseSetting("Jobs:MaxAttempts", "2");
+        builder.UseSetting("Jobs:RetryDelaySeconds", "0");
         builder.UseSetting("Jobs:Dashboard", "true");
         builder.UseSetting("Jobs:PollIntervalSeconds", "1");
         if (_started)
@@ -63,6 +65,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
+            services.AddScoped<FlakyJob>();
             // Hangfire logs through a static that every app it starts replaces. An app a test starts
             // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
             var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
