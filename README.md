@@ -4,7 +4,7 @@
 API that fixes the security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.2.0.nupkg
+dotnet new install Erkmangelis.Templates.0.3.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
