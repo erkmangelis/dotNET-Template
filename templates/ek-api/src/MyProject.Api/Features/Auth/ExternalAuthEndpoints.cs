@@ -64,6 +64,7 @@ internal static partial class ExternalAuthEndpoints
         ExternalTokenValidator validator,
         UserManager<AppUser> users,
         SignInManager<AppUser> signIn,
+        ApiKeyService apiKeys,
         ILoggerFactory loggers,
         CancellationToken cancellationToken,
         bool? useCookies = null,
@@ -108,7 +109,7 @@ internal static partial class ExternalAuthEndpoints
             {
                 // Nobody ever proved they own this unconfirmed account. The verified email wins, so whatever
                 // credentials the account had are removed before the provider is linked.
-                await ResetUnprovenAccountAsync(users, user);
+                await ResetUnprovenAccountAsync(users, apiKeys, user, cancellationToken);
                 LogUnconfirmedAccountClaimed(logger, name, user.Id);
             }
 
@@ -208,7 +209,7 @@ internal static partial class ExternalAuthEndpoints
     }
 
     /// <summary>Removes every way in to an account whose email was never confirmed, and signs out its sessions.</summary>
-    private static async Task ResetUnprovenAccountAsync(UserManager<AppUser> users, AppUser user)
+    private static async Task ResetUnprovenAccountAsync(UserManager<AppUser> users, ApiKeyService apiKeys, AppUser user, CancellationToken cancellationToken)
     {
         if (await users.HasPasswordAsync(user))
         {
@@ -225,6 +226,7 @@ internal static partial class ExternalAuthEndpoints
             await users.RemovePasskeyAsync(user, passkey.CredentialId);
         }
 
+        await apiKeys.RevokeAllAsync(user.Id, cancellationToken);
         await users.SetTwoFactorEnabledAsync(user, false);
         await users.ResetAuthenticatorKeyAsync(user);
         user.EmailConfirmed = true;

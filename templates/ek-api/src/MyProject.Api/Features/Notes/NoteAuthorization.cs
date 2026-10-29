@@ -6,6 +6,12 @@ internal static class NotePolicies
 {
     /// <summary>Only the user who created a note may read it.</summary>
     public const string Owner = "notes.owner";
+
+    /// <summary>Signed-in users, or API keys with <see cref="ApiKeyScopes.NotesRead"/>.</summary>
+    public const string Read = "notes.read";
+
+    /// <summary>Signed-in users, or API keys with <see cref="ApiKeyScopes.NotesWrite"/>.</summary>
+    public const string Write = "notes.write";
 }
 
 internal sealed class NoteOwnerRequirement : IAuthorizationRequirement;

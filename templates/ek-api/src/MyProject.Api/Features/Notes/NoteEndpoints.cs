@@ -22,6 +22,8 @@ internal static class NoteEndpoints
             .AddPolicy(NotePolicies.Owner, policy => policy
                 .RequireAuthenticatedUser()
                 .AddRequirements(new NoteOwnerRequirement()));
+        services.AddUserOrKeyPolicy(NotePolicies.Read, ApiKeyScopes.NotesRead);
+        services.AddUserOrKeyPolicy(NotePolicies.Write, ApiKeyScopes.NotesWrite);
 #endif
         return services;
     }
@@ -29,13 +31,17 @@ internal static class NoteEndpoints
     public static RouteGroupBuilder MapNoteEndpoints(this IEndpointRouteBuilder routes)
     {
         var notes = routes.MapGroup("/notes").WithTags("Notes");
-#if (UseAuth)
-        notes.RequireAuthorization();
-#endif
 
+#if (UseAuth)
+        // Signed-in users, and API keys with the matching scope.
+        notes.MapPost("/", CreateAsync).RequireAuthorization(NotePolicies.Write).WithName("CreateNote").WithSummary("Create a note");
+        notes.MapGet("/{id:guid}", GetAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNote").WithSummary("Get a note");
+        notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).WithName("ListNotes").WithSummary("List notes, newest first");
+#else
         notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
         notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes, newest first");
+#endif
 
         return notes;
     }

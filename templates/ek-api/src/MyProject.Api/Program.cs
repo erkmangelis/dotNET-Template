@@ -13,6 +13,9 @@ builder.AddIdentityAuth();
 #elif (UseOidc)
 builder.AddOidcAuth();
 #endif
+#if (UseAuth)
+builder.Services.AddApiKeys();
+#endif
 builder.Services.AddNotes();
 
 var app = builder.Build();
@@ -26,6 +29,7 @@ v1.MapAuthEndpoints();
 #endif
 v1.MapNoteEndpoints();
 #if (UseAuth)
+v1.MapApiKeyEndpoints();
 
 var admin = v1.MapGroup("/admin").WithTags("Admin");
 admin.MapNoteAdminEndpoints();

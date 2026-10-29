@@ -115,6 +115,21 @@ Roles come from the provider's tokens (`Oidc:RoleClaim`). Create realm or app ro
 and `auditor` there and assign them to users.
 <!--#endif -->
 
+### API keys
+
+Scripts and other services call the API with a key instead of a user session. A signed-in user
+creates one, and the response shows the key once:
+
+```http
+POST /v1/api-keys
+{ "name": "Nightly export", "scopes": ["notes:read"], "expiresInDays": 90 }
+```
+
+Send it as the `X-Api-Key` header. A key acts as its owner but only within its scopes
+(`notes:read`, `notes:write`), and it never reaches `/v1/api-keys` or `/v1/admin`. Only a SHA-256
+hash is stored. `POST /v1/api-keys/{id}/rotate` issues a replacement and keeps the old key working
+for `overlapHours` (default 0), and `DELETE /v1/api-keys/{id}` revokes it.
+
 <!--#endif -->
 ## Test it
 

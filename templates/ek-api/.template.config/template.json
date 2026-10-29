@@ -202,7 +202,11 @@
         {
           "condition": "(!UseAuth)",
           "exclude": [
+            "src/MyProject.Api/Features/ApiKeys/**",
             "src/MyProject.Api/Features/Auth/**",
+            "src/MyProject.Api/Data/ApiKeyConfiguration.cs",
+            "tests/MyProject.Api.IntegrationTests/ApiKeyTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/ApiKeys/**",
             "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
             "tests/MyProject.Api.IntegrationTests/PermissionTests.cs",

@@ -76,6 +76,9 @@ Never edit a migration that has been merged.
 <!--#endif -->
 - Guard admin endpoints with `.RequirePermission(Permissions.X)`, never with role names. Roles map
   to permissions in `Features/Auth/Permissions.cs`; add a permission there for a new admin action.
+- Endpoints an API key may call use a user-or-key policy (`services.AddUserOrKeyPolicy(name, scope)`,
+  see `AddNotes`) with a scope from `ApiKeyScopes`. Everything else stays user-only, so keys never
+  manage keys or reach admin endpoints.
 - Check ownership with the resource policy (`NotePolicies.Owner` is the example) and answer 404,
   not 403, for another user's resource.
 - Add an integration test proving one user cannot read or change another user's data.

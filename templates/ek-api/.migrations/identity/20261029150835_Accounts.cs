@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -59,6 +60,32 @@ namespace MyProject.Api.Data.Migrations
                 oldType: "text");
 
             migrationBuilder.CreateTable(
+                name: "ApiKeys",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OwnerId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    LookupId = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    SecretHash = table.Column<byte[]>(type: "bytea", maxLength: 32, nullable: false),
+                    Scopes = table.Column<string[]>(type: "text[]", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    RevokedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    LastUsedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ApiKeys", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ApiKeys_AspNetUsers_OwnerId",
+                        column: x => x.OwnerId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetUserPasskeys",
                 columns: table => new
                 {
@@ -87,6 +114,17 @@ namespace MyProject.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ApiKeys_LookupId",
+                table: "ApiKeys",
+                column: "LookupId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ApiKeys_OwnerId",
+                table: "ApiKeys",
+                column: "OwnerId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserPasskeys_UserId",
                 table: "AspNetUserPasskeys",
                 column: "UserId");
@@ -95,6 +133,9 @@ namespace MyProject.Api.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ApiKeys");
+
             migrationBuilder.DropTable(
                 name: "AspNetUserPasskeys");
 

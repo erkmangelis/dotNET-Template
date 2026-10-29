@@ -4,6 +4,7 @@ global using MyProject.Api.Common;
 global using MyProject.Api.Data;
 #endif
 #if (UseAuth)
+global using MyProject.Api.Features.ApiKeys;
 global using MyProject.Api.Features.Auth;
 #endif
 #if (!UsePostgres || UseAuth)

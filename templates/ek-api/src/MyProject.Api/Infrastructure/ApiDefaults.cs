@@ -120,10 +120,11 @@ internal static class ApiDefaults
         app.UseCors();
 #if (UseAuth)
         app.UseAuthentication();
-        app.UseAuthorization();
-#endif
 #if (UseIdentity)
+        // Before authorization: a policy with several schemes replaces the result this check reads.
         app.UseBrowserSessionAntiforgery();
+#endif
+        app.UseAuthorization();
 #endif
         app.UseRateLimiter();
 
