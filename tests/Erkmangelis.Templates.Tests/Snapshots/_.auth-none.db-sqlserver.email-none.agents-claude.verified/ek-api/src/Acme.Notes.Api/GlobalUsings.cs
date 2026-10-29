@@ -5,3 +5,4 @@ global using Acme.Notes.Api.Features.Audit;
 global using Acme.Notes.Api.Features.Notes;
 global using Acme.Notes.Api.Infrastructure;
 global using Acme.Notes.Api.Infrastructure.Idempotency;
+global using Acme.Notes.Api.Infrastructure.Jobs;
