@@ -33,6 +33,13 @@ internal sealed class Note : IRecordMetadata, ISoftDeletable
 #endif
 
     public DateTimeOffset? DeletedAt { get; set; }
+
+#if (UsePostgres)
+    /// <summary>Changes on every save: PostgreSQL's <c>xmin</c> row version. A save that expects an older one fails.</summary>
+#else
+    /// <summary>Changes on every save. A save that expects an older one fails.</summary>
+#endif
+    public uint Version { get; set; }
 #if (UseAuth)
 
     public string? DeletedBy { get; set; }

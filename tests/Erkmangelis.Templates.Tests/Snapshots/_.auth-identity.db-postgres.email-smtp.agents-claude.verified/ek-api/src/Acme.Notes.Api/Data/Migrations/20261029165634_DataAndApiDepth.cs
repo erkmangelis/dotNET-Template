@@ -49,6 +49,14 @@ namespace Acme.Notes.Api.Data.Migrations
                 maxLength: 450,
                 nullable: true);
 
+            migrationBuilder.AddColumn<uint>(
+                name: "xmin",
+                table: "Notes",
+                type: "xid",
+                rowVersion: true,
+                nullable: false,
+                defaultValue: 0u);
+
             migrationBuilder.CreateTable(
                 name: "AuditEntries",
                 columns: table => new
@@ -113,6 +121,10 @@ namespace Acme.Notes.Api.Data.Migrations
 
             migrationBuilder.DropColumn(
                 name: "UpdatedBy",
+                table: "Notes");
+
+            migrationBuilder.DropColumn(
+                name: "xmin",
                 table: "Notes");
 
             migrationBuilder.CreateIndex(

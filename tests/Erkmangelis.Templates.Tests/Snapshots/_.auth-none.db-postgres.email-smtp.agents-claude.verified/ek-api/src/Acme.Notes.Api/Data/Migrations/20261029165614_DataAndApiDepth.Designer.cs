@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Acme.Notes.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261029165018_DataAndApiDepth")]
+    [Migration("20261029165614_DataAndApiDepth")]
     partial class DataAndApiDepth
     {
         /// <inheritdoc />
@@ -85,6 +85,12 @@ namespace Acme.Notes.Api.Data.Migrations
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

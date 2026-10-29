@@ -46,6 +46,24 @@ public sealed class InMemoryNoteStoreTests
         Assert.Equal(2, page.TotalCount);
     }
 
+    [Fact]
+    public async Task A_change_based_on_an_old_version_is_refused()
+    {
+        var store = new InMemoryNoteStore(TimeProvider.System);
+        var note = NewNote("Groceries", _start);
+        await store.TryAddAsync(note, TestContext.Current.CancellationToken);
+        var first = (await store.FindAsync(note.Id, TestContext.Current.CancellationToken))!;
+        var second = (await store.FindAsync(note.Id, TestContext.Current.CancellationToken))!;
+
+        first.Content = "Milk";
+        second.Content = "Eggs";
+
+        Assert.Equal(NoteSaveResult.Saved, await store.TryUpdateAsync(first, TestContext.Current.CancellationToken));
+        Assert.Equal(NoteSaveResult.Stale, await store.TryUpdateAsync(second, TestContext.Current.CancellationToken));
+        Assert.Equal(NoteSaveResult.Stale, await store.TryDeleteAsync(second, TestContext.Current.CancellationToken));
+        Assert.Equal("Milk", (await store.FindAsync(note.Id, TestContext.Current.CancellationToken))!.Content);
+    }
+
     private static Note NewNote(string title, DateTimeOffset createdAt) =>
         new() { Id = Guid.CreateVersion7(createdAt), Title = title, CreatedAt = createdAt };
 }

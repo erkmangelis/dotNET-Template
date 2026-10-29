@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using MyProject.Api.Data;
+using Acme.Notes.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace MyProject.Api.Data.Migrations
+namespace Acme.Notes.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261029165056_DataAndApiDepth")]
+    [Migration("20261029165651_DataAndApiDepth")]
     partial class DataAndApiDepth
     {
         /// <inheritdoc />
@@ -25,7 +25,7 @@ namespace MyProject.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("MyProject.Api.Data.AuditEntry", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Data.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -69,7 +69,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("AuditEntries");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.ApiKeys.ApiKey", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.ApiKeys.ApiKey", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -120,7 +120,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("ApiKeys");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Notes.Note", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Notes.Note", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -160,6 +160,12 @@ namespace MyProject.Api.Data.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId", "CreatedAt");
@@ -171,7 +177,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("Notes");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Profiles.UserProfile", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Profiles.UserProfile", b =>
                 {
                     b.Property<string>("UserId")
                         .HasMaxLength(450)

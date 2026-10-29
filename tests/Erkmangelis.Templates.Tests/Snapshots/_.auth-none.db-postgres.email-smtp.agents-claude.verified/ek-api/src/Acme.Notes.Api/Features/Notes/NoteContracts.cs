@@ -88,6 +88,12 @@ public sealed record NoteListQuery : IValidatableObject
 /// <summary>Replaces a note's title and content.</summary>
 public sealed record UpdateNoteRequest
 {
+    /// <summary>
+    /// The <c>version</c> you read. When it is no longer current, someone else changed the note and
+    /// the update answers 409 instead of overwriting their change.
+    /// </summary>
+    public uint? Version { get; init; }
+
     [Required]
     [StringLength(Note.TitleMaxLength)]
     public string Title { get; init; } = string.Empty;
@@ -96,7 +102,8 @@ public sealed record UpdateNoteRequest
     public string? Content { get; init; }
 }
 
-public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt)
+/// <summary>A note. <c>Version</c> changes on every save; send it back with an update so it cannot overwrite someone else's change.</summary>
+public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, uint Version)
 {
-    internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt, note.UpdatedAt);
+    internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt, note.UpdatedAt, note.Version);
 }

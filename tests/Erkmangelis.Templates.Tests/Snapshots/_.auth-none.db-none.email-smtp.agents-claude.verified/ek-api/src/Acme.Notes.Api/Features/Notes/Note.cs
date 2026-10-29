@@ -19,6 +19,9 @@ internal sealed class Note : IRecordMetadata, ISoftDeletable
 
     public DateTimeOffset? DeletedAt { get; set; }
 
+    /// <summary>Changes on every save. A save that expects an older one fails.</summary>
+    public uint Version { get; set; }
+
     /// <summary>A copy, so a caller can change it without touching the stored one.</summary>
     public Note Clone() => (Note)MemberwiseClone();
 }

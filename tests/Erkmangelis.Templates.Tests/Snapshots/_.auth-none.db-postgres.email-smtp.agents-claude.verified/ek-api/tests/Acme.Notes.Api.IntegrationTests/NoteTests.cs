@@ -112,6 +112,30 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_update_based_on_an_old_version_answers_409_and_changes_nothing()
+    {
+        var note = await CreateAsync(UniqueTitle());
+        var first = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title = UniqueTitle(), version = note.Version },
+            TestContext.Current.CancellationToken);
+        var saved = await first.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+
+        // A second client still holding the first version.
+        var second = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title = UniqueTitle(), version = note.Version },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.NotEqual(note.Version, saved!.Version);
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        var problem = await second.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal("Edit conflict", problem.GetProperty("title").GetString());
+        Assert.Equal(saved, await _client.GetFromJsonAsync<NoteResponse>($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Updating_to_another_notes_title_answers_409()
     {
         var first = await CreateAsync(UniqueTitle());

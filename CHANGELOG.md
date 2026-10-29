@@ -22,6 +22,10 @@ R03, Data and API depth.
 - Audit history: every change to an `IAudited` entity writes an `AuditEntry` in the same transaction
   with each changed value before and after, the actor and the trace id. `GET /v1/notes/{id}/history`
   for the owner; `GET /v1/admin/audit` for roles with the new `audit.read` permission (admin, auditor).
+- Optimistic concurrency: notes carry a `version` (PostgreSQL's `xmin` through Npgsql's row version).
+  An update can send the version it read; the save's `UPDATE` matches only that version, so a stale
+  update or a change racing between read and write answers 409 ProblemDetails ("Edit conflict")
+  instead of overwriting someone else's change.
 
 ## [0.2.0] - Unreleased
 

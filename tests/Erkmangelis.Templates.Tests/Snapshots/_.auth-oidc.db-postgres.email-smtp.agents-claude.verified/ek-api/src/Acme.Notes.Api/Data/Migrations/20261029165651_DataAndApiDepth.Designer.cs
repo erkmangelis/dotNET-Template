@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Acme.Notes.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261029165056_DataAndApiDepth")]
+    [Migration("20261029165651_DataAndApiDepth")]
     partial class DataAndApiDepth
     {
         /// <inheritdoc />
@@ -159,6 +159,12 @@ namespace Acme.Notes.Api.Data.Migrations
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

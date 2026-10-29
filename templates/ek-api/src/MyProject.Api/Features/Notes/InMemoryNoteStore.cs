@@ -33,26 +33,36 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
     {
         lock (_lock)
         {
+            if (IsStale(note))
+            {
+                return Task.FromResult(NoteSaveResult.Stale);
+            }
+
             if (HasTitle(note))
             {
                 return Task.FromResult(NoteSaveResult.DuplicateTitle);
             }
 
             RecordMetadata.Stamp(note, added: false, RecordMetadata.Now(time));
-            _notes[_notes.FindIndex(existing => existing.Id == note.Id)] = note.Clone();
+            Replace(note);
             return Task.FromResult(NoteSaveResult.Saved);
         }
     }
 
-    public Task DeleteAsync(Note note, CancellationToken cancellationToken)
+    public Task<NoteSaveResult> TryDeleteAsync(Note note, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
+            if (IsStale(note))
+            {
+                return Task.FromResult(NoteSaveResult.Stale);
+            }
+
             var now = RecordMetadata.Now(time);
             note.DeletedAt = now;
             RecordMetadata.Stamp(note, added: false, now);
-            _notes[_notes.FindIndex(existing => existing.Id == note.Id)] = note.Clone();
-            return Task.CompletedTask;
+            Replace(note);
+            return Task.FromResult(NoteSaveResult.Saved);
         }
     }
 
@@ -75,6 +85,15 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
 
             return Task.FromResult(new PagedResult<Note>(items, query.PageNumber, query.PageLength, total));
         }
+    }
+
+    private bool IsStale(Note note) =>
+        _notes.Find(existing => existing.Id == note.Id) is not { DeletedAt: null } stored || stored.Version != note.Version;
+
+    private void Replace(Note note)
+    {
+        note.Version++;
+        _notes[_notes.FindIndex(existing => existing.Id == note.Id)] = note.Clone();
     }
 
     private bool HasTitle(Note note) =>

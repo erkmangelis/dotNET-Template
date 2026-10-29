@@ -70,14 +70,16 @@ internal static class NoteEndpoints
 
         note.Title = request.Title.Trim();
         note.Content = request.Content;
+        note.Version = request.Version ?? note.Version;
         return await store.TryUpdateAsync(note, cancellationToken) switch
         {
             NoteSaveResult.Saved => TypedResults.Ok(NoteResponse.From(note)),
+            NoteSaveResult.Stale => EditConflict(),
             _ => DuplicateTitle(),
         };
     }
 
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound, ProblemHttpResult>> DeleteAsync(
         Guid id,
         INoteStore store,
         CancellationToken cancellationToken)
@@ -88,8 +90,9 @@ internal static class NoteEndpoints
             return TypedResults.NotFound();
         }
 
-        await store.DeleteAsync(note, cancellationToken);
-        return TypedResults.NoContent();
+        return await store.TryDeleteAsync(note, cancellationToken) == NoteSaveResult.Saved
+            ? TypedResults.NoContent()
+            : EditConflict();
     }
 
     private static async Task<Results<Ok<PagedResult<AuditEntryResponse>>, NotFound>> HistoryAsync(
@@ -109,6 +112,11 @@ internal static class NoteEndpoints
         var entries = await log.ListAsync(nameof(Note), note.Id.ToString(), page, pageSize, cancellationToken);
         return TypedResults.Ok(entries.Map(AuditEntryResponse.From));
     }
+
+    private static ProblemHttpResult EditConflict() => TypedResults.Problem(
+        statusCode: StatusCodes.Status409Conflict,
+        title: "Edit conflict",
+        detail: "The note changed since you read it. Read it again and reapply your change.");
 
     private static ProblemHttpResult DuplicateTitle() => TypedResults.Problem(
         statusCode: StatusCodes.Status409Conflict,

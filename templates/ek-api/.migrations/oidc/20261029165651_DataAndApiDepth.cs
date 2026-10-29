@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Acme.Notes.Api.Data.Migrations
+namespace MyProject.Api.Data.Migrations
 {
     /// <inheritdoc />
     public partial class DataAndApiDepth : Migration
@@ -48,6 +48,14 @@ namespace Acme.Notes.Api.Data.Migrations
                 type: "character varying(450)",
                 maxLength: 450,
                 nullable: true);
+
+            migrationBuilder.AddColumn<uint>(
+                name: "xmin",
+                table: "Notes",
+                type: "xid",
+                rowVersion: true,
+                nullable: false,
+                defaultValue: 0u);
 
             migrationBuilder.CreateTable(
                 name: "AuditEntries",
@@ -113,6 +121,10 @@ namespace Acme.Notes.Api.Data.Migrations
 
             migrationBuilder.DropColumn(
                 name: "UpdatedBy",
+                table: "Notes");
+
+            migrationBuilder.DropColumn(
+                name: "xmin",
                 table: "Notes");
 
             migrationBuilder.CreateIndex(

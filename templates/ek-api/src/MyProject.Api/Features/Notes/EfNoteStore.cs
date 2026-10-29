@@ -27,8 +27,14 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         }
 
         // Copied onto the stored row, so the audit history sees the values before and after.
-        var stored = await db.Notes.SingleAsync(row => row.Id == note.Id, cancellationToken);
+        var stored = await TrackAsync(note, cancellationToken);
+        if (stored is null)
+        {
+            return NoteSaveResult.Stale;
+        }
+
         db.Entry(stored).CurrentValues.SetValues(note);
+        ExpectVersion(stored, note.Version);
         var result = await TrySaveAsync(cancellationToken);
         if (result == NoteSaveResult.Saved)
         {
@@ -37,17 +43,24 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 #if (UseAuth)
             note.UpdatedBy = stored.UpdatedBy;
 #endif
+            note.Version = stored.Version;
         }
 
         return result;
     }
 
-    public async Task DeleteAsync(Note note, CancellationToken cancellationToken)
+    public async Task<NoteSaveResult> TryDeleteAsync(Note note, CancellationToken cancellationToken)
     {
         // The save turns the removal into a soft delete; see AuditableEntityInterceptor.
-        var stored = await db.Notes.SingleAsync(row => row.Id == note.Id, cancellationToken);
+        var stored = await TrackAsync(note, cancellationToken);
+        if (stored is null)
+        {
+            return NoteSaveResult.Stale;
+        }
+
+        ExpectVersion(stored, note.Version);
         db.Notes.Remove(stored);
-        await db.SaveChangesAsync(cancellationToken);
+        return await TrySaveAsync(cancellationToken);
     }
 
     public Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken) =>
@@ -86,12 +99,31 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.Title == note.Title, cancellationToken);
 #endif
 
+    private Task<Note?> TrackAsync(Note note, CancellationToken cancellationToken) =>
+        db.Notes.SingleOrDefaultAsync(row => row.Id == note.Id, cancellationToken);
+
+    /// <summary>
+    /// Makes the save's UPDATE match only the row version the caller read, so a change made in between
+    /// fails the save instead of being overwritten.
+    /// </summary>
+    private void ExpectVersion(Note stored, uint version)
+    {
+        var property = db.Entry(stored).Property(row => row.Version);
+        property.OriginalValue = version;
+        property.IsModified = false;
+    }
+
     private async Task<NoteSaveResult> TrySaveAsync(CancellationToken cancellationToken)
     {
         try
         {
             await db.SaveChangesAsync(cancellationToken);
             return NoteSaveResult.Saved;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.ChangeTracker.Clear();
+            return NoteSaveResult.Stale;
         }
         catch (DbUpdateException exception) when (IsUniqueViolation(exception))
         {

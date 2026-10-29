@@ -26,6 +26,9 @@ internal sealed class Note : IRecordMetadata, ISoftDeletable, IAudited
 
     public DateTimeOffset? DeletedAt { get; set; }
 
+    /// <summary>Changes on every save: PostgreSQL's <c>xmin</c> row version. A save that expects an older one fails.</summary>
+    public uint Version { get; set; }
+
     public string? DeletedBy { get; set; }
 
     /// <summary>A copy, so a caller can change it without touching the stored one.</summary>

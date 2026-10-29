@@ -4,15 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using MyProject.Api.Data;
+using Acme.Notes.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace MyProject.Api.Data.Migrations
+namespace Acme.Notes.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261029165038_DataAndApiDepth")]
+    [Migration("20261029165634_DataAndApiDepth")]
     partial class DataAndApiDepth
     {
         /// <inheritdoc />
@@ -72,15 +72,15 @@ namespace MyProject.Api.Data.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e01",
-                            ConcurrencyStamp = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e11",
+                            Id = "00000000-0000-0000-0000-000000000000",
+                            ConcurrencyStamp = "00000000-0000-0000-0000-000000000000",
                             Name = "admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e02",
-                            ConcurrencyStamp = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e12",
+                            Id = "00000000-0000-0000-0000-000000000000",
+                            ConcurrencyStamp = "00000000-0000-0000-0000-000000000000",
                             Name = "auditor",
                             NormalizedName = "AUDITOR"
                         });
@@ -213,7 +213,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MyProject.Api.Data.AuditEntry", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Data.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -257,7 +257,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("AuditEntries");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.ApiKeys.ApiKey", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.ApiKeys.ApiKey", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -308,7 +308,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("ApiKeys");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Auth.AppUser", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Auth.AppUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text");
@@ -373,7 +373,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Notes.Note", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Notes.Note", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
@@ -413,6 +413,12 @@ namespace MyProject.Api.Data.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId", "CreatedAt");
@@ -424,7 +430,7 @@ namespace MyProject.Api.Data.Migrations
                     b.ToTable("Notes");
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Profiles.UserProfile", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Profiles.UserProfile", b =>
                 {
                     b.Property<string>("UserId")
                         .HasMaxLength(450)
@@ -468,7 +474,7 @@ namespace MyProject.Api.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -477,7 +483,7 @@ namespace MyProject.Api.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -486,7 +492,7 @@ namespace MyProject.Api.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserPasskey<string>", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -543,7 +549,7 @@ namespace MyProject.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -552,27 +558,27 @@ namespace MyProject.Api.Data.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.ApiKeys.ApiKey", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.ApiKeys.ApiKey", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MyProject.Api.Features.Profiles.UserProfile", b =>
+            modelBuilder.Entity("Acme.Notes.Api.Features.Profiles.UserProfile", b =>
                 {
-                    b.HasOne("MyProject.Api.Features.Auth.AppUser", null)
+                    b.HasOne("Acme.Notes.Api.Features.Auth.AppUser", null)
                         .WithOne()
-                        .HasForeignKey("MyProject.Api.Features.Profiles.UserProfile", "UserId")
+                        .HasForeignKey("Acme.Notes.Api.Features.Profiles.UserProfile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
