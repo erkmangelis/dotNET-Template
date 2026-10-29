@@ -36,6 +36,16 @@
       ],
       "defaultValue": "none"
     },
+    "email": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Email delivery. 'smtp' adds an email transport (SMTP with MailKit, or the log in development) and templated messages.",
+      "choices": [
+        { "choice": "none", "description": "No email delivery." },
+        { "choice": "smtp", "description": "SMTP through MailKit, with a log transport for development." }
+      ],
+      "defaultValue": "none"
+    },
     "agents": {
       "type": "parameter",
       "datatype": "choice",
@@ -54,6 +64,10 @@
     "UsePostgres": {
       "type": "computed",
       "value": "(db == \"postgres\" || auth == \"identity\")"
+    },
+    "UseSmtp": {
+      "type": "computed",
+      "value": "(email == \"smtp\")"
     },
     "UseAgents": {
       "type": "computed",
@@ -85,6 +99,19 @@
         "datatype": "string",
         "cases": [
           { "condition": "(UseIdentity)", "value": "identity" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "EmailValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_EMAIL",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseSmtp)", "value": "smtp" },
           { "condition": "(true)", "value": "none" }
         ]
       }
@@ -162,9 +189,25 @@
             "src/MyProject.Api/Features/Auth/**",
             "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
             "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
+            "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs",
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
             "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseSmtp)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Email/**",
+            "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Email/**",
+            "tests/MyProject.Api.IntegrationTests/SmtpEmailTransportTests.cs"
+          ]
+        },
+        {
+          "condition": "(UseSmtp)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/EmailSenders.cs"
           ]
         },
         {

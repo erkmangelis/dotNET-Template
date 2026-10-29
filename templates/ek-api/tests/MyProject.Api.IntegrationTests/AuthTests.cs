@@ -28,6 +28,22 @@ public sealed class AuthTests(ApiFactory api)
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
     }
 
+#if (UseSmtp)
+    [Fact]
+    public async Task Registration_sends_a_templated_confirmation_email()
+    {
+        using var client = api.CreateClient();
+        var email = $"user-{Guid.NewGuid():N}@example.com";
+
+        await client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest { Email = email, Password = TestUsers.Password }, TestContext.Current.CancellationToken);
+
+        var message = api.Emails.LastMessageTo(email);
+        Assert.StartsWith("Confirm your email", message.Subject, StringComparison.Ordinal);
+        Assert.Contains("/v1/auth/confirmEmail?", message.TextBody, StringComparison.Ordinal);
+        Assert.Contains("<a href=", message.HtmlBody, StringComparison.Ordinal);
+    }
+
+#endif
     [Fact]
     public async Task Weak_passwords_are_rejected()
     {

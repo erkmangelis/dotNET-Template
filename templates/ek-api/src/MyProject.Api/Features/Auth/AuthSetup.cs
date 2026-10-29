@@ -15,6 +15,9 @@ internal static class AuthSetup
     {
         var services = builder.Services;
 
+#if (UseSmtp)
+        services.AddSingleton<IEmailSender<AppUser>, IdentityEmailSender>();
+#else
         if (builder.Environment.IsDevelopment())
         {
             services.AddSingleton<IEmailSender<AppUser>, DevelopmentEmailSender>();
@@ -23,6 +26,7 @@ internal static class AuthSetup
         {
             services.AddSingleton<IEmailSender<AppUser>, UnconfiguredEmailSender>();
         }
+#endif
 
         services.AddAuthorization();
         services.AddIdentityApiEndpoints<AppUser>(options =>

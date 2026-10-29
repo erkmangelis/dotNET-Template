@@ -16,6 +16,9 @@ template with these options:
 <!--#else -->
 - Database: none. Notes are kept in memory by `InMemoryNoteStore`.
 <!--#endif -->
+<!--#if (UseSmtp) -->
+- Email: SMTP through MailKit, or the log in Development (`src/MyProject.Api/Infrastructure/Email`).
+<!--#endif -->
 
 ## Commands
 
@@ -45,6 +48,10 @@ Never edit a migration that has been merged.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+<!--#if (UseSmtp) -->
+- Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
+  passing it to `IEmailTransport`. Never build HTML by hand from user input.
+<!--#endif -->
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

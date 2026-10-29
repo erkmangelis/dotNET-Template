@@ -5,6 +5,7 @@
   "options": {
     "auth": "EK_AUTH",
     "db": "EK_EFFECTIVE_DB",
+    "email": "EK_EMAIL",
     "agents": "EK_AGENTS"
   }
 }

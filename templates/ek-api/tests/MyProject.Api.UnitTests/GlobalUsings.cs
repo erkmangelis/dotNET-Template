@@ -7,3 +7,6 @@ global using MyProject.Api.Data;
 global using MyProject.Api.Features.Notes;
 #endif
 global using MyProject.Api.Infrastructure;
+#if (UseSmtp)
+global using MyProject.Api.Infrastructure.Email;
+#endif

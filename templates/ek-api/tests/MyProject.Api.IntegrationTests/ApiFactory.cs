@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Hosting;
-#if (UseIdentity)
+#if (UseIdentity && !UseSmtp)
 using Microsoft.AspNetCore.Identity;
 #endif
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -30,7 +30,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
 #endif
 #if (UseIdentity)
-    public CapturingEmailSender Emails { get; } = new();
+    public CapturedEmails Emails { get; } = new();
 
 #endif
     public FakeLogCollector Logs => Services.GetFakeLogCollector();
@@ -66,8 +66,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
 #endif
+#if (UseSmtp)
+        builder.UseSetting("Email:Transport", "Log");
+        builder.UseSetting("Email:FromAddress", "noreply@example.com");
+#endif
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
-#if (UseIdentity)
+#if (UseIdentity && UseSmtp)
+        builder.ConfigureTestServices(services => services.AddSingleton<IEmailTransport>(Emails));
+#elif (UseIdentity)
         builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender<AppUser>>(Emails));
 #endif
     }

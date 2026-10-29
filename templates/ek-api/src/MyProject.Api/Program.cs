@@ -5,6 +5,9 @@ builder.AddObservability();
 #if (UsePostgres)
 builder.AddDatabase();
 #endif
+#if (UseSmtp)
+builder.AddEmail();
+#endif
 #if (UseIdentity)
 builder.AddIdentityAuth();
 #endif

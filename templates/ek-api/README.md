@@ -26,9 +26,29 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 To get a confirmed `dev@example.com` user with sample notes, set a password in user secrets before
 the first run: `dotnet user-secrets set DevelopmentSeed:UserPassword "<password>" --project src/MyProject.Api`.
 
-No email provider is set up yet, so outside Development confirmation emails are dropped (and logged
-as a warning). Until you add one, either confirm users in the database or set
-`Identity__SignIn__RequireConfirmedEmail=false`.
+<!--#if (!UseSmtp) -->
+No email provider is set up (the template's `--email smtp` option adds one), so outside Development
+confirmation emails are dropped and logged as a warning. Until you add one, either confirm users in
+the database or set `Identity__SignIn__RequireConfirmedEmail=false`.
+<!--#endif -->
+<!--#endif -->
+<!--#if (UseSmtp) -->
+
+### Email
+
+In Development, email is written to the console log (`Email:Transport` is `Log`). To see real
+messages, start Mailpit and point the app at it, then open <http://localhost:8025>:
+
+```bash
+docker compose --profile mail up -d mailpit
+dotnet user-secrets set Email:Transport Smtp --project src/MyProject.Api
+dotnet user-secrets set Email:Smtp:Host localhost --project src/MyProject.Api
+dotnet user-secrets set Email:Smtp:Port 1025 --project src/MyProject.Api
+dotnet user-secrets set Email:Smtp:Security None --project src/MyProject.Api
+```
+
+In production, set `EMAIL_FROM` and the `SMTP_*` values in `.env`. The messages themselves live in
+`src/MyProject.Api/Infrastructure/Email/EmailTemplates.cs`.
 <!--#endif -->
 
 ## Test it
@@ -50,6 +70,9 @@ CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
+<!--#if (UseSmtp) -->
+  Infrastructure/Email/   email transports (SMTP, development log) and message templates
+<!--#endif -->
   Common/                 shared types such as paging
   Features/Notes/         the example feature: contracts, endpoints, storage
 <!--#if (UseIdentity) -->

@@ -8,3 +8,6 @@ global using MyProject.Api.Features.Auth;
 #endif
 global using MyProject.Api.Features.Notes;
 global using MyProject.Api.Infrastructure;
+#if (UseSmtp)
+global using MyProject.Api.Infrastructure.Email;
+#endif

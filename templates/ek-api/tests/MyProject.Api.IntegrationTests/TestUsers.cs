@@ -1,8 +1,6 @@
-using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authentication.BearerToken;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
 
 namespace MyProject.Api.IntegrationTests;
@@ -38,23 +36,4 @@ internal static class TestUsers
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<AccessTokenResponse>(cancellationToken))!;
     }
-}
-
-/// <summary>Keeps the links Identity would email, so tests can follow them.</summary>
-public sealed class CapturingEmailSender : IEmailSender<AppUser>
-{
-    private readonly ConcurrentDictionary<string, string> _confirmationLinks = new(StringComparer.OrdinalIgnoreCase);
-
-    internal string ConfirmationLinkFor(string email) =>
-        new Uri(System.Net.WebUtility.HtmlDecode(_confirmationLinks[email])).PathAndQuery;
-
-    Task IEmailSender<AppUser>.SendConfirmationLinkAsync(AppUser user, string email, string confirmationLink)
-    {
-        _confirmationLinks[email] = confirmationLink;
-        return Task.CompletedTask;
-    }
-
-    Task IEmailSender<AppUser>.SendPasswordResetLinkAsync(AppUser user, string email, string resetLink) => Task.CompletedTask;
-
-    Task IEmailSender<AppUser>.SendPasswordResetCodeAsync(AppUser user, string email, string resetCode) => Task.CompletedTask;
 }
