@@ -54,6 +54,10 @@ Never edit a migration that has been merged.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+<!--#if (UsePostgres) -->
+- Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
+  a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
+<!--#endif -->
 <!--#if (UseSmtp) -->
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.

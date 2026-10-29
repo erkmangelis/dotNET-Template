@@ -9,54 +9,45 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 
     public async Task<bool> TryAddAsync(Note note, CancellationToken cancellationToken)
     {
-#if (UseAuth)
-        if (await db.Notes.AnyAsync(existing => existing.OwnerId == note.OwnerId && existing.Title == note.Title, cancellationToken))
-#else
-        if (await db.Notes.AnyAsync(existing => existing.Title == note.Title, cancellationToken))
-#endif
+        if (await HasTitleAsync(note, cancellationToken))
         {
             return false;
         }
 
         // The unique index still decides when two requests race past the check above.
         db.Notes.Add(note);
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
-        {
-            db.Entry(note).State = EntityState.Detached;
-            return false;
-        }
+        return await TrySaveAsync(cancellationToken) == NoteSaveResult.Saved;
     }
 
     public async Task<NoteSaveResult> TryUpdateAsync(Note note, CancellationToken cancellationToken)
     {
-#if (UseAuth)
-        if (await db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.OwnerId == note.OwnerId && existing.Title == note.Title, cancellationToken))
-#else
-        if (await db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.Title == note.Title, cancellationToken))
-#endif
+        if (await HasTitleAsync(note, cancellationToken))
         {
             return NoteSaveResult.DuplicateTitle;
         }
 
-        db.Notes.Update(note);
-        try
+        // Copied onto the stored row, so the audit history sees the values before and after.
+        var stored = await db.Notes.SingleAsync(row => row.Id == note.Id, cancellationToken);
+        db.Entry(stored).CurrentValues.SetValues(note);
+        var result = await TrySaveAsync(cancellationToken);
+        if (result == NoteSaveResult.Saved)
         {
-            await db.SaveChangesAsync(cancellationToken);
-            return NoteSaveResult.Saved;
+            // The caller answers with its own copy, so give it what the save filled in.
+            note.UpdatedAt = stored.UpdatedAt;
+#if (UseAuth)
+            note.UpdatedBy = stored.UpdatedBy;
+#endif
         }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
-        {
-            return NoteSaveResult.DuplicateTitle;
-        }
-        finally
-        {
-            db.Entry(note).State = EntityState.Detached;
-        }
+
+        return result;
+    }
+
+    public async Task DeleteAsync(Note note, CancellationToken cancellationToken)
+    {
+        // The save turns the removal into a soft delete; see AuditableEntityInterceptor.
+        var stored = await db.Notes.SingleAsync(row => row.Id == note.Id, cancellationToken);
+        db.Notes.Remove(stored);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     public Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken) =>
@@ -87,10 +78,33 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         return new PagedResult<Note>(items, query.PageNumber, query.PageLength, total);
     }
 
-    /// <summary>Makes the client's text match literally: <c>%</c>, <c>_</c> and the escape character lose their meaning.</summary>
+    /// <summary>Whether another note of the same owner already has this note's title. Deleted notes do not count.</summary>
+    private Task<bool> HasTitleAsync(Note note, CancellationToken cancellationToken) =>
+#if (UseAuth)
+        db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.OwnerId == note.OwnerId && existing.Title == note.Title, cancellationToken);
+#else
+        db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.Title == note.Title, cancellationToken);
+#endif
+
+    private async Task<NoteSaveResult> TrySaveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return NoteSaveResult.Saved;
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        {
+            // Drops the failed changes, and the audit entries written for them.
+            db.ChangeTracker.Clear();
+            return NoteSaveResult.DuplicateTitle;
+        }
+    }
+
     private static bool IsUniqueViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    /// <summary>Makes the client's text match literally: <c>%</c>, <c>_</c> and the escape character lose their meaning.</summary>
     private static string EscapeLike(string text) =>
         text.Replace(LikeEscape, LikeEscape + LikeEscape, StringComparison.Ordinal)
             .Replace("%", LikeEscape + "%", StringComparison.Ordinal)

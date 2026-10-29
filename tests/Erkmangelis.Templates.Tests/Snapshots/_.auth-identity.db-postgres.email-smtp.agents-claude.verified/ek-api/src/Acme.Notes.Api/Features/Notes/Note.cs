@@ -1,7 +1,7 @@
 ﻿namespace Acme.Notes.Api.Features.Notes;
 
 /// <summary>The example feature: a short text note.</summary>
-internal sealed class Note : IRecordMetadata
+internal sealed class Note : IRecordMetadata, ISoftDeletable, IAudited
 {
     public const int TitleMaxLength = 200;
     public const int ContentMaxLength = 10_000;
@@ -23,6 +23,10 @@ internal sealed class Note : IRecordMetadata
     public string? CreatedBy { get; set; }
 
     public string? UpdatedBy { get; set; }
+
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public string? DeletedBy { get; set; }
 
     /// <summary>A copy, so a caller can change it without touching the stored one.</summary>
     public Note Clone() => (Note)MemberwiseClone();

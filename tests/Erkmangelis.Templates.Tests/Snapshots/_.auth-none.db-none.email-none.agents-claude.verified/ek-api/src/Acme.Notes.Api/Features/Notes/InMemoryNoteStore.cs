@@ -10,7 +10,7 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
     {
         lock (_lock)
         {
-            if (_notes.Exists(existing => string.Equals(existing.Title, note.Title, StringComparison.Ordinal)))
+            if (HasTitle(note))
             {
                 return Task.FromResult(false);
             }
@@ -25,7 +25,7 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
     {
         lock (_lock)
         {
-            return Task.FromResult(_notes.Find(note => note.Id == id)?.Clone());
+            return Task.FromResult(_notes.Find(note => note.Id == id && note.DeletedAt is null)?.Clone());
         }
     }
 
@@ -33,7 +33,7 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
     {
         lock (_lock)
         {
-            if (_notes.Exists(existing => existing.Id != note.Id && string.Equals(existing.Title, note.Title, StringComparison.Ordinal)))
+            if (HasTitle(note))
             {
                 return Task.FromResult(NoteSaveResult.DuplicateTitle);
             }
@@ -44,11 +44,23 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
         }
     }
 
+    public Task DeleteAsync(Note note, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var now = RecordMetadata.Now(time);
+            note.DeletedAt = now;
+            RecordMetadata.Stamp(note, added: false, now);
+            _notes[_notes.FindIndex(existing => existing.Id == note.Id)] = note.Clone();
+            return Task.CompletedTask;
+        }
+    }
+
     public Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
-            var matching = query.Filter(_notes.AsQueryable());
+            var matching = query.Filter(_notes.Where(note => note.DeletedAt is null).AsQueryable());
             if (!string.IsNullOrEmpty(query.Search))
             {
                 matching = matching.Where(note => note.Title.Contains(query.Search, StringComparison.OrdinalIgnoreCase));
@@ -64,4 +76,9 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
             return Task.FromResult(new PagedResult<Note>(items, query.PageNumber, query.PageLength, total));
         }
     }
+
+    private bool HasTitle(Note note) =>
+        _notes.Exists(existing => existing.Id != note.Id
+            && existing.DeletedAt is null
+            && string.Equals(existing.Title, note.Title, StringComparison.Ordinal));
 }

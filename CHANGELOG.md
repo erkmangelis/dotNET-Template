@@ -16,6 +16,12 @@ R03, Data and API depth.
   in by an EF Core `SaveChangesInterceptor` (and the in-memory store) from `TimeProvider` and the
   signed-in user, never from a request. `PUT /v1/notes/{id}` replaces a note's title and content.
 - `scripts/add-migration.sh` regenerates a migration for every shipped migration set.
+- Soft delete: `DELETE /v1/notes/{id}` marks the note deleted (`DeletedAt`, and `DeletedBy` with
+  sign-in) through the same interceptor; a named `SoftDelete` query filter hides it, and unique
+  indexes cover only rows that are not deleted, so the title can be used again.
+- Audit history: every change to an `IAudited` entity writes an `AuditEntry` in the same transaction
+  with each changed value before and after, the actor and the trace id. `GET /v1/notes/{id}/history`
+  for the owner; `GET /v1/admin/audit` for roles with the new `audit.read` permission (admin, auditor).
 
 ## [0.2.0] - Unreleased
 

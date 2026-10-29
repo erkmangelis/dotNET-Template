@@ -9,6 +9,8 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options)
 {
     public DbSet<Note> Notes => Set<Note>();
 
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();

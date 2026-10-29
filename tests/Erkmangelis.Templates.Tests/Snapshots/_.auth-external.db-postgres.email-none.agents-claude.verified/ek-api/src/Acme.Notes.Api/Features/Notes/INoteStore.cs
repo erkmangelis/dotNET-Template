@@ -14,10 +14,14 @@ internal interface INoteStore
     Task<bool> TryAddAsync(Note note, CancellationToken cancellationToken);
 
     /// <summary>A copy of the note: changing it changes nothing until it is passed to <see cref="TryUpdateAsync"/>.</summary>
+    /// <remarks>Deleted notes are never found.</remarks>
     Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken);
 
     /// <summary>Saves changes to a note read with <see cref="FindAsync"/>.</summary>
     Task<NoteSaveResult> TryUpdateAsync(Note note, CancellationToken cancellationToken);
+
+    /// <summary>Marks a note read with <see cref="FindAsync"/> deleted. From then on no read returns it.</summary>
+    Task DeleteAsync(Note note, CancellationToken cancellationToken);
 
     /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, filtered and sorted by <paramref name="query"/>.</summary>
     Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken);

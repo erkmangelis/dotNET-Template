@@ -20,6 +20,7 @@ v1.MapProfileEndpoints();
 
 var admin = v1.MapGroup("/admin").WithTags("Admin");
 admin.MapNoteAdminEndpoints();
+admin.MapAuditAdminEndpoints();
 
 await app.PrepareDatabaseAsync();
 await app.RunAsync();

@@ -1,3 +1,6 @@
+#if (UsePostgres)
+using System.ComponentModel.DataAnnotations;
+#endif
 #if (UseAuth)
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -36,11 +39,19 @@ internal static class NoteEndpoints
         notes.MapPost("/", CreateAsync).RequireAuthorization(NotePolicies.Write).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization(NotePolicies.Write).WithName("UpdateNote").WithSummary("Replace a note's title and content");
+        notes.MapDelete("/{id:guid}", DeleteAsync).RequireAuthorization(NotePolicies.Write).WithName("DeleteNote").WithSummary("Delete a note");
+#if (UsePostgres)
+        notes.MapGet("/{id:guid}/history", HistoryAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
+#endif
         notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 #else
         notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
+        notes.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNote").WithSummary("Delete a note");
+#if (UsePostgres)
+        notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
+#endif
         notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 #endif
 
@@ -98,22 +109,12 @@ internal static class NoteEndpoints
 #endif
         CancellationToken cancellationToken)
     {
-        var note = await store.FindAsync(id, cancellationToken);
-        if (note is null)
-        {
-            return TypedResults.NotFound();
-        }
-
 #if (UseAuth)
-        // Another user's note answers 404, not 403, so ids cannot be probed.
-        var access = await authorization.AuthorizeAsync(user, note, NotePolicies.Owner);
-        if (!access.Succeeded)
-        {
-            return TypedResults.NotFound();
-        }
-
+        var note = await FindOwnAsync(id, store, user, authorization, cancellationToken);
+#else
+        var note = await store.FindAsync(id, cancellationToken);
 #endif
-        return TypedResults.Ok(NoteResponse.From(note));
+        return note is null ? TypedResults.NotFound() : TypedResults.Ok(NoteResponse.From(note));
     }
 
     private static async Task<Results<Ok<NoteResponse>, NotFound, ProblemHttpResult>> UpdateAsync(
@@ -126,12 +127,12 @@ internal static class NoteEndpoints
 #endif
         CancellationToken cancellationToken)
     {
-        var note = await store.FindAsync(id, cancellationToken);
 #if (UseAuth)
-        if (note is null || !(await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded)
+        var note = await FindOwnAsync(id, store, user, authorization, cancellationToken);
 #else
-        if (note is null)
+        var note = await store.FindAsync(id, cancellationToken);
 #endif
+        if (note is null)
         {
             return TypedResults.NotFound();
         }
@@ -144,6 +145,75 @@ internal static class NoteEndpoints
             _ => DuplicateTitle(),
         };
     }
+
+    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+        Guid id,
+        INoteStore store,
+#if (UseAuth)
+        ClaimsPrincipal user,
+        IAuthorizationService authorization,
+#endif
+        CancellationToken cancellationToken)
+    {
+#if (UseAuth)
+        var note = await FindOwnAsync(id, store, user, authorization, cancellationToken);
+#else
+        var note = await store.FindAsync(id, cancellationToken);
+#endif
+        if (note is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await store.DeleteAsync(note, cancellationToken);
+        return TypedResults.NoContent();
+    }
+#if (UsePostgres)
+
+    private static async Task<Results<Ok<PagedResult<AuditEntryResponse>>, NotFound>> HistoryAsync(
+        Guid id,
+        INoteStore store,
+        AuditLog log,
+#if (UseAuth)
+        ClaimsPrincipal user,
+        IAuthorizationService authorization,
+#endif
+        CancellationToken cancellationToken,
+        [Range(1, Paging.MaxPage)] int page = 1,
+        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+    {
+#if (UseAuth)
+        var note = await FindOwnAsync(id, store, user, authorization, cancellationToken);
+#else
+        var note = await store.FindAsync(id, cancellationToken);
+#endif
+        if (note is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+#if (UseAuth)
+        var entries = await log.ListAsync(nameof(Note), note.Id.ToString(), actorId: null, page, pageSize, cancellationToken);
+#else
+        var entries = await log.ListAsync(nameof(Note), note.Id.ToString(), page, pageSize, cancellationToken);
+#endif
+        return TypedResults.Ok(entries.Map(AuditEntryResponse.From));
+    }
+#endif
+#if (UseAuth)
+
+    /// <summary>The note, when it exists and <paramref name="user"/> owns it. Another user's note is not found, so ids cannot be probed.</summary>
+    private static async Task<Note?> FindOwnAsync(
+        Guid id,
+        INoteStore store,
+        ClaimsPrincipal user,
+        IAuthorizationService authorization,
+        CancellationToken cancellationToken)
+    {
+        var note = await store.FindAsync(id, cancellationToken);
+        return note is not null && (await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded ? note : null;
+    }
+#endif
 
     private static ProblemHttpResult DuplicateTitle() => TypedResults.Problem(
         statusCode: StatusCodes.Status409Conflict,

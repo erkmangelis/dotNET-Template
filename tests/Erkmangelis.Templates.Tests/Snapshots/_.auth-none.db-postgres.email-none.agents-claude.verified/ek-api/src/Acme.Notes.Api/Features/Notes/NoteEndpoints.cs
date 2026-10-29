@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Acme.Notes.Api.Features.Notes;
 
@@ -17,6 +18,8 @@ internal static class NoteEndpoints
         notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
+        notes.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNote").WithSummary("Delete a note");
+        notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
         notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 
         return notes;
@@ -50,12 +53,7 @@ internal static class NoteEndpoints
         CancellationToken cancellationToken)
     {
         var note = await store.FindAsync(id, cancellationToken);
-        if (note is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        return TypedResults.Ok(NoteResponse.From(note));
+        return note is null ? TypedResults.NotFound() : TypedResults.Ok(NoteResponse.From(note));
     }
 
     private static async Task<Results<Ok<NoteResponse>, NotFound, ProblemHttpResult>> UpdateAsync(
@@ -77,6 +75,39 @@ internal static class NoteEndpoints
             NoteSaveResult.Saved => TypedResults.Ok(NoteResponse.From(note)),
             _ => DuplicateTitle(),
         };
+    }
+
+    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+        Guid id,
+        INoteStore store,
+        CancellationToken cancellationToken)
+    {
+        var note = await store.FindAsync(id, cancellationToken);
+        if (note is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        await store.DeleteAsync(note, cancellationToken);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<PagedResult<AuditEntryResponse>>, NotFound>> HistoryAsync(
+        Guid id,
+        INoteStore store,
+        AuditLog log,
+        CancellationToken cancellationToken,
+        [Range(1, Paging.MaxPage)] int page = 1,
+        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+    {
+        var note = await store.FindAsync(id, cancellationToken);
+        if (note is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var entries = await log.ListAsync(nameof(Note), note.Id.ToString(), page, pageSize, cancellationToken);
+        return TypedResults.Ok(entries.Map(AuditEntryResponse.From));
     }
 
     private static ProblemHttpResult DuplicateTitle() => TypedResults.Problem(

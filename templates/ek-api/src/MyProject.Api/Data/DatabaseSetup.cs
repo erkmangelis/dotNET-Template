@@ -14,12 +14,13 @@ internal static class DatabaseSetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        builder.Services.AddSingleton<RecordMetadataInterceptor>();
+        builder.Services.AddSingleton<AuditableEntityInterceptor>();
         builder.Services.AddDbContext<AppDbContext>((services, options) => options
             .UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString)
-            .AddInterceptors(services.GetRequiredService<RecordMetadataInterceptor>()));
+            .AddInterceptors(services.GetRequiredService<AuditableEntityInterceptor>()));
 
         builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>(tags: [Observability.ReadyTag]);
+        builder.Services.AddScoped<AuditLog>();
         builder.Services.AddScoped<DevelopmentSeeder>();
 
         return builder;

@@ -1,7 +1,11 @@
 namespace MyProject.Api.Features.Notes;
 
 /// <summary>The example feature: a short text note.</summary>
-internal sealed class Note : IRecordMetadata
+#if (UsePostgres)
+internal sealed class Note : IRecordMetadata, ISoftDeletable, IAudited
+#else
+internal sealed class Note : IRecordMetadata, ISoftDeletable
+#endif
 {
     public const int TitleMaxLength = 200;
     public const int ContentMaxLength = 10_000;
@@ -26,6 +30,12 @@ internal sealed class Note : IRecordMetadata
     public string? CreatedBy { get; set; }
 
     public string? UpdatedBy { get; set; }
+#endif
+
+    public DateTimeOffset? DeletedAt { get; set; }
+#if (UseAuth)
+
+    public string? DeletedBy { get; set; }
 #endif
 
     /// <summary>A copy, so a caller can change it without touching the stored one.</summary>

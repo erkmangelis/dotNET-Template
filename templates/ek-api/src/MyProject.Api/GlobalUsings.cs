@@ -5,6 +5,11 @@ global using MyProject.Api.Data;
 #endif
 #if (UseAuth)
 global using MyProject.Api.Features.ApiKeys;
+#endif
+#if (UsePostgres)
+global using MyProject.Api.Features.Audit;
+#endif
+#if (UseAuth)
 global using MyProject.Api.Features.Auth;
 #endif
 global using MyProject.Api.Features.Notes;

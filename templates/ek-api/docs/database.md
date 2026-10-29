@@ -33,6 +33,37 @@ dotnet ef migrations add <Name> --project src/MyProject.Api --output-dir Data/Mi
 
 A unit test fails when the model changes without a migration.
 
+## Record metadata, soft delete and audit history
+
+`AuditableEntityInterceptor` (in `Data/`) runs before every save. Opt an entity in with interfaces:
+
+| Interface | What the save does |
+| --- | --- |
+<!--#if (UseAuth) -->
+| `IRecordMetadata` | Sets `CreatedAt` and `UpdatedAt` from `TimeProvider`, and `CreatedBy` and `UpdatedBy` from the signed-in user. |
+| `ISoftDeletable` | Turns `Remove` into an update that sets `DeletedAt` and `DeletedBy`. |
+| `IAudited` | Writes an `AuditEntry` in the same transaction: the action, each changed property's value before and after, the actor, the time and the trace id. |
+<!--#else -->
+| `IRecordMetadata` | Sets `CreatedAt` and `UpdatedAt` from `TimeProvider`. |
+| `ISoftDeletable` | Turns `Remove` into an update that sets `DeletedAt`. |
+| `IAudited` | Writes an `AuditEntry` in the same transaction: the action, each changed property's value before and after, the time and the trace id. |
+<!--#endif -->
+
+A soft-deletable entity also needs a query filter named `SoftDelete.Filter`, as `NoteConfiguration`
+has, and its unique indexes filtered to rows that are not deleted. Read deleted rows with
+`IgnoreQueryFilters([SoftDelete.Filter])`; restore one by setting `DeletedAt` back to null. A save
+that changes nothing writes no audit entry.
+
+Audit entries hold the values they record, so never mark an entity `IAudited` if it keeps secrets in
+plain properties, and give audited entities keys you set before saving (Notes use
+`Guid.CreateVersion7()`). A note's history is `GET /v1/notes/{id}/history`.
+<!--#if (UseAuth) -->
+Roles with the `audit.read` permission read every entry at `GET /v1/admin/audit`.
+<!--#endif -->
+
+Soft-deleted rows and audit entries are kept until you delete them. Plan a retention rule (for
+example a nightly job that purges rows deleted more than 90 days ago) before the tables grow large.
+
 ## Applying migrations in production: the migration bundle
 
 The app does not migrate itself in production. The `migrator` stage of the `Dockerfile` builds a

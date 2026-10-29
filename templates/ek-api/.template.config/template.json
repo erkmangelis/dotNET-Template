@@ -183,6 +183,8 @@
           "condition": "(!UsePostgres)",
           "exclude": [
             "src/MyProject.Api/Data/**",
+            "src/MyProject.Api/Features/Audit/**",
+            "tests/MyProject.Api.IntegrationTests/AuditTests.cs",
             "src/MyProject.Api/Features/Notes/EfNoteStore.cs",
             "tests/MyProject.Api.IntegrationTests/PostgresFixture.cs",
             "tests/MyProject.Api.UnitTests/Data/**",
@@ -215,6 +217,7 @@
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
             "tests/MyProject.Api.IntegrationTests/PermissionTests.cs",
             "tests/MyProject.Api.IntegrationTests/RecordMetadataTests.cs",
+            "src/MyProject.Api/Features/Audit/AuditAdminEndpoints.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
             "tests/MyProject.Api.UnitTests/Features/Auth/**",
             "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"

@@ -24,11 +24,12 @@ internal static class Permissions
     public const string ClaimType = "permission";
 
     public const string NotesReadAll = "notes.read.all";
+    public const string AuditRead = "audit.read";
 
     public static readonly IReadOnlyDictionary<string, string[]> ByRole = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-        [Roles.Admin] = [NotesReadAll],
-        [Roles.Auditor] = [NotesReadAll],
+        [Roles.Admin] = [NotesReadAll, AuditRead],
+        [Roles.Auditor] = [NotesReadAll, AuditRead],
     };
 
     /// <summary>Lets only callers with <paramref name="permission"/> through; others get 403, or 401 when signed out.</summary>

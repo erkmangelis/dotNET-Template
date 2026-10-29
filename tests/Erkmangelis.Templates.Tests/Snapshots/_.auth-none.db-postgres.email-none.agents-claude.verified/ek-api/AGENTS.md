@@ -35,6 +35,8 @@ Never edit a migration that has been merged.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+- Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
+  a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

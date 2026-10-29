@@ -139,6 +139,26 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_deleted_note_is_gone_and_its_title_free_again()
+    {
+        var note = await CreateAsync(UniqueTitle());
+
+        var deleted = await _client.DeleteAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        var fetched = await _client.GetAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, fetched.StatusCode);
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?search={Uri.EscapeDataString(note.Title)}",
+            TestContext.Current.CancellationToken);
+        Assert.Empty(page!.Items);
+        var again = await _client.DeleteAsync($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        var reused = await _client.PostAsJsonAsync("/v1/notes", new { title = note.Title }, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Created, reused.StatusCode);
+    }
+
+    [Fact]
     public async Task The_list_is_paged_newest_first()
     {
         for (var i = 0; i < 3; i++)
