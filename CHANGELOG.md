@@ -2,6 +2,40 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - Unreleased
+
+R02, Accounts.
+
+### Added
+
+- `--email none|smtp`: an email transport behind `IEmailTransport`, SMTP through MailKit with
+  settings validated on start, HTML-encoded templates for confirmation and reset, a log transport
+  for development only, Mailpit in compose (profile `mail`) and a Testcontainers test.
+- `--auth external`: Identity accounts plus Google, Apple and Microsoft sign-in from the provider's
+  ID token (audience, issuer, signature, nonce). A provider identity links to an existing account only
+  when the provider says the email is verified; signing in that way to an unconfirmed account wipes
+  the unproven credentials first. Linking, unlinking (never the last sign-in method) and tests for
+  each path, including the unverified-email takeover.
+- `--auth oidc`: no local accounts; JWT bearer tokens from one OpenID Connect provider, roles from a
+  configurable claim path, a development Keycloak with an imported realm (compose profile `sso`), and
+  an enterprise SSO recipe for brokering customers' SAML or OIDC identity providers.
+- Browser sessions: same-site `__Host-` cookie sessions for a Next.js frontend, with antiforgery
+  tokens checked on every unsafe request, and logout.
+- MFA and passkeys: authenticator-app two-factor with recovery codes, and WebAuthn passkeys for
+  registration and sign-in (Identity schema v3), tested with a software authenticator.
+- Roles and permissions: `admin` and `auditor` roles mapped to permissions, `RequirePermission`,
+  admin endpoints for notes and users, and forbidden-access tests.
+- API keys: hashed with SHA-256, scoped, expiring, rotatable with an overlap and revocable. Keys act
+  for their owner only on endpoints that opt in, never on key management or admin.
+- Profiles: `GET /v1/me` with roles and permissions, `PUT /v1/me/profile` for display name, time
+  zone, locale and theme.
+
+### Changed
+
+- Every `--auth` mode turns PostgreSQL on.
+- `template-origin.json` records `email`.
+- CI runs the ten code-relevant combinations with `--agents` rotated across them.
+
 ## [0.1.0] - Unreleased
 
 First release (R01, Core API).

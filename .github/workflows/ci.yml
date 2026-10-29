@@ -34,20 +34,26 @@ jobs:
 
   acceptance:
     # Every combination listed here is supported. Anything not listed is not.
-    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, agents ${{ matrix.agents }})
+    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, agents ${{ matrix.agents }})
     needs: pack
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        auth: [none]
-        db: [none, postgres]
-        agents: [none, shared, claude]
+        # The ten combinations that change code. --agents only adds or removes AGENTS.md and
+        # CLAUDE.md (a snapshot test proves it), so each value runs on a share of them.
         include:
-          - { auth: identity, db: postgres, agents: none }
-          - { auth: identity, db: postgres, agents: shared }
-          - { auth: identity, db: postgres, agents: claude }
+          - { auth: none, db: none, email: none, agents: none }
+          - { auth: none, db: none, email: smtp, agents: shared }
+          - { auth: none, db: postgres, email: none, agents: claude }
+          - { auth: none, db: postgres, email: smtp, agents: none }
+          - { auth: identity, db: postgres, email: none, agents: shared }
+          - { auth: identity, db: postgres, email: smtp, agents: claude }
+          - { auth: external, db: postgres, email: none, agents: none }
+          - { auth: external, db: postgres, email: smtp, agents: shared }
+          - { auth: oidc, db: postgres, email: none, agents: claude }
+          - { auth: oidc, db: postgres, email: smtp, agents: none }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -61,7 +67,7 @@ jobs:
         run: >
           scripts/acceptance.sh
           --package "$(ls artifacts/*.nupkg)"
-          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --agents ${{ matrix.agents }}
+          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --email ${{ matrix.email }} --agents ${{ matrix.agents }}
           --compose
 
   supported:

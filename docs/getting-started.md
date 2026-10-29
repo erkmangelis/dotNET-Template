@@ -12,23 +12,27 @@ Download `Erkmangelis.Templates.<version>.nupkg` from the
 [latest release](https://github.com/erkmangelis/dotNET-Template/releases), then:
 
 ```bash
-dotnet new install ./Erkmangelis.Templates.0.1.0.nupkg
+dotnet new install ./Erkmangelis.Templates.0.2.0.nupkg
 dotnet new ek-api --help
 ```
 
-To check the download first: `gh attestation verify Erkmangelis.Templates.0.1.0.nupkg --repo erkmangelis/dotNET-Template`.
+To check the download first: `gh attestation verify Erkmangelis.Templates.0.2.0.nupkg --repo erkmangelis/dotNET-Template`.
 
 ## 2. Create a project
 
 ```bash
 dotnet new ek-api -n Garage --auth identity --db postgres --agents claude
 cd Garage
-git init && git add -A && git commit -m "Start from ek-api 0.1.0"
+git init && git add -A && git commit -m "Start from ek-api 0.2.0"
 ```
 
 Pick the options you need:
 
-- `--auth none` for an internal or public read-only API, `--auth identity` for user accounts.
+- `--auth none` for an internal or public read-only API, `--auth identity` for user accounts with
+  passwords and passkeys, `--auth external` to add Google, Apple and Microsoft sign-in to those
+  accounts, `--auth oidc` when an identity provider (Keycloak, Entra ID, Auth0) owns the accounts.
+- `--email smtp` to send confirmation and reset emails through an SMTP server; `none` logs them in
+  development only.
 - `--db none` keeps notes in memory, handy for a prototype; `--db postgres` for real data.
 - `--agents claude` if you use Claude Code, `shared` for other coding agents, `none` for neither.
 

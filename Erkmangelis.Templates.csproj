@@ -4,7 +4,7 @@
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>Erkmangelis.Templates</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Title>Erkmangelis .NET templates</Title>
     <Authors>erkmangelis</Authors>
     <Description>A hardened ASP.NET Core HTTP API template for .NET 10 with optional ASP.NET Core Identity, PostgreSQL and AI agent guidance.</Description>
