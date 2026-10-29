@@ -4,7 +4,7 @@ namespace Acme.Notes.Api.Features.Notes;
 
 /// <summary>
 /// What a client may send. Only these fields are bound, so a client cannot set the id,
-/// the creation time or the owner.
+/// the record metadata or the owner.
 /// </summary>
 public sealed record CreateNoteRequest
 {
@@ -26,6 +26,7 @@ public sealed record NoteListQuery : IValidatableObject
 
     internal static readonly SortFields<Note> Sorts = new SortFields<Note>()
         .Add("createdAt", note => note.CreatedAt)
+        .Add("updatedAt", note => note.UpdatedAt)
         .Add("title", note => note.Title);
 
     /// <summary>Only notes whose title contains this text, ignoring case.</summary>
@@ -84,13 +85,32 @@ public sealed record NoteListQuery : IValidatableObject
         Sorts.Apply(notes, Sort ?? DefaultSort).ThenByDescending(note => note.Id);
 }
 
-public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt)
+/// <summary>Replaces a note's title and content.</summary>
+public sealed record UpdateNoteRequest
 {
-    internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt);
+    [Required]
+    [StringLength(Note.TitleMaxLength)]
+    public string Title { get; init; } = string.Empty;
+
+    [StringLength(Note.ContentMaxLength)]
+    public string? Content { get; init; }
 }
 
-/// <summary>A note as an admin sees it, with its owner.</summary>
-public sealed record AdminNoteResponse(Guid Id, string OwnerId, string Title, string? Content, DateTimeOffset CreatedAt)
+public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt)
 {
-    internal static AdminNoteResponse From(Note note) => new(note.Id, note.OwnerId, note.Title, note.Content, note.CreatedAt);
+    internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt, note.UpdatedAt);
+}
+
+/// <summary>A note as an admin sees it, with its owner and who changed it last.</summary>
+public sealed record AdminNoteResponse(
+    Guid Id,
+    string OwnerId,
+    string Title,
+    string? Content,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    string? UpdatedBy)
+{
+    internal static AdminNoteResponse From(Note note) =>
+        new(note.Id, note.OwnerId, note.Title, note.Content, note.CreatedAt, note.UpdatedAt, note.UpdatedBy);
 }

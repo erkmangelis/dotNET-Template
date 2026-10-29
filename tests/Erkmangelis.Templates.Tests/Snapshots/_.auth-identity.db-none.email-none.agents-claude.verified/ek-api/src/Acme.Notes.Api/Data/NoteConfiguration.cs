@@ -12,6 +12,8 @@ internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.Property(note => note.Title).HasMaxLength(Note.TitleMaxLength);
         builder.Property(note => note.Content).HasMaxLength(Note.ContentMaxLength);
         builder.Property(note => note.OwnerId).HasMaxLength(450);
+        builder.Property(note => note.CreatedBy).HasMaxLength(450);
+        builder.Property(note => note.UpdatedBy).HasMaxLength(450);
         builder.HasIndex(note => new { note.OwnerId, note.Title }).IsUnique();
         builder.HasIndex(note => new { note.OwnerId, note.CreatedAt });
     }

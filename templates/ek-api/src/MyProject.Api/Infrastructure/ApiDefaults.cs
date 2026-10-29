@@ -42,6 +42,10 @@ internal static class ApiDefaults
                 host.ShutdownTimeout = TimeSpan.FromSeconds(api.Value.ShutdownTimeoutSeconds));
 
         services.TryAddSingleton(TimeProvider.System);
+#if (UseAuth)
+        services.AddHttpContextAccessor();
+        services.TryAddSingleton<ICurrentActor, HttpCurrentActor>();
+#endif
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {

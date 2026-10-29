@@ -12,6 +12,10 @@ R03, Data and API depth.
   case with LIKE wildcards taken literally, `createdFrom` and `createdBefore` bound the creation
   time, and `sort` takes up to three allowlisted fields (`createdAt`, `title`), each with an optional
   `-` for descending. Anything else answers 400. `SortFields<T>` is the reusable allowlist.
+- Record metadata: `CreatedAt`, `UpdatedAt` and, with sign-in, `CreatedBy` and `UpdatedBy`, filled
+  in by an EF Core `SaveChangesInterceptor` (and the in-memory store) from `TimeProvider` and the
+  signed-in user, never from a request. `PUT /v1/notes/{id}` replaces a note's title and content.
+- `scripts/add-migration.sh` regenerates a migration for every shipped migration set.
 
 ## [0.2.0] - Unreleased
 

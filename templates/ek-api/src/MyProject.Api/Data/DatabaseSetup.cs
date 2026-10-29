@@ -14,8 +14,10 @@ internal static class DatabaseSetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        builder.Services.AddDbContext<AppDbContext>((services, options) =>
-            options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString));
+        builder.Services.AddSingleton<RecordMetadataInterceptor>();
+        builder.Services.AddDbContext<AppDbContext>((services, options) => options
+            .UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString)
+            .AddInterceptors(services.GetRequiredService<RecordMetadataInterceptor>()));
 
         builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>(tags: [Observability.ReadyTag]);
         builder.Services.AddScoped<DevelopmentSeeder>();

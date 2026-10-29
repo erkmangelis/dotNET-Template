@@ -202,6 +202,7 @@
         {
           "condition": "(!UseAuth)",
           "exclude": [
+            "src/MyProject.Api/Common/CurrentActor.cs",
             "src/MyProject.Api/Features/ApiKeys/**",
             "src/MyProject.Api/Features/Auth/**",
             "src/MyProject.Api/Features/Profiles/**",
@@ -213,6 +214,7 @@
             "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
             "tests/MyProject.Api.IntegrationTests/PermissionTests.cs",
+            "tests/MyProject.Api.IntegrationTests/RecordMetadataTests.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
             "tests/MyProject.Api.UnitTests/Features/Auth/**",
             "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"

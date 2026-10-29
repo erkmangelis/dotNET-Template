@@ -87,6 +87,46 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_update_replaces_the_content_and_moves_only_the_updated_time()
+    {
+        var note = await CreateAsync(UniqueTitle());
+        var title = UniqueTitle();
+        var forgedDate = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var response = await _client.PutAsJsonAsync(
+            $"/v1/notes/{note.Id}",
+            new { title, content = "Changed", createdAt = forgedDate, updatedAt = forgedDate },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+        Assert.NotNull(updated);
+        Assert.Equal((note.Id, title, "Changed", note.CreatedAt), (updated.Id, updated.Title, updated.Content, updated.CreatedAt));
+        Assert.True(updated.UpdatedAt > note.UpdatedAt);
+        Assert.Equal(note.CreatedAt, note.UpdatedAt);
+        Assert.Equal(updated, await _client.GetFromJsonAsync<NoteResponse>($"/v1/notes/{note.Id}", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Updating_to_another_notes_title_answers_409()
+    {
+        var first = await CreateAsync(UniqueTitle());
+        var second = await CreateAsync(UniqueTitle());
+
+        var response = await _client.PutAsJsonAsync($"/v1/notes/{second.Id}", new { title = first.Title }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Updating_a_missing_note_answers_404()
+    {
+        var response = await _client.PutAsJsonAsync($"/v1/notes/{Guid.NewGuid()}", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task The_list_is_paged_newest_first()
     {
         for (var i = 0; i < 3; i++)
@@ -161,6 +201,13 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.True(problem.GetProperty("errors").TryGetProperty("Sort", out _));
+    }
+
+    private async Task<NoteResponse> CreateAsync(string title)
+    {
+        var response = await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken))!;
     }
 
     private static string UniqueTitle() => $"Note {Guid.NewGuid():N}";

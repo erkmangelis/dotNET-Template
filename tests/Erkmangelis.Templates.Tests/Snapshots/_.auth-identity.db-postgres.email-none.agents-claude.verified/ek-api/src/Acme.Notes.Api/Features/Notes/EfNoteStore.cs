@@ -21,10 +21,33 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
             await db.SaveChangesAsync(cancellationToken);
             return true;
         }
-        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
         {
             db.Entry(note).State = EntityState.Detached;
             return false;
+        }
+    }
+
+    public async Task<NoteSaveResult> TryUpdateAsync(Note note, CancellationToken cancellationToken)
+    {
+        if (await db.Notes.AnyAsync(existing => existing.Id != note.Id && existing.OwnerId == note.OwnerId && existing.Title == note.Title, cancellationToken))
+        {
+            return NoteSaveResult.DuplicateTitle;
+        }
+
+        db.Notes.Update(note);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return NoteSaveResult.Saved;
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        {
+            return NoteSaveResult.DuplicateTitle;
+        }
+        finally
+        {
+            db.Entry(note).State = EntityState.Detached;
         }
     }
 
@@ -51,6 +74,9 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
     }
 
     /// <summary>Makes the client's text match literally: <c>%</c>, <c>_</c> and the escape character lose their meaning.</summary>
+    private static bool IsUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
     private static string EscapeLike(string text) =>
         text.Replace(LikeEscape, LikeEscape + LikeEscape, StringComparison.Ordinal)
             .Replace("%", LikeEscape + "%", StringComparison.Ordinal)

@@ -69,6 +69,10 @@ engine's `#if (UsePostgres)`-style symbols defined in
 [template.json](templates/ek-api/.template.config/template.json). After an intended change to the
 output, run the snapshot tests and accept the new output with `scripts/accept-snapshots.sh`, then review the snapshot diff.
 
+Migrations ship pre-generated in `templates/ek-api/.migrations`, one set per sign-in mode. After a
+change to the EF model, run `scripts/add-migration.sh <Name>` to add a migration to every set from
+the current template; running it again with the newest migration's name replaces that migration.
+
 Releases: push a `v*` tag. The release workflow packs the template, attests its build provenance
 and attaches the `.nupkg` to a GitHub release. See [CHANGELOG.md](CHANGELOG.md).
 

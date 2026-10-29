@@ -16,6 +16,7 @@ internal static class NoteEndpoints
 
         notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
+        notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
         notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 
         return notes;
@@ -27,23 +28,17 @@ internal static class NoteEndpoints
         TimeProvider time,
         CancellationToken cancellationToken)
     {
-        // Whole microseconds, the precision databases usually store, so the response matches later reads.
-        var utcNow = time.GetUtcNow();
-        var now = utcNow.AddTicks(-(utcNow.Ticks % TimeSpan.TicksPerMicrosecond));
+        // The store fills in the record metadata when it saves.
         var note = new Note
         {
-            Id = Guid.CreateVersion7(now),
+            Id = Guid.CreateVersion7(time.GetUtcNow()),
             Title = request.Title.Trim(),
             Content = request.Content,
-            CreatedAt = now,
         };
 
         if (!await store.TryAddAsync(note, cancellationToken))
         {
-            return TypedResults.Problem(
-                statusCode: StatusCodes.Status409Conflict,
-                title: "Duplicate title",
-                detail: "A note with this title already exists.");
+            return DuplicateTitle();
         }
 
         return TypedResults.Created($"/v1/notes/{note.Id}", NoteResponse.From(note));
@@ -62,6 +57,32 @@ internal static class NoteEndpoints
 
         return TypedResults.Ok(NoteResponse.From(note));
     }
+
+    private static async Task<Results<Ok<NoteResponse>, NotFound, ProblemHttpResult>> UpdateAsync(
+        Guid id,
+        UpdateNoteRequest request,
+        INoteStore store,
+        CancellationToken cancellationToken)
+    {
+        var note = await store.FindAsync(id, cancellationToken);
+        if (note is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        note.Title = request.Title.Trim();
+        note.Content = request.Content;
+        return await store.TryUpdateAsync(note, cancellationToken) switch
+        {
+            NoteSaveResult.Saved => TypedResults.Ok(NoteResponse.From(note)),
+            _ => DuplicateTitle(),
+        };
+    }
+
+    private static ProblemHttpResult DuplicateTitle() => TypedResults.Problem(
+        statusCode: StatusCodes.Status409Conflict,
+        title: "Duplicate title",
+        detail: "A note with this title already exists.");
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
         [AsParameters] NoteListQuery query,
