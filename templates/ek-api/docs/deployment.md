@@ -94,6 +94,7 @@ All settings can be set as environment variables with `__` between sections.
 <!--#endif -->
 <!--#if (UseIdentity) -->
 | `Identity__SignIn__RequireConfirmedEmail` | `true` | Users must confirm their email before signing in |
+| `Passkeys__ServerDomain` | the API's host | WebAuthn relying party id; set it to the site when the frontend is on another host |
 <!--#endif -->
 <!--#if (UseExternal) -->
 | `ExternalAuth__Providers__Google__ClientIds__0` | none | Your Google client id; turns Google sign-in on (same for `Apple` and `Microsoft`) |

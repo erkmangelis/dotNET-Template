@@ -33,6 +33,17 @@ Set `Oidc:Authority` (the issuer) and `Oidc:Audience` (the `aud` the provider gi
 3. `POST /v1/auth/login` returns an access token and a refresh token. Send `Authorization: Bearer <accessToken>`.
 4. `POST /v1/auth/refresh` with the refresh token when the access token expires (after 60 minutes).
 
+Two-factor sign-in with an authenticator app is built in: `POST /v1/auth/manage/2fa` returns a
+shared key for the app, and the same endpoint with `{ "enable": true, "twoFactorCode": "..." }`
+turns it on and returns recovery codes. After that, `/login` needs `twoFactorCode` or
+`twoFactorRecoveryCode` as well.
+
+Passkeys: a signed-in user calls `POST /v1/auth/passkeys/creation-options`, passes the result to
+`navigator.credentials.create()`, and posts the credential to `POST /v1/auth/passkeys`. To sign in,
+`POST /v1/auth/passkeys/request-options`, `navigator.credentials.get()`, then
+`POST /v1/auth/passkeys/login`. Send cookies on both calls of each pair. If the frontend and the API
+are on different hosts of one site, set `Passkeys:ServerDomain` to the site (for example `example.com`).
+
 Browser frontends on the same site (for example a Next.js app on `app.example.com` calling
 `api.example.com`) should use a cookie session instead of tokens:
 

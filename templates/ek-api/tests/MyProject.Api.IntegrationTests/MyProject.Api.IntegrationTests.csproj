@@ -8,6 +8,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+<!--#if (UseIdentity) -->
+    <PackageReference Include="System.Formats.Cbor" />
+<!--#endif -->
 <!--#if (UseSmtp) -->
     <PackageReference Include="Testcontainers" />
 <!--#endif -->
