@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Packs everything under templates/ into a `dotnet new` template package. -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Erkmangelis.Templates</PackageId>
+    <Version>0.1.0</Version>
+    <Title>Erkmangelis .NET templates</Title>
+    <Authors>erkmangelis</Authors>
+    <Description>A hardened ASP.NET Core HTTP API template for .NET 10 with optional ASP.NET Core Identity, PostgreSQL and AI agent guidance.</Description>
+    <PackageTags>dotnet-new;templates;aspnetcore;webapi;postgresql;identity</PackageTags>
+    <RepositoryUrl>https://github.com/erkmangelis/dotNET-Template</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/erkmangelis/dotNET-Template</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- NU5128: a template package has no lib/ folder by design. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates/**/*" Exclude="templates/**/bin/**;templates/**/obj/**;templates/**/TestResults/**;templates/**/.vs/**" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Erkmangelis.Templates.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Erkmangelis.Templates.Tests/Erkmangelis.Templates.Tests.csproj" />
+  </Folder>
+</Solution>
