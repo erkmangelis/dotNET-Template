@@ -31,6 +31,12 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
 <!--#endif -->
+<!--#if (UseExternal) -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+<!--#endif -->
+<!--#if (UseOidc) -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+<!--#endif -->
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,6 @@
+#if (UseIdentity)
+using Microsoft.AspNetCore.Identity;
+#endif
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -15,6 +18,18 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
             ?? "Host=localhost;Database=design_time";
 
+#if (UseIdentity)
+        // Identity picks its tables from IdentityOptions, so give the design-time context the app's schema version.
+        var identityOptions = new ServiceCollection()
+            .Configure<IdentityOptions>(options => options.Stores.SchemaVersion = AuthSetup.SchemaVersion)
+            .BuildServiceProvider();
+
+        return new(new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(connectionString)
+            .UseApplicationServiceProvider(identityOptions)
+            .Options);
+#else
         return new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);
+#endif
     }
 }

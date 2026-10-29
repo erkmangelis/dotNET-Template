@@ -3,7 +3,10 @@ global using MyProject.Api.Common;
 #if (UsePostgres)
 global using MyProject.Api.Data;
 #endif
-#if (!UsePostgres || UseIdentity)
+#if (UseOidc)
+global using MyProject.Api.Features.Auth;
+#endif
+#if (!UsePostgres || UseAuth)
 global using MyProject.Api.Features.Notes;
 #endif
 global using MyProject.Api.Infrastructure;

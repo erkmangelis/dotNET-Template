@@ -114,7 +114,7 @@ internal static class ApiDefaults
 
         app.UseSecurityHeaders();
         app.UseCors();
-#if (UseIdentity)
+#if (UseAuth)
         app.UseAuthentication();
         app.UseAuthorization();
 #endif

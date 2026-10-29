@@ -7,7 +7,7 @@ internal interface INoteStore
 
     Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken);
 
-#if (UseIdentity)
+#if (UseAuth)
     /// <summary>The owner's notes, newest first.</summary>
     Task<PagedResult<Note>> ListAsync(string ownerId, int page, int pageSize, CancellationToken cancellationToken);
 #else

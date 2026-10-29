@@ -19,6 +19,16 @@ services:
 #if (UsePostgres)
       ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
 #endif
+#if (UseExternal)
+      ExternalAuth__Providers__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
+      ExternalAuth__Providers__Apple__ClientIds__0: ${APPLE_CLIENT_ID:-}
+      ExternalAuth__Providers__Microsoft__ClientIds__0: ${MICROSOFT_CLIENT_ID:-}
+#endif
+#if (UseOidc)
+      Oidc__Authority: ${OIDC_AUTHORITY:?set OIDC_AUTHORITY in .env}
+      Oidc__Audience: ${OIDC_AUDIENCE:?set OIDC_AUDIENCE in .env}
+      Oidc__RoleClaim: ${OIDC_ROLE_CLAIM:-roles}
+#endif
 #if (UseSmtp)
       Email__FromAddress: ${EMAIL_FROM:?set EMAIL_FROM in .env}
       Email__Smtp__Host: ${SMTP_HOST:?set SMTP_HOST in .env}

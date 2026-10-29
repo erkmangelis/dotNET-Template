@@ -7,7 +7,7 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 {
     public async Task<bool> TryAddAsync(Note note, CancellationToken cancellationToken)
     {
-#if (UseIdentity)
+#if (UseAuth)
         if (await db.Notes.AnyAsync(existing => existing.OwnerId == note.OwnerId && existing.Title == note.Title, cancellationToken))
 #else
         if (await db.Notes.AnyAsync(existing => existing.Title == note.Title, cancellationToken))
@@ -33,7 +33,7 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
     public Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         db.Notes.AsNoTracking().FirstOrDefaultAsync(note => note.Id == id, cancellationToken);
 
-#if (UseIdentity)
+#if (UseAuth)
     public async Task<PagedResult<Note>> ListAsync(string ownerId, int page, int pageSize, CancellationToken cancellationToken)
     {
         var query = db.Notes.AsNoTracking().Where(note => note.OwnerId == ownerId);

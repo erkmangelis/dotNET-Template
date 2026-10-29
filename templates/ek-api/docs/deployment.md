@@ -94,3 +94,18 @@ All settings can be set as environment variables with `__` between sections.
 <!--#if (UseIdentity) -->
 | `Identity__SignIn__RequireConfirmedEmail` | `true` | Users must confirm their email before signing in |
 <!--#endif -->
+<!--#if (UseExternal) -->
+| `ExternalAuth__Providers__Google__ClientIds__0` | none | Your Google client id; turns Google sign-in on (same for `Apple` and `Microsoft`) |
+<!--#endif -->
+<!--#if (UseOidc) -->
+| `Oidc__Authority` | none, required | The OpenID Connect issuer that owns the accounts |
+| `Oidc__Audience` | none, required | The `aud` value in access tokens for this API |
+| `Oidc__RoleClaim` | `roles` | Where tokens keep roles, for example `realm_access.roles` for Keycloak |
+<!--#endif -->
+<!--#if (UseSmtp) -->
+| `Email__FromAddress` | none, required | Sender address |
+| `Email__Smtp__Host` | none, required | SMTP server |
+| `Email__Smtp__Port` | `587` | SMTP port |
+| `Email__Smtp__Security` | `StartTls` | `StartTls`, `SslOnConnect`, or `None` for a private relay |
+| `Email__Smtp__UserName`, `Email__Smtp__Password` | none | SMTP sign-in, when the server needs one |
+<!--#endif -->

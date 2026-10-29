@@ -10,6 +10,8 @@ builder.AddEmail();
 #endif
 #if (UseIdentity)
 builder.AddIdentityAuth();
+#elif (UseOidc)
+builder.AddOidcAuth();
 #endif
 builder.Services.AddNotes();
 

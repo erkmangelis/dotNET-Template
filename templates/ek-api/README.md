@@ -14,6 +14,16 @@ dotnet run --project src/MyProject.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+<!--#if (UseOidc) -->
+
+### Sign in
+
+Accounts live in your OpenID Connect provider (Keycloak, Entra ID, Auth0 and so on). Clients sign in
+there and call the API with the provider's access token: `Authorization: Bearer <accessToken>`.
+Set `Oidc:Authority` (the issuer) and `Oidc:Audience` (the `aud` the provider gives this API), and
+`Oidc:RoleClaim` if roles are not in a `roles` claim. Development points at a Keycloak realm on
+<http://localhost:8081>.
+<!--#endif -->
 <!--#if (UseIdentity) -->
 
 ### Sign in
@@ -22,6 +32,15 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 2. In Development the confirmation link is written to the console log. Open it.
 3. `POST /v1/auth/login` returns an access token and a refresh token. Send `Authorization: Bearer <accessToken>`.
 4. `POST /v1/auth/refresh` with the refresh token when the access token expires (after 60 minutes).
+<!--#if (UseExternal) -->
+
+To sign in with Google, Apple or Microsoft, the app uses the provider's own SDK (Google Identity
+Services, Sign in with Apple, MSAL), then sends the ID token: `POST /v1/auth/external/google` with
+`{ "idToken": "..." }`. The answer is the same as `/v1/auth/login`. Turn a provider on by setting
+its client id, for example `ExternalAuth:Providers:Google:ClientIds:0`. A provider's login joins an
+existing account only when the provider says the email is verified; a signed-in user can link any
+login with `POST /v1/auth/external/{provider}/link`.
+<!--#endif -->
 
 To get a confirmed `dev@example.com` user with sample notes, set a password in user secrets before
 the first run: `dotnet user-secrets set DevelopmentSeed:UserPassword "<password>" --project src/MyProject.Api`.
@@ -75,8 +94,12 @@ src/MyProject.Api/
 <!--#endif -->
   Common/                 shared types such as paging
   Features/Notes/         the example feature: contracts, endpoints, storage
-<!--#if (UseIdentity) -->
+<!--#if (UseExternal) -->
+  Features/Auth/          ASP.NET Core Identity setup, email senders, Google/Apple/Microsoft sign-in
+<!--#elif (UseIdentity) -->
   Features/Auth/          ASP.NET Core Identity setup and email senders
+<!--#elif (UseOidc) -->
+  Features/Auth/          access-token validation for the OpenID Connect provider
 <!--#endif -->
 <!--#if (UsePostgres) -->
   Data/                   AppDbContext, entity configuration, migrations, development seed

@@ -1,10 +1,29 @@
 using System.Net.Http.Headers;
+#if (!UseOidc)
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.Identity.Data;
+#endif
 
 namespace MyProject.Api.IntegrationTests;
 
+#if (UseOidc)
+internal sealed record TestUser(string Id, string AccessToken, HttpClient Client);
+
+internal static class TestUsers
+{
+    /// <summary>A new user at the provider: a fresh subject with a valid access token.</summary>
+    public static Task<TestUser> SignInNewUserAsync(ApiFactory api)
+    {
+        var id = Guid.NewGuid().ToString();
+        var token = TestTokens.Create(TestTokens.Issuer, TestTokens.Audience, new() { ["sub"] = id });
+        var client = api.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        return Task.FromResult(new TestUser(id, token, client));
+    }
+}
+#else
 internal sealed record TestUser(string Email, string Password, string AccessToken, HttpClient Client);
 
 internal static class TestUsers
@@ -37,3 +56,4 @@ internal static class TestUsers
         return (await response.Content.ReadFromJsonAsync<AccessTokenResponse>(cancellationToken))!;
     }
 }
+#endif

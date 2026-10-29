@@ -19,10 +19,12 @@
     "auth": {
       "type": "parameter",
       "datatype": "choice",
-      "description": "Authentication. 'identity' adds ASP.NET Core Identity API endpoints with bearer tokens and always turns PostgreSQL on.",
+      "description": "Authentication. Every choice except 'none' turns PostgreSQL on.",
       "choices": [
         { "choice": "none", "description": "No authentication." },
-        { "choice": "identity", "description": "ASP.NET Core Identity API endpoints with bearer tokens (needs PostgreSQL)." }
+        { "choice": "identity", "description": "Accounts in your database with ASP.NET Core Identity: passwords, bearer tokens or cookies, MFA, passkeys." },
+        { "choice": "external", "description": "Everything in 'identity', plus sign-in with Google, Apple and Microsoft." },
+        { "choice": "oidc", "description": "Accounts in a hosted OpenID Connect provider such as Keycloak or Entra ID; the API validates its access tokens." }
       ],
       "defaultValue": "none"
     },
@@ -57,13 +59,25 @@
       ],
       "defaultValue": "shared"
     },
+    "UseAuth": {
+      "type": "computed",
+      "value": "(auth != \"none\")"
+    },
     "UseIdentity": {
       "type": "computed",
-      "value": "(auth == \"identity\")"
+      "value": "(auth == \"identity\" || auth == \"external\")"
+    },
+    "UseExternal": {
+      "type": "computed",
+      "value": "(auth == \"external\")"
+    },
+    "UseOidc": {
+      "type": "computed",
+      "value": "(auth == \"oidc\")"
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || auth == \"identity\")"
+      "value": "(db == \"postgres\" || auth != \"none\")"
     },
     "UseSmtp": {
       "type": "computed",
@@ -98,7 +112,9 @@
         "evaluator": "C++",
         "datatype": "string",
         "cases": [
+          { "condition": "(UseExternal)", "value": "external" },
           { "condition": "(UseIdentity)", "value": "identity" },
+          { "condition": "(UseOidc)", "value": "oidc" },
           { "condition": "(true)", "value": "none" }
         ]
       }
@@ -184,15 +200,47 @@
           ]
         },
         {
-          "condition": "(!UseIdentity)",
+          "condition": "(!UseAuth)",
           "exclude": [
             "src/MyProject.Api/Features/Auth/**",
             "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
-            "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
-            "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs",
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/**",
             "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseIdentity)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/AppUser.cs",
+            "src/MyProject.Api/Features/Auth/AuthSetup.cs",
+            "src/MyProject.Api/Features/Auth/EmailSenders.cs",
+            "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
+            "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
+            "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs"
+          ]
+        },
+        {
+          "condition": "(!UseExternal)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/External*.cs",
+            "tests/MyProject.Api.IntegrationTests/ExternalSignInTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/External*.cs"
+          ]
+        },
+        {
+          "condition": "(!UseOidc)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/Oidc*.cs",
+            "tests/MyProject.Api.IntegrationTests/OidcTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/Oidc*.cs"
+          ]
+        },
+        {
+          "condition": "(!UseExternal && !UseOidc)",
+          "exclude": [
+            "tests/MyProject.Api.IntegrationTests/TestTokens.cs"
           ]
         },
         {
@@ -232,13 +280,18 @@
       ]
     },
     {
-      "condition": "(UsePostgres && !UseIdentity)",
+      "condition": "(UsePostgres && !UseAuth)",
       "source": ".migrations/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
       "condition": "(UseIdentity)",
       "source": ".migrations/identity/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseOidc)",
+      "source": ".migrations/oidc/",
       "target": "src/MyProject.Api/Data/Migrations/"
     }
   ],

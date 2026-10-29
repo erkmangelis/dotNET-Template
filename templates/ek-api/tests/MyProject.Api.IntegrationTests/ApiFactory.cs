@@ -1,14 +1,20 @@
+#if (UseOidc)
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+#endif
 using Microsoft.AspNetCore.Hosting;
 #if (UseIdentity && !UseSmtp)
 using Microsoft.AspNetCore.Identity;
 #endif
 using Microsoft.AspNetCore.Mvc.Testing;
-#if (UseIdentity)
+#if (UseAuth)
 using Microsoft.AspNetCore.TestHost;
 #endif
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
+#if (UseOidc)
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+#endif
 #if (UsePostgres)
 using Testcontainers.PostgreSql;
 #endif
@@ -66,15 +72,38 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
         builder.UseSetting("Database:MigrateOnStartup", "true");
 #endif
+#if (UseExternal)
+        builder.UseSetting("ExternalAuth:Providers:Google:ClientIds:0", TestTokens.GoogleClientId);
+#endif
+#if (UseOidc)
+        builder.UseSetting("Oidc:Authority", TestTokens.Issuer);
+        builder.UseSetting("Oidc:Audience", TestTokens.Audience);
+#endif
 #if (UseSmtp)
         builder.UseSetting("Email:Transport", "Log");
         builder.UseSetting("Email:FromAddress", "noreply@example.com");
 #endif
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
+#if (UseAuth)
+        builder.ConfigureTestServices(services =>
+        {
 #if (UseIdentity && UseSmtp)
-        builder.ConfigureTestServices(services => services.AddSingleton<IEmailTransport>(Emails));
+            services.AddSingleton<IEmailTransport>(Emails);
 #elif (UseIdentity)
-        builder.ConfigureTestServices(services => services.AddSingleton<IEmailSender<AppUser>>(Emails));
+            services.AddSingleton<IEmailSender<AppUser>>(Emails);
+#endif
+#if (UseExternal)
+            services.AddSingleton<IExternalProviderMetadata, TestProviderMetadata>();
+#endif
+#if (UseOidc)
+            // Trust the test signing key instead of fetching the provider's metadata.
+            services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Configuration = new OpenIdConnectConfiguration { Issuer = TestTokens.Issuer };
+                options.Configuration.SigningKeys.Add(TestTokens.SigningKey);
+            });
+#endif
+        });
 #endif
     }
 }

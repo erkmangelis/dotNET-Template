@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-#if (UseIdentity)
+#if (UseAuth)
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 #endif
@@ -16,7 +16,7 @@ internal static class NoteEndpoints
 #else
         services.AddSingleton<INoteStore, InMemoryNoteStore>();
 #endif
-#if (UseIdentity)
+#if (UseAuth)
         services.AddSingleton<IAuthorizationHandler, NoteOwnerHandler>();
         services.AddAuthorizationBuilder()
             .AddPolicy(NotePolicies.Owner, policy => policy
@@ -29,7 +29,7 @@ internal static class NoteEndpoints
     public static RouteGroupBuilder MapNoteEndpoints(this IEndpointRouteBuilder routes)
     {
         var notes = routes.MapGroup("/notes").WithTags("Notes");
-#if (UseIdentity)
+#if (UseAuth)
         notes.RequireAuthorization();
 #endif
 
@@ -44,7 +44,7 @@ internal static class NoteEndpoints
         CreateNoteRequest request,
         INoteStore store,
         TimeProvider time,
-#if (UseIdentity)
+#if (UseAuth)
         ClaimsPrincipal user,
 #endif
         CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ internal static class NoteEndpoints
         var note = new Note
         {
             Id = Guid.CreateVersion7(now),
-#if (UseIdentity)
+#if (UseAuth)
             OwnerId = user.GetUserId(),
 #endif
             Title = request.Title.Trim(),
@@ -77,7 +77,7 @@ internal static class NoteEndpoints
     private static async Task<Results<Ok<NoteResponse>, NotFound>> GetAsync(
         Guid id,
         INoteStore store,
-#if (UseIdentity)
+#if (UseAuth)
         ClaimsPrincipal user,
         IAuthorizationService authorization,
 #endif
@@ -89,7 +89,7 @@ internal static class NoteEndpoints
             return TypedResults.NotFound();
         }
 
-#if (UseIdentity)
+#if (UseAuth)
         // Another user's note answers 404, not 403, so ids cannot be probed.
         var access = await authorization.AuthorizeAsync(user, note, NotePolicies.Owner);
         if (!access.Succeeded)
@@ -103,14 +103,14 @@ internal static class NoteEndpoints
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
         INoteStore store,
-#if (UseIdentity)
+#if (UseAuth)
         ClaimsPrincipal user,
 #endif
         CancellationToken cancellationToken,
         [Range(1, Paging.MaxPage)] int page = 1,
         [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
     {
-#if (UseIdentity)
+#if (UseAuth)
         var notes = await store.ListAsync(user.GetUserId(), page, pageSize, cancellationToken);
 #else
         var notes = await store.ListAsync(page, pageSize, cancellationToken);

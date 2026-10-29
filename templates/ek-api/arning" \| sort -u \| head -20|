@@ -1,0 +1,1 @@
+dotnet tool restore >/dev/null; dotnet build src/Acme.Notes.Api 2>&1 | grep -E " error 
