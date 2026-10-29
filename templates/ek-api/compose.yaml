@@ -60,7 +60,7 @@ services:
 #endif
 
   tunnel:
-    image: cloudflare/cloudflared:2026.9.3
+    image: cloudflare/cloudflared:2026.10.4
     profiles: ["tunnel"]
     restart: unless-stopped
     command: ["tunnel", "--no-autoupdate", "run"]
