@@ -37,6 +37,15 @@ internal static class JobsSetup
             .ValidateOnStart();
 
         services.AddScoped<JobIdempotency>();
+#if (UsePostgres)
+        services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
+#elif (UseSqlServer)
+        services.AddSingleton<IDistributedLock, SqlServerDistributedLock>();
+#elif (UseSqlite)
+        services.AddSingleton<IDistributedLock, FileDistributedLock>();
+#else
+        services.AddSingleton<IDistributedLock, InProcessDistributedLock>();
+#endif
 #if (UseHostedJobs)
         services.AddSingleton<InProcessJobQueue>();
         services.AddSingleton<IJobQueue>(provider => provider.GetRequiredService<InProcessJobQueue>());
@@ -44,6 +53,7 @@ internal static class JobsSetup
         services.AddSingleton<IFailedJobs>(provider => provider.GetRequiredService<InProcessFailedJobs>());
         services.AddHostedService<InProcessJobRunner>();
         services.AddHostedService<RecurringJobScheduler>();
+        services.AddScoped<RecurringJobRunner>();
 #else
         services.AddHangfire((provider, hangfire) =>
         {

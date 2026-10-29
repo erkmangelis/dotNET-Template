@@ -44,6 +44,7 @@ Never edit a migration that has been merged.
   work is an `IRecurringJob`. Job arguments are records of ids and values with arrays, never
   entities or services. Every job must be safe to run twice: wrap effects that must happen once
   in `JobIdempotency.RunOnceAsync` with a key for that piece of work.
+- Work that only one instance may do at a time takes an `IDistributedLock` and skips when it is held.
 - Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
   a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
 - Queries go through EF Core. Hand-written SQL (Dapper) is only for a measured hot read path; follow

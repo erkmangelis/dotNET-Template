@@ -40,7 +40,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
-        // The database, its journal files and the Hangfire jobs file next to it.
+        // The database, its journal files and the job files next to it: Hangfire's, and lock files.
         foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(_databasePath)}*"))
         {
             File.Delete(file);

@@ -33,6 +33,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<FlakyJob>();
+            services.AddScoped<CountingRecurringJob>();
         });
     }
 }

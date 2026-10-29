@@ -15,12 +15,14 @@ internal static class JobsSetup
             .ValidateOnStart();
 
         services.AddScoped<JobIdempotency>();
+        services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
         services.AddSingleton<InProcessJobQueue>();
         services.AddSingleton<IJobQueue>(provider => provider.GetRequiredService<InProcessJobQueue>());
         services.AddSingleton<InProcessFailedJobs>();
         services.AddSingleton<IFailedJobs>(provider => provider.GetRequiredService<InProcessFailedJobs>());
         services.AddHostedService<InProcessJobRunner>();
         services.AddHostedService<RecurringJobScheduler>();
+        services.AddScoped<RecurringJobRunner>();
         return builder;
     }
 

@@ -17,6 +17,7 @@ internal static class JobsSetup
             .ValidateOnStart();
 
         services.AddScoped<JobIdempotency>();
+        services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
         services.AddHangfire((provider, hangfire) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;

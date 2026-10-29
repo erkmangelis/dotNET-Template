@@ -100,6 +100,43 @@ stops.
 Hangfire keeps failed jobs in the database until someone requeues or deletes them; the dashboard
 shows them with their exceptions.
 <!--#endif -->
+
+### Running once across instances
+
+`IDistributedLock` lets one instance do a piece of work while the others skip it:
+
+```csharp
+await using var held = await locks.TryAcquireAsync("reports:monthly", cancellationToken);
+if (held is null)
+{
+    return; // Another instance has it.
+}
+```
+
+<!--#if (UsePostgres) -->
+Here it is a PostgreSQL advisory lock, held on its own connection until it is disposed or the
+connection drops.
+<!--#endif -->
+<!--#if (UseSqlServer) -->
+Here it is a SQL Server application lock (`sp_getapplock`), held on its own connection until it is
+disposed or the connection drops.
+<!--#endif -->
+<!--#if (UseSqlite) -->
+Here it is a lock file next to the database, so it only coordinates processes on the same machine,
+which is the only place a SQLite database can be shared anyway.
+<!--#endif -->
+<!--#if (!UseDatabase) -->
+Without a database it only coordinates within this process. Add a database before running more than
+one instance.
+<!--#endif -->
+<!--#if (UseHostedJobs) -->
+The scheduler takes a lock per recurring job and records each scheduled time with `JobIdempotency`,
+so a recurring job runs once per scheduled time however many instances run the app.
+<!--#endif -->
+<!--#if (UseHangfire) -->
+Hangfire already runs each recurring job once per scheduled time across instances; use the lock for
+work that runs outside jobs.
+<!--#endif -->
 <!--#if (UseHostedJobs) -->
 
 ### How they run here: in process
@@ -109,7 +146,7 @@ memory and `InProcessJobRunner` runs `Jobs:WorkerCount` of them at a time; `Recu
 starts recurring jobs at their times. It needs no database and no extra service, but:
 
 - jobs still queued when the app stops are lost, and so is a job interrupted by shutdown;
-- each instance runs its own queue and its own schedule;
+- each instance runs only the jobs queued in it (recurring jobs still run once per scheduled time);
 - a time missed while the app was down is not made up.
 
 When a job must survive a restart, generate with `--jobs hangfire` and copy your jobs over: the

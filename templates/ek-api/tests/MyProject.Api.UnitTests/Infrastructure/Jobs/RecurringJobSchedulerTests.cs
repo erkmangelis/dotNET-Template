@@ -23,8 +23,6 @@ public sealed class RecurringJobSchedulerTests
         var options = Options.Create(new JobsOptions());
         var queue = new InProcessJobQueue(options);
         await using var services = new ServiceCollection()
-            .AddSingleton<TimeProvider>(time)
-            .AddSingleton(Channel.CreateUnbounded<DateTimeOffset>())
             .AddRecurringJob<CountingJob>("counting", "0 3 * * *")
             .BuildServiceProvider();
         using var scheduler = new RecurringJobScheduler(
@@ -38,13 +36,8 @@ public sealed class RecurringJobSchedulerTests
 
         time.Advance(TimeSpan.FromSeconds(1));
         var due = await NextAsync(queue.Reader);
-        await using (var scope = services.CreateAsyncScope())
-        {
-            await due.RunAsync(scope.ServiceProvider, TestContext.Current.CancellationToken);
-        }
 
         Assert.Equal("counting", due.Name);
-        Assert.Equal(new DateTimeOffset(2026, 1, 1, 3, 0, 0, TimeSpan.Zero), await NextAsync(services.GetRequiredService<Channel<DateTimeOffset>>().Reader));
         await scheduler.StopAsync(TestContext.Current.CancellationToken);
     }
 
@@ -77,12 +70,8 @@ public sealed class RecurringJobSchedulerTests
         }
     }
 
-    private sealed class CountingJob(Channel<DateTimeOffset> runs, TimeProvider time) : IRecurringJob
+    private sealed class CountingJob : IRecurringJob
     {
-        public Task RunAsync(CancellationToken cancellationToken)
-        {
-            runs.Writer.TryWrite(time.GetUtcNow());
-            return Task.CompletedTask;
-        }
+        public Task RunAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

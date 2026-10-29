@@ -87,6 +87,23 @@ A requeued job gets all its attempts again.
 Hangfire keeps failed jobs in the database until someone requeues or deletes them; the dashboard
 shows them with their exceptions.
 
+### Running once across instances
+
+`IDistributedLock` lets one instance do a piece of work while the others skip it:
+
+```csharp
+await using var held = await locks.TryAcquireAsync("reports:monthly", cancellationToken);
+if (held is null)
+{
+    return; // Another instance has it.
+}
+```
+
+Here it is a PostgreSQL advisory lock, held on its own connection until it is disposed or the
+connection drops.
+Hangfire already runs each recurring job once per scheduled time across instances; use the lock for
+work that runs outside jobs.
+
 ### How they run here: Hangfire
 
 This app runs jobs with [Hangfire](https://www.hangfire.io) (LGPL-3.0, free for commercial use), which

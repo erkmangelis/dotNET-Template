@@ -104,8 +104,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
-#if (UseHangfire)
-        // The database, its journal files and the Hangfire jobs file next to it.
+#if (UseJobs)
+        // The database, its journal files and the job files next to it: Hangfire's, and lock files.
         foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(_databasePath)}*"))
         {
             File.Delete(file);
@@ -167,6 +167,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
 #if (UseJobs)
             services.AddScoped<FlakyJob>();
+#endif
+#if (UseHostedJobs)
+            services.AddScoped<CountingRecurringJob>();
 #endif
 #if (UseHangfire)
             // Hangfire logs through a static that every app it starts replaces. An app a test starts

@@ -60,12 +60,15 @@ public sealed class JobTests(ApiFactory api) : IAsyncLifetime
 
         await using var scope = api.Services.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<INoteStore>();
-        Assert.Equal(0, await store.PurgeDeletedAsync(DateTimeOffset.UtcNow.AddDays(-1), TestContext.Current.CancellationToken));
-        var purged = await store.PurgeDeletedAsync(DateTimeOffset.UtcNow.AddMinutes(1), TestContext.Current.CancellationToken);
+        // Other tests share this database, so only this note is made old enough to purge.
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Notes.IgnoreQueryFilters()
+            .Where(note => note.Id == deleted.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(note => note.DeletedAt, DateTimeOffset.UtcNow.AddDays(-60)), TestContext.Current.CancellationToken);
+        var purged = await store.PurgeDeletedAsync(DateTimeOffset.UtcNow.AddDays(-30), TestContext.Current.CancellationToken);
 
         Assert.True(purged >= 1);
         Assert.NotNull(await store.FindAsync(kept.Id, TestContext.Current.CancellationToken));
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.False(await db.Notes.IgnoreQueryFilters().AnyAsync(note => note.Id == deleted.Id, TestContext.Current.CancellationToken));
     }
 

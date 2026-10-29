@@ -76,6 +76,23 @@ that fails every attempt is kept as failed and logged as an error; it never retr
 In this app failed jobs are kept in memory, the last 100 of them, until they are requeued or the app
 stops.
 
+### Running once across instances
+
+`IDistributedLock` lets one instance do a piece of work while the others skip it:
+
+```csharp
+await using var held = await locks.TryAcquireAsync("reports:monthly", cancellationToken);
+if (held is null)
+{
+    return; // Another instance has it.
+}
+```
+
+Without a database it only coordinates within this process. Add a database before running more than
+one instance.
+The scheduler takes a lock per recurring job and records each scheduled time with `JobIdempotency`,
+so a recurring job runs once per scheduled time however many instances run the app.
+
 ### How they run here: in process
 
 This app runs jobs on hosted services (`--jobs hosted`): `InProcessJobQueue` keeps queued jobs in
@@ -83,7 +100,7 @@ memory and `InProcessJobRunner` runs `Jobs:WorkerCount` of them at a time; `Recu
 starts recurring jobs at their times. It needs no database and no extra service, but:
 
 - jobs still queued when the app stops are lost, and so is a job interrupted by shutdown;
-- each instance runs its own queue and its own schedule;
+- each instance runs only the jobs queued in it (recurring jobs still run once per scheduled time);
 - a time missed while the app was down is not made up.
 
 When a job must survive a restart, generate with `--jobs hangfire` and copy your jobs over: the

@@ -15,3 +15,17 @@ public sealed class FlakyJob : IJob<string>
         return Broken.ContainsKey(key) ? throw new InvalidOperationException("Broken on purpose.") : Task.CompletedTask;
     }
 }
+
+/// <summary>A recurring job that counts its runs, slowly enough for two runs to overlap.</summary>
+public sealed class CountingRecurringJob : IRecurringJob
+{
+    private static int _runs;
+
+    public static int Runs => _runs;
+
+    public async Task RunAsync(CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _runs);
+        await Task.Delay(200, cancellationToken);
+    }
+}
