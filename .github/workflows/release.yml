@@ -26,7 +26,7 @@ jobs:
       - name: Pack
         run: dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts -p:ContinuousIntegrationBuild=true
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*.nupkg
       - name: Create the GitHub release
