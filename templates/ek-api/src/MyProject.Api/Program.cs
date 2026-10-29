@@ -8,6 +8,9 @@ builder.AddDatabase();
 #if (UseSmtp)
 builder.AddEmail();
 #endif
+#if (UseJobs)
+builder.AddJobs();
+#endif
 #if (UseIdentity)
 builder.AddIdentityAuth();
 #elif (UseOidc)
@@ -43,6 +46,10 @@ admin.MapUserAdminEndpoints();
 #endif
 #endif
 
+#if (UseHangfire)
+app.MapJobsDashboard();
+
+#endif
 #if (UseDatabase)
 await app.PrepareDatabaseAsync();
 #endif

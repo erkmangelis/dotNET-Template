@@ -40,6 +40,36 @@ public sealed partial class TemplateSnapshotTests
     public Task Generated_files_match_the_snapshot(string auth, string db, string email) =>
         VerifyAsync(Scenario(auth, db, email, "claude"), auth, db, email, "claude");
 
+    /// <summary>The <c>--jobs</c> choices, on the databases and sign-in modes whose code they change.</summary>
+    public static TheoryData<string, string, string> JobCombinations => new()
+    {
+        { "hosted", "none", "none" },
+        { "hosted", "identity", "postgres" },
+        { "hangfire", "none", "postgres" },
+        { "hangfire", "identity", "postgres" },
+        { "hangfire", "oidc", "sqlserver" },
+        { "hangfire", "none", "sqlite" },
+    };
+
+    [Theory]
+    [MemberData(nameof(JobCombinations))]
+    public Task Job_choices_match_their_snapshots(string jobs, string auth, string db) =>
+        VerifyAsync(Scenario(auth, db, "none", "claude", jobs), auth, db, "none", "claude", jobs);
+
+    [Fact]
+    public void Hangfire_without_a_database_generates_the_postgres_output()
+    {
+        // Hangfire stores jobs in the database, so --db none must give the same files as --db postgres.
+        AssertSameFiles(
+            SnapshotFiles(Scenario("none", "postgres", "none", "claude", "hangfire")),
+            SnapshotFiles(Scenario("none", "none", "none", "claude", "hangfire")),
+            "--jobs hangfire --db none");
+    }
+
+    [Fact]
+    public Task Hangfire_without_a_database_matches_its_snapshot() =>
+        VerifyAsync(Scenario("none", "none", "none", "claude", "hangfire"), "none", "none", "none", "claude", "hangfire");
+
     [Theory]
     [InlineData("none")]
     [InlineData("shared")]
@@ -76,8 +106,9 @@ public sealed partial class TemplateSnapshotTests
             "--auth identity --db none");
     }
 
-    private static string Scenario(string auth, string db, string email, string agents) =>
-        $"auth-{auth}.db-{db}.email-{email}.agents-{agents}";
+    /// <summary>The snapshot folder's name. <c>--jobs none</c> leaves the name as it was before the option existed.</summary>
+    private static string Scenario(string auth, string db, string email, string agents, string jobs = "none") =>
+        jobs == "none" ? $"auth-{auth}.db-{db}.email-{email}.agents-{agents}" : $"auth-{auth}.db-{db}.email-{email}.agents-{agents}.jobs-{jobs}";
 
     private static void AssertSameFiles(Dictionary<string, string> expected, Dictionary<string, string> actual, string what)
     {
@@ -95,9 +126,9 @@ public sealed partial class TemplateSnapshotTests
             .ToDictionary(file => Path.GetRelativePath(root, file), File.ReadAllText, StringComparer.Ordinal);
     }
 
-    private static async Task VerifyAsync(string scenario, string auth, string db, string email, string agents)
+    private static async Task VerifyAsync(string scenario, string auth, string db, string email, string agents, string jobs = "none")
     {
-        string[] templateArgs = ["--auth", auth, "--db", db, "--email", email, "--agents", agents];
+        string[] templateArgs = ["--auth", auth, "--db", db, "--email", email, "--jobs", jobs, "--agents", agents];
         var options = new TemplateVerifierOptions(templateName: "ek-api")
         {
             TemplatePath = RepositoryPaths.Template,

@@ -1,0 +1,62 @@
+﻿{
+  "realm": "acme-notes",
+  "displayName": "Acme.Notes (development)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Can do everything" },
+      { "name": "auditor", "description": "Can read everything" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "acme-notes-api",
+      "name": "Acme.Notes API",
+      "description": "The audience of access tokens for the API. Nobody signs in to it directly.",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "acme-notes-web",
+      "name": "Acme.Notes web app",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "http://localhost:3000/*" },
+      "protocolMappers": [
+        {
+          "name": "api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "acme-notes-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "username": "dev@example.com",
+      "email": "dev@example.com",
+      "emailVerified": true,
+      "firstName": "Dev",
+      "lastName": "User",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "dev-password", "temporary": false }],
+      "realmRoles": ["default-roles-acme-notes", "admin"]
+    }
+  ]
+}

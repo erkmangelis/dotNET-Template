@@ -34,7 +34,7 @@ jobs:
 
   acceptance:
     # Every combination listed here is supported. Anything not listed is not.
-    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, agents ${{ matrix.agents }})
+    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, jobs ${{ matrix.jobs }}, agents ${{ matrix.agents }})
     needs: pack
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -43,26 +43,35 @@ jobs:
       matrix:
         # The combinations that change code. --agents only adds or removes AGENTS.md and
         # CLAUDE.md (a snapshot test proves it), so each value runs on a share of them. SQL Server
-        # and SQLite run with every --auth mode; --email does not touch the database code.
+        # and SQLite run with every --auth mode; --email does not touch the database code. --jobs runs
+        # each choice on every database, with and without sign-in.
         include:
-          - { auth: none, db: none, email: none, agents: none }
-          - { auth: none, db: none, email: smtp, agents: shared }
-          - { auth: none, db: postgres, email: none, agents: claude }
-          - { auth: none, db: postgres, email: smtp, agents: none }
-          - { auth: identity, db: postgres, email: none, agents: shared }
-          - { auth: identity, db: postgres, email: smtp, agents: claude }
-          - { auth: external, db: postgres, email: none, agents: none }
-          - { auth: external, db: postgres, email: smtp, agents: shared }
-          - { auth: oidc, db: postgres, email: none, agents: claude }
-          - { auth: oidc, db: postgres, email: smtp, agents: none }
-          - { auth: none, db: sqlserver, email: none, agents: shared }
-          - { auth: identity, db: sqlserver, email: smtp, agents: claude }
-          - { auth: external, db: sqlserver, email: none, agents: none }
-          - { auth: oidc, db: sqlserver, email: none, agents: shared }
-          - { auth: none, db: sqlite, email: smtp, agents: claude }
-          - { auth: identity, db: sqlite, email: none, agents: none }
-          - { auth: external, db: sqlite, email: smtp, agents: shared }
-          - { auth: oidc, db: sqlite, email: none, agents: claude }
+          - { auth: none, db: none, email: none, jobs: none, agents: none }
+          - { auth: none, db: none, email: smtp, jobs: none, agents: shared }
+          - { auth: none, db: postgres, email: none, jobs: none, agents: claude }
+          - { auth: none, db: postgres, email: smtp, jobs: none, agents: none }
+          - { auth: identity, db: postgres, email: none, jobs: none, agents: shared }
+          - { auth: identity, db: postgres, email: smtp, jobs: none, agents: claude }
+          - { auth: external, db: postgres, email: none, jobs: none, agents: none }
+          - { auth: external, db: postgres, email: smtp, jobs: none, agents: shared }
+          - { auth: oidc, db: postgres, email: none, jobs: none, agents: claude }
+          - { auth: oidc, db: postgres, email: smtp, jobs: none, agents: none }
+          - { auth: none, db: sqlserver, email: none, jobs: none, agents: shared }
+          - { auth: identity, db: sqlserver, email: smtp, jobs: none, agents: claude }
+          - { auth: external, db: sqlserver, email: none, jobs: none, agents: none }
+          - { auth: oidc, db: sqlserver, email: none, jobs: none, agents: shared }
+          - { auth: none, db: sqlite, email: smtp, jobs: none, agents: claude }
+          - { auth: identity, db: sqlite, email: none, jobs: none, agents: none }
+          - { auth: external, db: sqlite, email: smtp, jobs: none, agents: shared }
+          - { auth: oidc, db: sqlite, email: none, jobs: none, agents: claude }
+          - { auth: none, db: none, email: none, jobs: hosted, agents: shared }
+          - { auth: none, db: sqlserver, email: none, jobs: hosted, agents: claude }
+          - { auth: identity, db: postgres, email: smtp, jobs: hosted, agents: none }
+          - { auth: oidc, db: sqlite, email: none, jobs: hosted, agents: shared }
+          - { auth: none, db: postgres, email: none, jobs: hangfire, agents: claude }
+          - { auth: identity, db: postgres, email: none, jobs: hangfire, agents: shared }
+          - { auth: oidc, db: sqlserver, email: none, jobs: hangfire, agents: none }
+          - { auth: none, db: sqlite, email: smtp, jobs: hangfire, agents: shared }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -76,7 +85,7 @@ jobs:
         run: >
           scripts/acceptance.sh
           --package "$(ls artifacts/*.nupkg)"
-          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --email ${{ matrix.email }} --agents ${{ matrix.agents }}
+          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --email ${{ matrix.email }} --jobs ${{ matrix.jobs }} --agents ${{ matrix.agents }}
           --compose
 
   supported:

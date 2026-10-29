@@ -93,7 +93,11 @@ public sealed class AuthTests(ApiFactory api)
 
         foreach (var record in api.Logs.GetSnapshot())
         {
-            var text = string.Join(' ', [record.Message, .. record.StructuredState?.Select(pair => pair.Value) ?? []]);
+            // Most loggers log name-value pairs; some log a plain object.
+            var state = record.State is IReadOnlyList<KeyValuePair<string, string?>> pairs
+                ? pairs.Select(pair => pair.Value)
+                : [record.State?.ToString()];
+            var text = string.Join(' ', [record.Message, .. state]);
             Assert.DoesNotContain(user.Password, text, StringComparison.Ordinal);
             Assert.DoesNotContain(user.AccessToken, text, StringComparison.Ordinal);
         }

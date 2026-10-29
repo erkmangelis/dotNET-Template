@@ -27,6 +27,10 @@ internal static class NoteEndpoints
         services.AddUserOrKeyPolicy(NotePolicies.Read, ApiKeyScopes.NotesRead);
         services.AddUserOrKeyPolicy(NotePolicies.Write, ApiKeyScopes.NotesWrite);
 #endif
+#if (UseJobs)
+        services.AddScoped<ImportNotesJob>();
+        services.AddRecurringJob<PurgeDeletedNotesJob>(PurgeDeletedNotesJob.Name, PurgeDeletedNotesJob.Cron);
+#endif
         return services;
     }
 
@@ -46,6 +50,9 @@ internal static class NoteEndpoints
         notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
         notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+#if (UseJobs)
+        notes.MapPost("/imports", ImportAsync).RequireAuthorization(NotePolicies.Write).WithIdempotency().WithName("ImportNotes").WithSummary("Create up to 100 notes in a background job");
+#endif
 #else
         notes.MapPost("/", CreateAsync).WithIdempotency().WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
@@ -57,6 +64,9 @@ internal static class NoteEndpoints
         notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
         notes.MapGet("/export", Export).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+#if (UseJobs)
+        notes.MapPost("/imports", ImportAsync).WithIdempotency().WithName("ImportNotes").WithSummary("Create up to 100 notes in a background job");
+#endif
 #endif
 
         return notes;
@@ -106,6 +116,26 @@ internal static class NoteEndpoints
         return TypedResults.Created(ApiVersions.PathFor(http, $"notes/{note.Id}"), NoteResponse.From(note));
     }
 
+#if (UseJobs)
+    private static async Task<Accepted<ImportNotesResponse>> ImportAsync(
+        ImportNotesRequest request,
+        IJobQueue jobs,
+        TimeProvider time,
+#if (UseAuth)
+        ClaimsPrincipal user,
+#endif
+        CancellationToken cancellationToken)
+    {
+#if (UseAuth)
+        var import = new NoteImport(Guid.CreateVersion7(time.GetUtcNow()), user.GetUserId(), [.. request.Notes]);
+#else
+        var import = new NoteImport(Guid.CreateVersion7(time.GetUtcNow()), [.. request.Notes]);
+#endif
+        var jobId = await jobs.EnqueueAsync<ImportNotesJob, NoteImport>(import, cancellationToken);
+        return TypedResults.Accepted((string?)null, new ImportNotesResponse(import.ImportId, jobId));
+    }
+
+#endif
     private static async Task<Results<Ok<NoteResponse>, NotFound, StatusCodeHttpResult>> GetAsync(
         Guid id,
         INoteStore store,

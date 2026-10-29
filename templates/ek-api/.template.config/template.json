@@ -50,6 +50,17 @@
       ],
       "defaultValue": "none"
     },
+    "jobs": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Background jobs. 'hangfire' needs a database, and turns PostgreSQL on when --db is none.",
+      "choices": [
+        { "choice": "none", "description": "No job framework; only the scoped background loop for housekeeping." },
+        { "choice": "hosted", "description": "In-process queue and cron schedules on hosted services. Queued jobs are lost on restart." },
+        { "choice": "hangfire", "description": "Hangfire: durable queued and scheduled jobs in your database, retries, a dashboard." }
+      ],
+      "defaultValue": "none"
+    },
     "agents": {
       "type": "parameter",
       "datatype": "choice",
@@ -79,7 +90,7 @@
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || (db == \"none\" && auth != \"none\"))"
+      "value": "(db == \"postgres\" || (db == \"none\" && (auth != \"none\" || jobs == \"hangfire\")))"
     },
     "UseSqlServer": {
       "type": "computed",
@@ -91,7 +102,19 @@
     },
     "UseDatabase": {
       "type": "computed",
-      "value": "(db != \"none\" || auth != \"none\")"
+      "value": "(db != \"none\" || auth != \"none\" || jobs == \"hangfire\")"
+    },
+    "UseJobs": {
+      "type": "computed",
+      "value": "(jobs != \"none\")"
+    },
+    "UseHostedJobs": {
+      "type": "computed",
+      "value": "(jobs == \"hosted\")"
+    },
+    "UseHangfire": {
+      "type": "computed",
+      "value": "(jobs == \"hangfire\")"
     },
     "UseSmtp": {
       "type": "computed",
@@ -144,6 +167,20 @@
         "datatype": "string",
         "cases": [
           { "condition": "(UseSmtp)", "value": "smtp" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "JobsValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_JOBS",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseHangfire)", "value": "hangfire" },
+          { "condition": "(UseHostedJobs)", "value": "hosted" },
           { "condition": "(true)", "value": "none" }
         ]
       }
@@ -297,6 +334,32 @@
           "condition": "(UseSmtp)",
           "exclude": [
             "src/MyProject.Api/Features/Auth/EmailSenders.cs"
+          ]
+        },
+        {
+          "condition": "(!UseJobs)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Jobs/Jobs.cs",
+            "src/MyProject.Api/Infrastructure/Jobs/JobsOptions.cs",
+            "src/MyProject.Api/Infrastructure/Jobs/JobsSetup.cs",
+            "src/MyProject.Api/Features/Notes/NoteJobs.cs",
+            "tests/MyProject.Api.IntegrationTests/Eventually.cs",
+            "tests/MyProject.Api.IntegrationTests/JobTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseHostedJobs)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Jobs/InProcessJobQueue.cs",
+            "src/MyProject.Api/Infrastructure/Jobs/RecurringJobScheduler.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/RecurringJobSchedulerTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseHangfire)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Jobs/HangfireJobs.cs",
+            "tests/MyProject.Api.IntegrationTests/JobRestartTests.cs"
           ]
         },
         {

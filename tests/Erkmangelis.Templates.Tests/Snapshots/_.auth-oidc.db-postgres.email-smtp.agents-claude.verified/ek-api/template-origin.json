@@ -6,6 +6,7 @@
     "auth": "oidc",
     "db": "postgres",
     "email": "smtp",
+    "jobs": "none",
     "agents": "claude"
   }
 }

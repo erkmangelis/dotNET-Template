@@ -20,3 +20,6 @@ global using MyProject.Api.Features.Profiles;
 global using MyProject.Api.Infrastructure.Email;
 #endif
 global using MyProject.Api.Infrastructure.Idempotency;
+#if (UseHangfire)
+global using MyProject.Api.Infrastructure.Jobs;
+#endif

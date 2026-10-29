@@ -1,0 +1,12 @@
+﻿{
+  "template": "Erkmangelis.Templates.Api",
+  "package": "Erkmangelis.Templates",
+  "version": "0.3.0",
+  "options": {
+    "auth": "identity",
+    "db": "postgres",
+    "email": "none",
+    "jobs": "hangfire",
+    "agents": "claude"
+  }
+}

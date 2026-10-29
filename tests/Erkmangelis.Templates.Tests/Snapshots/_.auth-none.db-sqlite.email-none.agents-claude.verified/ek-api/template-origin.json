@@ -6,6 +6,7 @@
     "auth": "none",
     "db": "sqlite",
     "email": "none",
+    "jobs": "none",
     "agents": "claude"
   }
 }

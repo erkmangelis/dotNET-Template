@@ -31,6 +31,26 @@
 <!--#endif -->
   </ItemGroup>
 <!--#endif -->
+<!--#if (UseHostedJobs) -->
+  <ItemGroup Label="Jobs">
+    <PackageVersion Include="Cronos" Version="0.13.0" />
+  </ItemGroup>
+<!--#endif -->
+<!--#if (UseHangfire) -->
+  <ItemGroup Label="Jobs">
+    <!-- Hangfire is LGPL-3.0 (free for commercial use); Hangfire Pro is not needed. -->
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
+<!--#if (UsePostgres) -->
+    <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+<!--#elif (UseSqlServer) -->
+    <PackageVersion Include="Hangfire.SqlServer" Version="1.8.25" />
+<!--#elif (UseSqlite) -->
+    <PackageVersion Include="Hangfire.Storage.SQLite" Version="0.4.3" />
+<!--#endif -->
+    <!-- Hangfire.Core asks for 11.0.1, which has a known vulnerability. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+<!--#endif -->
 <!--#if (UseIdentity) -->
   <ItemGroup Label="Identity">
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.14" />

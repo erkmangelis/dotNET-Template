@@ -6,6 +6,7 @@
     "auth": "EK_AUTH",
     "db": "EK_EFFECTIVE_DB",
     "email": "EK_EMAIL",
+    "jobs": "EK_JOBS",
     "agents": "EK_AGENTS"
   }
 }

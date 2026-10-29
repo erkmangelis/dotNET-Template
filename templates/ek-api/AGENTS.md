@@ -29,6 +29,11 @@ template with these options:
 <!--#if (UseSmtp) -->
 - Email: SMTP through MailKit, or the log in Development (`src/MyProject.Api/Infrastructure/Email`).
 <!--#endif -->
+<!--#if (UseHostedJobs) -->
+- Jobs: an in-process queue and cron schedules on hosted services (`src/MyProject.Api/Infrastructure/Jobs`).
+<!--#elif (UseHangfire) -->
+- Jobs: Hangfire, stored in the database (`src/MyProject.Api/Infrastructure/Jobs`).
+<!--#endif -->
 
 ## Commands
 
@@ -68,6 +73,11 @@ Never edit a migration that has been merged.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
 - Repeating in-process work derives from `ScopedBackgroundLoop`; never start a raw `Task.Run` or
   timer. See `docs/background-work.md`.
+<!--#if (UseJobs) -->
+- Slow work a request asks for goes into a job (`IJob<TArgs>`, queued with `IJobQueue`); scheduled
+  work is an `IRecurringJob`. Job arguments are records of ids and values with arrays, never
+  entities or services. Make every job safe to run twice.
+<!--#endif -->
 <!--#if (UseDatabase) -->
 - Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
   a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.

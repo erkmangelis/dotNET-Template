@@ -6,6 +6,7 @@
     "auth": "none",
     "db": "sqlserver",
     "email": "none",
+    "jobs": "none",
     "agents": "claude"
   }
 }

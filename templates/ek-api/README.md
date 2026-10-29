@@ -177,7 +177,13 @@ src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+<!--#if (UseHostedJobs) -->
+  Infrastructure/Jobs/    background work: the scoped background loop, in-process job queue and cron schedules
+<!--#elif (UseHangfire) -->
+  Infrastructure/Jobs/    background work: the scoped background loop and Hangfire jobs
+<!--#else -->
   Infrastructure/Jobs/    background work: the scoped background loop
+<!--#endif -->
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
 <!--#endif -->

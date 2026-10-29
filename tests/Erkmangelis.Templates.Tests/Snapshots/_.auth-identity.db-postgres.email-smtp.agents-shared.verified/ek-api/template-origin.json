@@ -6,6 +6,7 @@
     "auth": "identity",
     "db": "postgres",
     "email": "smtp",
+    "jobs": "none",
     "agents": "shared"
   }
 }

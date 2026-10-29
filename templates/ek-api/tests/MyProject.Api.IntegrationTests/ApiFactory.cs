@@ -1,3 +1,7 @@
+#if (UseHangfire)
+using Hangfire;
+using Hangfire.AspNetCore;
+#endif
 #if (UseOidc)
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 #endif
@@ -6,14 +10,20 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 #endif
 using Microsoft.AspNetCore.Mvc.Testing;
-#if (UseAuth)
+#if (UseAuth || UseHangfire)
 using Microsoft.AspNetCore.TestHost;
 #endif
 #if (UseSqlite)
 using Microsoft.Data.Sqlite;
 #endif
 using Microsoft.Extensions.DependencyInjection;
+#if (UseHangfire)
+using Microsoft.Extensions.DependencyInjection.Extensions;
+#endif
 using Microsoft.Extensions.Logging;
+#if (UseHangfire)
+using Microsoft.Extensions.Logging.Abstractions;
+#endif
 using Microsoft.Extensions.Logging.Testing;
 #if (UseOidc)
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -54,6 +64,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public CapturedEmails Emails { get; } = new();
 
 #endif
+#if (UseHangfire)
+    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no Hangfire
+    // server, so they never take this app's jobs and stop in the middle of one.
+    private bool _started;
+
+#endif
     public FakeLogCollector Logs => Services.GetFakeLogCollector();
 
 #if (UsePostgres || UseSqlServer)
@@ -63,6 +79,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         // Starts the host, which applies the migrations.
         _ = Server;
+#if (UseHangfire)
+        _started = true;
+#endif
     }
 
     public override async ValueTask DisposeAsync()
@@ -75,6 +94,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
+#if (UseHangfire)
+        _started = true;
+#endif
         return ValueTask.CompletedTask;
     }
 
@@ -82,10 +104,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
+#if (UseHangfire)
+        // The database, its journal files and the Hangfire jobs file next to it.
+        foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(_databasePath)}*"))
+        {
+            File.Delete(file);
+        }
+#else
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
             File.Delete(_databasePath + suffix);
         }
+#endif
     }
 #else
     public ValueTask InitializeAsync()
@@ -108,6 +138,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
         builder.UseSetting("Database:MigrateOnStartup", "true");
 #endif
+#if (UseHangfire)
+        builder.UseSetting("Jobs:Dashboard", "true");
+        builder.UseSetting("Jobs:PollIntervalSeconds", "1");
+        if (_started)
+        {
+            builder.UseSetting("Jobs:RunServer", "false");
+        }
+#endif
 #if (UseExternal)
         builder.UseSetting("ExternalAuth:Providers:Google:ClientIds:0", TestTokens.GoogleClientId);
 #endif
@@ -120,9 +158,20 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Email:FromAddress", "noreply@example.com");
 #endif
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
-#if (UseAuth)
+#if (UseAuth || UseHangfire)
         builder.ConfigureTestServices(services =>
         {
+#if (UseHangfire)
+            // Hangfire logs through a static that every app it starts replaces. An app a test starts
+            // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
+            var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
+            services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
+            {
+                var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
+                configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
+                return configuration;
+            }));
+#endif
 #if (UseIdentity && UseSmtp)
             services.AddSingleton<IEmailTransport>(Emails);
 #elif (UseIdentity)
