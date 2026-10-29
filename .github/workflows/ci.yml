@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  pack:
+    name: Pack and snapshot tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Pack the template
+        run: dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts
+      - name: Snapshot tests
+        run: dotnet test tests/Erkmangelis.Templates.Tests -c Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+  acceptance:
+    # Every combination listed here is supported. Anything not listed is not.
+    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, agents ${{ matrix.agents }})
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        auth: [none]
+        db: [none, postgres]
+        agents: [none, shared, claude]
+        include:
+          - { auth: identity, db: postgres, agents: none }
+          - { auth: identity, db: postgres, agents: shared }
+          - { auth: identity, db: postgres, agents: claude }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v5
+        with:
+          name: package
+          path: artifacts
+      - name: Generate, build, test and run in docker compose
+        run: >
+          scripts/acceptance.sh
+          --package "$(ls artifacts/*.nupkg)"
+          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --agents ${{ matrix.agents }}
+          --compose
+
+  supported:
+    # One required check for branch protection.
+    name: All supported combinations pass
+    if: always()
+    needs: [pack, acceptance]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          [[ "${{ needs.pack.result }}" == success && "${{ needs.acceptance.result }}" == success ]]

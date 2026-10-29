@@ -62,7 +62,7 @@ scripts/acceptance.sh --auth identity --db postgres --agents claude --compose
 Template sources live in [templates/ek-api](templates/ek-api). Conditional code uses the template
 engine's `#if (UsePostgres)`-style symbols defined in
 [template.json](templates/ek-api/.template.config/template.json). After an intended change to the
-output, update the snapshots: `EK_ACCEPT_SNAPSHOTS=1 dotnet test tests/Erkmangelis.Templates.Tests`.
+output, run the snapshot tests and accept the new output with `scripts/accept-snapshots.sh`, then review the snapshot diff.
 
 Releases: push a `v*` tag. The release workflow packs the template, attests its build provenance
 and attaches the `.nupkg` to a GitHub release. See [CHANGELOG.md](CHANGELOG.md).

@@ -18,8 +18,8 @@ cp .env.example .env            # set POSTGRES_PASSWORD
 docker compose up -d db
 ```
 
-The compose database is not published on a host port. To reach it from `dotnet run`, add
-`ports: ["5432:5432"]` to the `db` service in a `compose.override.yaml` (keep that file out of git).
+The compose database listens on `127.0.0.1:5432` only (`POSTGRES_PORT` in `.env` changes the port),
+so `dotnet run` on the same machine can reach it and the network cannot.
 
 In Development the app applies migrations on start (`Database:MigrateOnStartup`) and adds sample
 notes (`Database:SeedDevelopmentData`). Neither runs in any other environment unless you turn it on.

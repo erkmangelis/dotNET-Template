@@ -9,3 +9,4 @@ TestResults/
 .idea/
 *.received.*
 .env
+*.received/

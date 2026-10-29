@@ -14,11 +14,6 @@ dotnet run --project src/MyProject.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
-<!--#if (UsePostgres) -->
-
-The compose database is not published on a host port by default; [docs/database.md](docs/database.md)
-shows how to reach it from `dotnet run`.
-<!--#endif -->
 <!--#if (UseIdentity) -->
 
 ### Sign in
