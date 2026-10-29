@@ -5,7 +5,7 @@
   "identity": "Erkmangelis.Templates.Api",
   "groupIdentity": "Erkmangelis.Templates.Api",
   "name": "Hardened ASP.NET Core HTTP API (ek)",
-  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional ASP.NET Core Identity, PostgreSQL and AI agent guidance.",
+  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional sign-in, PostgreSQL, SQL Server or SQLite, background jobs, a worker, .NET Aspire and AI agent guidance.",
   "shortName": "ek-api",
   "sourceName": "MyProject",
   "guids": [ "0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30" ],
@@ -264,7 +264,7 @@
       "generator": "constant",
       "replaces": "EK_TEMPLATE_VERSION",
       "parameters": {
-        "value": "0.3.0"
+        "value": "0.4.0"
       }
     }
   },
