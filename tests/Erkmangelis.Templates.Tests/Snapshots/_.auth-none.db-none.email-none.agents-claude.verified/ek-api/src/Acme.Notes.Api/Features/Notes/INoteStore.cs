@@ -7,6 +7,6 @@ internal interface INoteStore
 
     Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken);
 
-    /// <summary>All notes, newest first.</summary>
-    Task<PagedResult<Note>> ListAsync(int page, int pageSize, CancellationToken cancellationToken);
+    /// <summary>All notes, filtered and sorted by <paramref name="query"/>.</summary>
+    Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken);
 }

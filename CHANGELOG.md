@@ -2,6 +2,17 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - Unreleased
+
+R03, Data and API depth.
+
+### Added
+
+- Filtering and sorting on `GET /v1/notes` (and the admin list): `search` matches titles ignoring
+  case with LIKE wildcards taken literally, `createdFrom` and `createdBefore` bound the creation
+  time, and `sort` takes up to three allowlisted fields (`createdAt`, `title`), each with an optional
+  `-` for descending. Anything else answers 400. `SortFields<T>` is the reusable allowlist.
+
 ## [0.2.0] - Unreleased
 
 R02, Accounts.

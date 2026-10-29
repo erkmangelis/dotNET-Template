@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -27,7 +26,7 @@ internal static class NoteEndpoints
         // Signed-in users, and API keys with the matching scope.
         notes.MapPost("/", CreateAsync).RequireAuthorization(NotePolicies.Write).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNote").WithSummary("Get a note");
-        notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).WithName("ListNotes").WithSummary("List notes, newest first");
+        notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 
         return notes;
     }
@@ -39,7 +38,7 @@ internal static class NoteEndpoints
         notes.MapGet("/", ListAllAsync)
             .RequirePermission(Permissions.NotesReadAll)
             .WithName("ListAllNotes")
-            .WithSummary("List every user's notes, newest first");
+            .WithSummary("List every user's notes: filter, sort, page");
 
         return notes;
     }
@@ -98,23 +97,21 @@ internal static class NoteEndpoints
     }
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
+        [AsParameters] NoteListQuery query,
         INoteStore store,
         ClaimsPrincipal user,
-        CancellationToken cancellationToken,
-        [Range(1, Paging.MaxPage)] int page = 1,
-        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+        CancellationToken cancellationToken)
     {
-        var notes = await store.ListAsync(user.GetUserId(), page, pageSize, cancellationToken);
+        var notes = await store.ListAsync(user.GetUserId(), query, cancellationToken);
         return TypedResults.Ok(notes.Map(NoteResponse.From));
     }
 
     private static async Task<Ok<PagedResult<AdminNoteResponse>>> ListAllAsync(
+        [AsParameters] NoteListQuery query,
         INoteStore store,
-        CancellationToken cancellationToken,
-        [Range(1, Paging.MaxPage)] int page = 1,
-        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+        CancellationToken cancellationToken)
     {
-        var notes = await store.ListAsync(ownerId: null, page, pageSize, cancellationToken);
+        var notes = await store.ListAsync(ownerId: null, query, cancellationToken);
         return TypedResults.Ok(notes.Map(AdminNoteResponse.From));
     }
 }

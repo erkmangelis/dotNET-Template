@@ -5,6 +5,8 @@ namespace MyProject.Api.Features.Notes;
 
 internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 {
+    private const string LikeEscape = "\\";
+
     public async Task<bool> TryAddAsync(Note note, CancellationToken cancellationToken)
     {
 #if (UseAuth)
@@ -34,22 +36,33 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         db.Notes.AsNoTracking().FirstOrDefaultAsync(note => note.Id == id, cancellationToken);
 
 #if (UseAuth)
-    public async Task<PagedResult<Note>> ListAsync(string? ownerId, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken)
     {
-        var query = ownerId is null ? db.Notes.AsNoTracking() : db.Notes.AsNoTracking().Where(note => note.OwnerId == ownerId);
+        var notes = ownerId is null ? db.Notes.AsNoTracking() : db.Notes.AsNoTracking().Where(note => note.OwnerId == ownerId);
 #else
-    public async Task<PagedResult<Note>> ListAsync(int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {
-        var query = db.Notes.AsNoTracking();
+        var notes = db.Notes.AsNoTracking();
 #endif
-        var total = await query.LongCountAsync(cancellationToken);
-        var items = await query
-            .OrderByDescending(note => note.CreatedAt)
-            .ThenByDescending(note => note.Id)
-            .Skip(Paging.Skip(page, pageSize))
-            .Take(pageSize)
+        notes = query.Filter(notes);
+        if (!string.IsNullOrEmpty(query.Search))
+        {
+            var pattern = $"%{EscapeLike(query.Search)}%";
+            notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
+        }
+
+        var total = await notes.LongCountAsync(cancellationToken);
+        var items = await query.Order(notes)
+            .Skip(Paging.Skip(query.PageNumber, query.PageLength))
+            .Take(query.PageLength)
             .ToListAsync(cancellationToken);
 
-        return new PagedResult<Note>(items, page, pageSize, total);
+        return new PagedResult<Note>(items, query.PageNumber, query.PageLength, total);
     }
+
+    /// <summary>Makes the client's text match literally: <c>%</c>, <c>_</c> and the escape character lose their meaning.</summary>
+    private static string EscapeLike(string text) =>
+        text.Replace(LikeEscape, LikeEscape + LikeEscape, StringComparison.Ordinal)
+            .Replace("%", LikeEscape + "%", StringComparison.Ordinal)
+            .Replace("_", LikeEscape + "_", StringComparison.Ordinal);
 }

@@ -28,18 +28,23 @@ internal sealed class InMemoryNoteStore : INoteStore
         }
     }
 
-    public Task<PagedResult<Note>> ListAsync(int page, int pageSize, CancellationToken cancellationToken)
+    public Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
-            var items = _notes
-                .OrderByDescending(note => note.CreatedAt)
-                .ThenByDescending(note => note.Id)
-                .Skip(Paging.Skip(page, pageSize))
-                .Take(pageSize)
+            var matching = query.Filter(_notes.AsQueryable());
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                matching = matching.Where(note => note.Title.Contains(query.Search, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var total = matching.LongCount();
+            var items = query.Order(matching)
+                .Skip(Paging.Skip(query.PageNumber, query.PageLength))
+                .Take(query.PageLength)
                 .ToList();
 
-            return Task.FromResult(new PagedResult<Note>(items, page, pageSize, _notes.Count));
+            return Task.FromResult(new PagedResult<Note>(items, query.PageNumber, query.PageLength, total));
         }
     }
 }

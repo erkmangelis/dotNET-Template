@@ -8,10 +8,10 @@ internal interface INoteStore
     Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken);
 
 #if (UseAuth)
-    /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, newest first.</summary>
-    Task<PagedResult<Note>> ListAsync(string? ownerId, int page, int pageSize, CancellationToken cancellationToken);
+    /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, filtered and sorted by <paramref name="query"/>.</summary>
+    Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken);
 #else
-    /// <summary>All notes, newest first.</summary>
-    Task<PagedResult<Note>> ListAsync(int page, int pageSize, CancellationToken cancellationToken);
+    /// <summary>All notes, filtered and sorted by <paramref name="query"/>.</summary>
+    Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken);
 #endif
 }

@@ -113,5 +113,55 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task The_list_filters_by_title_and_sorts_by_allowed_fields()
+    {
+        // A marker no other test uses, with LIKE wildcards in it that must match literally.
+        var marker = $"m%_{Guid.NewGuid():N}";
+        string[] titles = [$"b {marker}", $"A {marker.ToUpperInvariant()}", $"c {marker}", "unrelated"];
+        foreach (var title in titles)
+        {
+            await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        }
+
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?search={Uri.EscapeDataString(marker)}&sort=-title",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(page);
+        Assert.Equal([titles[2], titles[0], titles[1]], page.Items.Select(note => note.Title));
+    }
+
+    [Fact]
+    public async Task The_list_filters_by_creation_time()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var note = await created.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);
+        Assert.NotNull(note);
+        var from = Uri.EscapeDataString(note.CreatedAt.ToString("O"));
+        var before = Uri.EscapeDataString(note.CreatedAt.AddTicks(10).ToString("O"));
+
+        var page = await _client.GetFromJsonAsync<PagedResult<NoteResponse>>(
+            $"/v1/notes?createdFrom={from}&createdBefore={before}",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(page);
+        Assert.Contains(page.Items, item => item.Id == note.Id);
+        Assert.All(page.Items, item => Assert.InRange(item.CreatedAt, note.CreatedAt, note.CreatedAt.AddTicks(9)));
+    }
+
+    [Theory]
+    [InlineData("/v1/notes?sort=content")]
+    [InlineData("/v1/notes?sort=title,title")]
+    [InlineData("/v1/notes?sort=createdAt,title,-createdAt,id")]
+    public async Task Sorting_by_anything_not_allowed_answers_400(string url)
+    {
+        var response = await _client.GetAsync(url, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.True(problem.GetProperty("errors").TryGetProperty("Sort", out _));
+    }
+
     private static string UniqueTitle() => $"Note {Guid.NewGuid():N}";
 }

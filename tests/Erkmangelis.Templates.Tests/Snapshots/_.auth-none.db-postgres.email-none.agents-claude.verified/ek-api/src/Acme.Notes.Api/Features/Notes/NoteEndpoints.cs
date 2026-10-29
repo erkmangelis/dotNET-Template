@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Acme.Notes.Api.Features.Notes;
 
@@ -17,7 +16,7 @@ internal static class NoteEndpoints
 
         notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
-        notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes, newest first");
+        notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
 
         return notes;
     }
@@ -65,12 +64,11 @@ internal static class NoteEndpoints
     }
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
+        [AsParameters] NoteListQuery query,
         INoteStore store,
-        CancellationToken cancellationToken,
-        [Range(1, Paging.MaxPage)] int page = 1,
-        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+        CancellationToken cancellationToken)
     {
-        var notes = await store.ListAsync(page, pageSize, cancellationToken);
+        var notes = await store.ListAsync(query, cancellationToken);
         return TypedResults.Ok(notes.Map(NoteResponse.From));
     }
 }
