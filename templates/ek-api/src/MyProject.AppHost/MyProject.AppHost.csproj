@@ -13,6 +13,8 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
 <!--#elif (UseSqlServer) -->
     <PackageReference Include="Aspire.Hosting.SqlServer" />
+    <!-- Aspire.Hosting.SqlServer brings in a vulnerable version; the pin is in Directory.Packages.props. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
 <!--#endif -->
   </ItemGroup>
 
