@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # The template's own test tooling.
+  - package-ecosystem: nuget
+    directory: /
+    exclude-paths:
+      - "templates/**"
+      - "tests/Erkmangelis.Templates.Tests/Snapshots/**"
+    schedule:
+      interval: weekly
+  # What generated projects get.
+  - package-ecosystem: nuget
+    directory: /templates/ek-api
+    schedule:
+      interval: weekly
+    groups:
+      dotnet:
+        patterns: ["Microsoft.*", "System.*", "dotnet-ef"]
+      opentelemetry:
+        patterns: ["OpenTelemetry*"]
+      tests:
+        patterns: ["xunit*", "Testcontainers*"]
+  - package-ecosystem: docker
+    directory: /templates/ek-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker-compose
+    directory: /templates/ek-api
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directories: ["/", "/templates/ek-api"]
+    schedule:
+      interval: weekly

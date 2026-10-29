@@ -1,0 +1,17 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Acme.Notes.Api.Data;
+
+internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
+{
+    public void Configure(EntityTypeBuilder<Note> builder)
+    {
+        builder.HasKey(note => note.Id);
+        builder.Property(note => note.Id).ValueGeneratedNever();
+        builder.Property(note => note.Title).HasMaxLength(Note.TitleMaxLength);
+        builder.Property(note => note.Content).HasMaxLength(Note.ContentMaxLength);
+        builder.HasIndex(note => note.Title).IsUnique();
+        builder.HasIndex(note => note.CreatedAt);
+    }
+}

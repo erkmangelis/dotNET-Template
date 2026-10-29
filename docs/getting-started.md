@@ -1,0 +1,94 @@
+# Getting started
+
+This walks you from nothing to a running API with sign-in and a database, then onto a Raspberry Pi
+or VPS. It takes about 20 minutes.
+
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and
+[Docker](https://docs.docker.com/get-docker/).
+
+## 1. Install the template
+
+Download `Erkmangelis.Templates.<version>.nupkg` from the
+[latest release](https://github.com/erkmangelis/dotNET-Template/releases), then:
+
+```bash
+dotnet new install ./Erkmangelis.Templates.0.1.0.nupkg
+dotnet new ek-api --help
+```
+
+To check the download first: `gh attestation verify Erkmangelis.Templates.0.1.0.nupkg --repo erkmangelis/dotNET-Template`.
+
+## 2. Create a project
+
+```bash
+dotnet new ek-api -n Garage --auth identity --db postgres --agents claude
+cd Garage
+git init && git add -A && git commit -m "Start from ek-api 0.1.0"
+```
+
+Pick the options you need:
+
+- `--auth none` for an internal or public read-only API, `--auth identity` for user accounts.
+- `--db none` keeps notes in memory, handy for a prototype; `--db postgres` for real data.
+- `--agents claude` if you use Claude Code, `shared` for other coding agents, `none` for neither.
+
+## 3. Run it locally
+
+```bash
+cp .env.example .env
+# put a password in .env: POSTGRES_PASSWORD=...
+docker compose up -d db
+dotnet user-secrets set ConnectionStrings:Default "Host=localhost;Database=app;Username=app;Password=<the same password>" --project src/Garage.Api
+dotnet run --project src/Garage.Api
+```
+
+Open <http://localhost:5080/scalar>. The app has applied its migrations and is ready.
+
+## 4. Try the API
+
+```bash
+curl -s -X POST localhost:5080/v1/auth/register -H 'content-type: application/json' \
+  -d '{"email":"me@example.com","password":"Correct-horse-battery-1"}'
+```
+
+The confirmation link appears in the `dotnet run` console. Open it, then sign in and create a note:
+
+```bash
+token=$(curl -s -X POST localhost:5080/v1/auth/login -H 'content-type: application/json' \
+  -d '{"email":"me@example.com","password":"Correct-horse-battery-1"}' | jq -r .accessToken)
+curl -s -X POST localhost:5080/v1/notes -H "authorization: Bearer $token" \
+  -H 'content-type: application/json' -d '{"title":"First note"}'
+curl -s localhost:5080/v1/notes -H "authorization: Bearer $token"
+```
+
+## 5. Run the checks CI runs
+
+```bash
+dotnet build -warnaserror
+dotnet format --verify-no-changes
+dotnet test
+```
+
+## 6. Add your own feature
+
+Copy the shape of `src/Garage.Api/Features/Notes`: contracts, endpoints, a store, an EF
+configuration in `Data/`, then a migration:
+
+```bash
+dotnet tool restore
+dotnet ef migrations add AddCars --project src/Garage.Api --output-dir Data/Migrations
+```
+
+Map the endpoints on the `/v1` group in `Program.cs`, and add an integration test that proves one
+user cannot see another user's data.
+
+## 7. Deploy
+
+Push to GitHub, then follow `docs/deployment.md` in your project: Docker Compose on the Pi or VPS,
+HTTPS through a Cloudflare Tunnel, nightly backups from `docs/database.md`.
+
+## Updating later
+
+`template-origin.json` records the template version and options you started from. Read the
+[changelog](../CHANGELOG.md) for what changed between versions. A tool that applies template
+updates to existing projects is planned for a later release.

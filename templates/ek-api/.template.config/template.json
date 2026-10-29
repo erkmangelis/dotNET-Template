@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "erkmangelis",
+  "classifications": [ "Web", "API", "Service" ],
+  "identity": "Erkmangelis.Templates.Api",
+  "groupIdentity": "Erkmangelis.Templates.Api",
+  "name": "Hardened ASP.NET Core HTTP API (ek)",
+  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional ASP.NET Core Identity, PostgreSQL and AI agent guidance.",
+  "shortName": "ek-api",
+  "sourceName": "MyProject",
+  "guids": [ "0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30" ],
+  "preferNameDirectory": true,
+  "defaultName": "MyApi",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "symbols": {
+    "auth": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Authentication. 'identity' adds ASP.NET Core Identity API endpoints with bearer tokens and always turns PostgreSQL on.",
+      "choices": [
+        { "choice": "none", "description": "No authentication." },
+        { "choice": "identity", "description": "ASP.NET Core Identity API endpoints with bearer tokens (needs PostgreSQL)." }
+      ],
+      "defaultValue": "none"
+    },
+    "db": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Database. 'postgres' adds EF Core with Npgsql, migrations, Testcontainers and a compose service.",
+      "choices": [
+        { "choice": "none", "description": "No database; notes are kept in memory." },
+        { "choice": "postgres", "description": "PostgreSQL 18 through EF Core and Npgsql." }
+      ],
+      "defaultValue": "none"
+    },
+    "agents": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Guidance files for AI coding agents.",
+      "choices": [
+        { "choice": "none", "description": "No agent guidance files." },
+        { "choice": "shared", "description": "AGENTS.md, read by most coding agents." },
+        { "choice": "claude", "description": "AGENTS.md plus a CLAUDE.md that imports it." }
+      ],
+      "defaultValue": "shared"
+    },
+    "UseIdentity": {
+      "type": "computed",
+      "value": "(auth == \"identity\")"
+    },
+    "UsePostgres": {
+      "type": "computed",
+      "value": "(db == \"postgres\" || auth == \"identity\")"
+    },
+    "UseAgents": {
+      "type": "computed",
+      "value": "(agents != \"none\")"
+    },
+    "UseClaude": {
+      "type": "computed",
+      "value": "(agents == \"claude\")"
+    },
+    "EffectiveDb": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_EFFECTIVE_DB",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UsePostgres)", "value": "postgres" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "AuthValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_AUTH",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseIdentity)", "value": "identity" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "AgentsValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_AGENTS",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(agents == \"claude\")", "value": "claude" },
+          { "condition": "(agents == \"shared\")", "value": "shared" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "AppSlug": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "slug",
+      "replaces": "ek-app-slug",
+      "description": "The project name made safe for Docker Compose project and image names."
+    },
+    "TemplateVersion": {
+      "type": "generated",
+      "generator": "constant",
+      "replaces": "EK_TEMPLATE_VERSION",
+      "parameters": {
+        "value": "0.1.0"
+      }
+    }
+  },
+  "forms": {
+    "slug": {
+      "identifier": "chain",
+      "steps": [ "slugLowerCase", "slugReplace" ]
+    },
+    "slugLowerCase": {
+      "identifier": "lowerCaseInvariant"
+    },
+    "slugReplace": {
+      "identifier": "replace",
+      "pattern": "[^a-z0-9]+",
+      "replacement": "-"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!UsePostgres)",
+          "exclude": [
+            "src/MyProject.Api/Data/**",
+            "src/MyProject.Api/Features/Notes/EfNoteStore.cs",
+            "tests/MyProject.Api.IntegrationTests/PostgresFixture.cs",
+            "tests/MyProject.Api.UnitTests/Data/**",
+            ".config/**",
+            "docs/database.md",
+            "scripts/backup.sh",
+            ".migrations/**"
+          ]
+        },
+        {
+          "condition": "(UsePostgres)",
+          "exclude": [
+            "src/MyProject.Api/Features/Notes/InMemoryNoteStore.cs",
+            "tests/MyProject.Api.UnitTests/Features/Notes/InMemoryNoteStoreTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseIdentity)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/**",
+            "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
+            "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
+            "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
+            "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
+            "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseAgents)",
+          "exclude": [ "AGENTS.md" ]
+        },
+        {
+          "condition": "(!UseClaude)",
+          "exclude": [ "CLAUDE.md" ]
+        },
+        {
+          "exclude": [
+            ".template.config/**",
+            ".migrations/**",
+            "**/bin/**",
+            "**/obj/**",
+            "**/TestResults/**",
+            "**/*.user",
+            ".env"
+          ]
+        }
+      ]
+    },
+    {
+      "condition": "(UsePostgres && !UseIdentity)",
+      "source": ".migrations/notes/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseIdentity)",
+      "source": ".migrations/identity/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    }
+  ],
+  "SpecialCustomOperations": {
+    "**/Dockerfile": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/*.sh": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/.env.example": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/.editorconfig": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/.dockerignore": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    }
+  },
+  "primaryOutputs": [
+    { "path": "src/MyProject.Api/MyProject.Api.csproj" }
+  ],
+  "postActions": []
+}

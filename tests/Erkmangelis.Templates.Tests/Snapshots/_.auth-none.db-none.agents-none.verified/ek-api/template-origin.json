@@ -1,0 +1,10 @@
+﻿{
+  "template": "Erkmangelis.Templates.Api",
+  "package": "Erkmangelis.Templates",
+  "version": "0.1.0",
+  "options": {
+    "auth": "none",
+    "db": "none",
+    "agents": "none"
+  }
+}
