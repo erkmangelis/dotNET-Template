@@ -1,6 +1,12 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/MyProject.Api/MyProject.Api.csproj" />
+<!--#if (UseAspire) -->
+    <Project Path="src/MyProject.AppHost/MyProject.AppHost.csproj" />
+<!--#endif -->
+<!--#if (UseWorker) -->
+    <Project Path="src/MyProject.Worker/MyProject.Worker.csproj" />
+<!--#endif -->
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MyProject.Api.IntegrationTests/MyProject.Api.IntegrationTests.csproj" />

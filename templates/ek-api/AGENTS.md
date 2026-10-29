@@ -34,6 +34,14 @@ template with these options:
 <!--#elif (UseHangfire) -->
 - Jobs: Hangfire, stored in the database (`src/MyProject.Api/Infrastructure/Jobs`).
 <!--#endif -->
+<!--#if (UseWorker) -->
+- Worker: `src/MyProject.Worker` runs the jobs; the API only queues them (`Jobs:RunServer` is off).
+  The worker references the API project and registers the same services, so a job's dependencies
+  must be registered in both `Program.cs` files.
+<!--#endif -->
+<!--#if (UseAspire) -->
+- Local orchestration: .NET Aspire AppHost in `src/MyProject.AppHost` (development only, never deployed).
+<!--#endif -->
 
 ## Commands
 

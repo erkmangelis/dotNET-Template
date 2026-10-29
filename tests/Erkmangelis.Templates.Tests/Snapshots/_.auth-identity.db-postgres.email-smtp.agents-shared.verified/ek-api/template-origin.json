@@ -7,6 +7,8 @@
     "db": "postgres",
     "email": "smtp",
     "jobs": "none",
+    "worker": false,
+    "aspire": false,
     "agents": "shared"
   }
 }

@@ -56,25 +56,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Jobs:RetryDelaySeconds", "0");
         builder.UseSetting("Jobs:Dashboard", "true");
         builder.UseSetting("Jobs:PollIntervalSeconds", "1");
-        if (_started)
-        {
-            builder.UseSetting("Jobs:RunServer", "false");
-        }
+        builder.UseSetting("Jobs:RunServer", _started ? "false" : "true");
         builder.UseSetting("Oidc:Authority", TestTokens.Issuer);
         builder.UseSetting("Oidc:Audience", TestTokens.Audience);
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<FlakyJob>();
-            // Hangfire logs through a static that every app it starts replaces. An app a test starts
-            // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
-            var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
-            services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
-            {
-                var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
-                configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
-                return configuration;
-            }));
+            WithoutHangfireLogs(services);
             // Trust the test signing key instead of fetching the provider's metadata.
             services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -82,5 +71,20 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 options.Configuration.SigningKeys.Add(TestTokens.SigningKey);
             });
         });
+    }
+
+    /// <summary>
+    /// Hangfire logs through a static that every app it starts replaces. An app a test starts would
+    /// leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
+    /// </summary>
+    internal static void WithoutHangfireLogs(IServiceCollection services)
+    {
+        var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
+        services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
+        {
+            var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
+            configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
+            return configuration;
+        }));
     }
 }

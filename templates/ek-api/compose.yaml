@@ -53,6 +53,44 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+#endif
+#if (UseWorker)
+
+  # Runs the jobs the API queues (see docs/background-work.md).
+  worker:
+    build:
+      context: .
+      target: worker
+    image: ${API_IMAGE:-ek-app-slug-api}-worker:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+#if (UsePostgres)
+      ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+#elif (UseSqlServer)
+      ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
+#elif (UseSqlite)
+      ConnectionStrings__Default: Data Source=/data/app.db
+#endif
+#if (UseSmtp)
+      Email__FromAddress: ${EMAIL_FROM:?set EMAIL_FROM in .env}
+      Email__Smtp__Host: ${SMTP_HOST:?set SMTP_HOST in .env}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Email__Smtp__UserName: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+#endif
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    stop_grace_period: 35s
+#if (UseSqlite)
+    volumes:
+      - app-data:/data
+#endif
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+#endif
+#if (UseDatabase)
 
   migrate:
     build:

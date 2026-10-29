@@ -1,0 +1,14 @@
+﻿{
+  "template": "Erkmangelis.Templates.Api",
+  "package": "Erkmangelis.Templates",
+  "version": "0.3.0",
+  "options": {
+    "auth": "none",
+    "db": "none",
+    "email": "none",
+    "jobs": "none",
+    "worker": false,
+    "aspire": true,
+    "agents": "claude"
+  }
+}

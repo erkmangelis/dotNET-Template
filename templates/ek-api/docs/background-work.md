@@ -184,3 +184,23 @@ outside Development, or put it behind your reverse proxy's authentication.
 <!--#endif -->
 <!--#endif -->
 <!--#endif -->
+<!--#if (UseWorker) -->
+
+## The worker
+
+`src/MyProject.Worker` runs the jobs; the API only queues them (its `Jobs:RunServer` is `false`). The
+worker is a small app that references the API project and registers the services jobs need (the
+database, jobs, notes) without the HTTP endpoints. It serves `/health/live` and `/health/ready` only.
+
+- Locally: `dotnet run --project src/MyProject.Worker` next to the API. It reads the same user
+  secrets as the API.
+- In compose and CI: the `worker` image (`docker buildx build --target worker .`), built for amd64
+  and arm64 like the API's. `docker compose up` starts it after the migrations.
+- More throughput: raise `Jobs:WorkerCount` or run more worker containers; Hangfire hands each job
+  to one of them.
+- A job's dependencies must be registered in the worker's `Program.cs` as well as the API's. A
+  missing one fails the job (and its retries) with an error naming the service.
+
+The integration tests run jobs inside the test API for speed; `WorkerTests` checks that the worker
+runs a job the API queued.
+<!--#endif -->

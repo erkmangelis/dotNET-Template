@@ -106,6 +106,21 @@ public sealed partial class TemplateSnapshotTests
             "--auth identity --db none");
     }
 
+    /// <summary><c>--worker</c> (which means <c>--jobs hangfire</c>) and <c>--aspire</c>, alone and together.</summary>
+    public static TheoryData<string, string, bool, bool> CompositionCombinations => new()
+    {
+        { "identity", "postgres", true, true },
+        { "none", "sqlite", true, false },
+        { "none", "none", false, true },
+    };
+
+    [Theory]
+    [MemberData(nameof(CompositionCombinations))]
+    public Task Worker_and_aspire_match_their_snapshots(string auth, string db, bool worker, bool aspire) =>
+        VerifyAsync(
+            Scenario(auth, db, "none", "claude") + (worker ? ".worker" : "") + (aspire ? ".aspire" : ""),
+            auth, db, "none", "claude", "none", worker, aspire);
+
     /// <summary>The snapshot folder's name. <c>--jobs none</c> leaves the name as it was before the option existed.</summary>
     private static string Scenario(string auth, string db, string email, string agents, string jobs = "none") =>
         jobs == "none" ? $"auth-{auth}.db-{db}.email-{email}.agents-{agents}" : $"auth-{auth}.db-{db}.email-{email}.agents-{agents}.jobs-{jobs}";
@@ -126,9 +141,14 @@ public sealed partial class TemplateSnapshotTests
             .ToDictionary(file => Path.GetRelativePath(root, file), File.ReadAllText, StringComparer.Ordinal);
     }
 
-    private static async Task VerifyAsync(string scenario, string auth, string db, string email, string agents, string jobs = "none")
+    private static async Task VerifyAsync(
+        string scenario, string auth, string db, string email, string agents, string jobs = "none", bool worker = false, bool aspire = false)
     {
-        string[] templateArgs = ["--auth", auth, "--db", db, "--email", email, "--jobs", jobs, "--agents", agents];
+        string[] templateArgs =
+        [
+            "--auth", auth, "--db", db, "--email", email, "--jobs", jobs,
+            "--worker", worker ? "true" : "false", "--aspire", aspire ? "true" : "false", "--agents", agents,
+        ];
         var options = new TemplateVerifierOptions(templateName: "ek-api")
         {
             TemplatePath = RepositoryPaths.Template,

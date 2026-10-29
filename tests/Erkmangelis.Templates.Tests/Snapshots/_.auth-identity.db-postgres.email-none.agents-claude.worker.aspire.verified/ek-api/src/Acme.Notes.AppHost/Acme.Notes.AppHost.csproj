@@ -1,0 +1,20 @@
+﻿<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Runs with `dotnet run` and the dashboard and orchestrator packages from NuGet; the Aspire CLI
+         is optional. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    <UserSecretsId>Acme.Notes-AppHost-00000000-0000-0000-0000-000000000000</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Acme.Notes.Api\Acme.Notes.Api.csproj" />
+    <ProjectReference Include="..\Acme.Notes.Worker\Acme.Notes.Worker.csproj" />
+  </ItemGroup>
+
+</Project>

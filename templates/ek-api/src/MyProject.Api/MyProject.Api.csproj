@@ -9,6 +9,9 @@
     <!-- Lets the test projects use internal types. -->
     <InternalsVisibleTo Include="MyProject.Api.UnitTests" />
     <InternalsVisibleTo Include="MyProject.Api.IntegrationTests" />
+<!--#if (UseWorker) -->
+    <InternalsVisibleTo Include="MyProject.Worker" />
+<!--#endif -->
   </ItemGroup>
 
   <ItemGroup>

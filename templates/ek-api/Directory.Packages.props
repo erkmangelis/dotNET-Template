@@ -51,6 +51,16 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 <!--#endif -->
+<!--#if (UseAspire && (UsePostgres || UseSqlServer)) -->
+  <ItemGroup Label="Aspire">
+    <!-- The AppHost's SDK version is in src/MyProject.AppHost/MyProject.AppHost.csproj; keep them equal. -->
+<!--#if (UsePostgres) -->
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
+<!--#else -->
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
+<!--#endif -->
+  </ItemGroup>
+<!--#endif -->
 <!--#if (UseIdentity) -->
   <ItemGroup Label="Identity">
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.14" />

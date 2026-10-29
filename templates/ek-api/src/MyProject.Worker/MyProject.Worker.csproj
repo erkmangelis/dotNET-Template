@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>MyProject.Worker</RootNamespace>
+    <!-- The API's id, so both read the same development secrets. -->
+    <UserSecretsId>MyProject-0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30</UserSecretsId>
+    <!-- The API's appsettings files come along with its project; this project's own copies are
+         published last and win. -->
+    <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MyProject.Api.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The worker runs the API's jobs with the API's code: entities, the database and the job classes. -->
+    <ProjectReference Include="..\MyProject.Api\MyProject.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+<!--#if (UseAuth) -->
+    <Using Include="MyProject.Api.Common" />
+<!--#endif -->
+    <Using Include="MyProject.Api.Data" />
+    <Using Include="MyProject.Api.Features.Notes" />
+    <Using Include="MyProject.Api.Infrastructure" />
+<!--#if (UseSmtp) -->
+    <Using Include="MyProject.Api.Infrastructure.Email" />
+<!--#endif -->
+    <Using Include="MyProject.Api.Infrastructure.Idempotency" />
+    <Using Include="MyProject.Api.Infrastructure.Jobs" />
+  </ItemGroup>
+
+</Project>

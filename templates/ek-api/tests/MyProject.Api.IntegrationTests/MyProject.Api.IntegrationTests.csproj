@@ -24,6 +24,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/MyProject.Api/MyProject.Api.csproj" />
+<!--#if (UseWorker) -->
+    <!-- Under an alias: both apps have a Program class. -->
+    <ProjectReference Include="../../src/MyProject.Worker/MyProject.Worker.csproj" Aliases="worker" />
+<!--#endif -->
   </ItemGroup>
 
   <ItemGroup>

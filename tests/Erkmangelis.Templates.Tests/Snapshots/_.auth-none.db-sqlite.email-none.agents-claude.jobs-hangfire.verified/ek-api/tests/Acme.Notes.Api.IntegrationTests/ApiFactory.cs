@@ -40,7 +40,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
-        // The database, its journal files and the job files next to it: Hangfire's, and lock files.
+        // The database, its journal files and the files jobs keep next to it (job storage, lock files).
         foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(_databasePath)}*"))
         {
             File.Delete(file);
@@ -58,23 +58,27 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Jobs:RetryDelaySeconds", "0");
         builder.UseSetting("Jobs:Dashboard", "true");
         builder.UseSetting("Jobs:PollIntervalSeconds", "1");
-        if (_started)
-        {
-            builder.UseSetting("Jobs:RunServer", "false");
-        }
+        builder.UseSetting("Jobs:RunServer", _started ? "false" : "true");
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<FlakyJob>();
-            // Hangfire logs through a static that every app it starts replaces. An app a test starts
-            // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
-            var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
-            services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
-            {
-                var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
-                configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
-                return configuration;
-            }));
+            WithoutHangfireLogs(services);
         });
+    }
+
+    /// <summary>
+    /// Hangfire logs through a static that every app it starts replaces. An app a test starts would
+    /// leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
+    /// </summary>
+    internal static void WithoutHangfireLogs(IServiceCollection services)
+    {
+        var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
+        services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
+        {
+            var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
+            configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
+            return configuration;
+        }));
     }
 }

@@ -61,6 +61,18 @@
       ],
       "defaultValue": "none"
     },
+    "worker": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "Add a worker project that runs the API's jobs in its own process and container. Implies --jobs hangfire.",
+      "defaultValue": "false"
+    },
+    "aspire": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "Add a .NET Aspire AppHost that starts the API, the worker and the database for local development.",
+      "defaultValue": "false"
+    },
     "agents": {
       "type": "parameter",
       "datatype": "choice",
@@ -90,7 +102,7 @@
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || (db == \"none\" && (auth != \"none\" || jobs == \"hangfire\")))"
+      "value": "(db == \"postgres\" || (db == \"none\" && (auth != \"none\" || jobs == \"hangfire\" || worker)))"
     },
     "UseSqlServer": {
       "type": "computed",
@@ -102,19 +114,27 @@
     },
     "UseDatabase": {
       "type": "computed",
-      "value": "(db != \"none\" || auth != \"none\" || jobs == \"hangfire\")"
+      "value": "(db != \"none\" || auth != \"none\" || jobs == \"hangfire\" || worker)"
     },
     "UseJobs": {
       "type": "computed",
-      "value": "(jobs != \"none\")"
+      "value": "(jobs != \"none\" || worker)"
     },
     "UseHostedJobs": {
       "type": "computed",
-      "value": "(jobs == \"hosted\")"
+      "value": "(jobs == \"hosted\" && !worker)"
     },
     "UseHangfire": {
       "type": "computed",
-      "value": "(jobs == \"hangfire\")"
+      "value": "(jobs == \"hangfire\" || worker)"
+    },
+    "UseWorker": {
+      "type": "computed",
+      "value": "(worker)"
+    },
+    "UseAspire": {
+      "type": "computed",
+      "value": "(aspire)"
     },
     "UseSmtp": {
       "type": "computed",
@@ -185,6 +205,32 @@
         ]
       }
     },
+    "WorkerValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "\"EK_WORKER\"",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseWorker)", "value": "true" },
+          { "condition": "(true)", "value": "false" }
+        ]
+      }
+    },
+    "AspireValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "\"EK_ASPIRE\"",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseAspire)", "value": "true" },
+          { "condition": "(true)", "value": "false" }
+        ]
+      }
+    },
     "AgentsValue": {
       "type": "generated",
       "generator": "switch",
@@ -206,6 +252,13 @@
       "replaces": "ek-app-slug",
       "description": "The project name made safe for Docker Compose project and image names."
     },
+    "ProjectsPrefix": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "projectsPrefix",
+      "replaces": "MyProject_",
+      "description": "The project name as the AppHost's generated Projects class spells it."
+    },
     "TemplateVersion": {
       "type": "generated",
       "generator": "constant",
@@ -222,6 +275,20 @@
     },
     "slugLowerCase": {
       "identifier": "lowerCaseInvariant"
+    },
+    "projectsPrefix": {
+      "identifier": "chain",
+      "steps": [ "projectsPrefixChars", "projectsPrefixEnd" ]
+    },
+    "projectsPrefixChars": {
+      "identifier": "replace",
+      "pattern": "[^A-Za-z0-9_]",
+      "replacement": "_"
+    },
+    "projectsPrefixEnd": {
+      "identifier": "replace",
+      "pattern": "$",
+      "replacement": "_"
     },
     "slugReplace": {
       "identifier": "replace",
@@ -370,6 +437,20 @@
           "exclude": [
             "src/MyProject.Api/Infrastructure/Jobs/HangfireJobs.cs",
             "tests/MyProject.Api.IntegrationTests/JobRestartTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseWorker)",
+          "exclude": [
+            "src/MyProject.Worker/**",
+            "tests/MyProject.Api.IntegrationTests/WorkerTests.cs"
+          ]
+        },
+        {
+          "condition": "(!UseAspire)",
+          "exclude": [
+            "src/MyProject.AppHost/**",
+            "docs/aspire.md"
           ]
         },
         {

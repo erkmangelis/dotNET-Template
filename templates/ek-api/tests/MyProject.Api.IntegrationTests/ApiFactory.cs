@@ -60,6 +60,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"MyProject-tests-{Guid.NewGuid():N}.db");
 
 #endif
+#if (UseWorker)
+#if (UseSqlite)
+    internal string ConnectionString => $"Data Source={_databasePath}";
+#else
+    internal string ConnectionString => _database.GetConnectionString();
+#endif
+
+#endif
 #if (UseIdentity)
     public CapturedEmails Emails { get; } = new();
 
@@ -105,7 +113,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await base.DisposeAsync();
         SqliteConnection.ClearAllPools();
 #if (UseJobs)
-        // The database, its journal files and the job files next to it: Hangfire's, and lock files.
+        // The database, its journal files and the files jobs keep next to it (job storage, lock files).
         foreach (var file in Directory.EnumerateFiles(Path.GetTempPath(), $"{Path.GetFileNameWithoutExtension(_databasePath)}*"))
         {
             File.Delete(file);
@@ -145,10 +153,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #if (UseHangfire)
         builder.UseSetting("Jobs:Dashboard", "true");
         builder.UseSetting("Jobs:PollIntervalSeconds", "1");
-        if (_started)
-        {
-            builder.UseSetting("Jobs:RunServer", "false");
-        }
+        builder.UseSetting("Jobs:RunServer", _started ? "false" : "true");
 #endif
 #if (UseExternal)
         builder.UseSetting("ExternalAuth:Providers:Google:ClientIds:0", TestTokens.GoogleClientId);
@@ -172,15 +177,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddScoped<CountingRecurringJob>();
 #endif
 #if (UseHangfire)
-            // Hangfire logs through a static that every app it starts replaces. An app a test starts
-            // would leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
-            var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
-            services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
-            {
-                var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
-                configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
-                return configuration;
-            }));
+            WithoutHangfireLogs(services);
 #endif
 #if (UseIdentity && UseSmtp)
             services.AddSingleton<IEmailTransport>(Emails);
@@ -201,4 +198,21 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
 #endif
     }
+#if (UseHangfire)
+
+    /// <summary>
+    /// Hangfire logs through a static that every app it starts replaces. An app a test starts would
+    /// leave it on a disposed logger when it stops, so tests leave Hangfire's logs out.
+    /// </summary>
+    internal static void WithoutHangfireLogs(IServiceCollection services)
+    {
+        var hangfire = services.Single(service => service.ServiceType == typeof(IGlobalConfiguration));
+        services.Replace(ServiceDescriptor.Singleton<IGlobalConfiguration>(provider =>
+        {
+            var configuration = (IGlobalConfiguration)hangfire.ImplementationFactory!(provider);
+            configuration.UseLogProvider(new AspNetCoreLogProvider(NullLoggerFactory.Instance));
+            return configuration;
+        }));
+    }
+#endif
 }
