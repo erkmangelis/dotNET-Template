@@ -53,6 +53,8 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
                 throw new InvalidOperationException(
                     $"Could not create the development user: {string.Join("; ", created.Errors.Select(error => error.Description))}");
             }
+
+            await users.AddToRoleAsync(user, Roles.Admin);
         }
 
         var ownerId = user.Id;

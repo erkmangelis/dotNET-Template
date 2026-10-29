@@ -205,6 +205,7 @@
             "src/MyProject.Api/Features/Auth/**",
             "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
             "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
+            "tests/MyProject.Api.IntegrationTests/PermissionTests.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
             "tests/MyProject.Api.UnitTests/Features/Auth/**",
             "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
@@ -219,6 +220,8 @@
             "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
             "src/MyProject.Api/Features/Auth/BrowserSessions.cs",
             "src/MyProject.Api/Features/Auth/Passkeys.cs",
+            "src/MyProject.Api/Features/Auth/UserAdminEndpoints.cs",
+            "src/MyProject.Api/Data/RoleConfiguration.cs",
             "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
             "tests/MyProject.Api.IntegrationTests/BrowserSessionTests.cs",
             "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs",

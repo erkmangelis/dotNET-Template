@@ -2,6 +2,8 @@
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace MyProject.Api.Data.Migrations
 {
     /// <inheritdoc />
@@ -75,6 +77,15 @@ namespace MyProject.Api.Data.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "AspNetRoles",
+                columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
+                values: new object[,]
+                {
+                    { "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e01", "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e11", "admin", "ADMIN" },
+                    { "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e02", "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e12", "auditor", "AUDITOR" }
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserPasskeys_UserId",
                 table: "AspNetUserPasskeys",
@@ -86,6 +97,16 @@ namespace MyProject.Api.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "AspNetUserPasskeys");
+
+            migrationBuilder.DeleteData(
+                table: "AspNetRoles",
+                keyColumn: "Id",
+                keyValue: "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e01");
+
+            migrationBuilder.DeleteData(
+                table: "AspNetRoles",
+                keyColumn: "Id",
+                keyValue: "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e02");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Name",

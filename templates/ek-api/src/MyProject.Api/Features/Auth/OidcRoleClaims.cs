@@ -1,7 +1,5 @@
 using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
 
 namespace MyProject.Api.Features.Auth;
 
@@ -9,27 +7,17 @@ namespace MyProject.Api.Features.Auth;
 /// Copies the roles from where the provider keeps them (<see cref="OidcOptions.RoleClaim"/>) into
 /// standard role claims, so <c>RequireRole</c> and the permission checks work the same for every provider.
 /// </summary>
-internal sealed class OidcRoleClaims(IOptions<OidcOptions> options) : IClaimsTransformation
+internal static class OidcRoleClaims
 {
-    private const string TransformedType = "oidc_roles_mapped";
-
-    public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+    public static void AddRoles(ClaimsIdentity identity, string roleClaim)
     {
-        if (principal.Identity is not ClaimsIdentity { IsAuthenticated: true } identity || identity.HasClaim(claim => claim.Type == TransformedType))
-        {
-            return Task.FromResult(principal);
-        }
-
-        foreach (var role in ReadRoles(identity, options.Value.RoleClaim))
+        foreach (var role in ReadRoles(identity, roleClaim))
         {
             if (!identity.HasClaim(identity.RoleClaimType, role))
             {
                 identity.AddClaim(new Claim(identity.RoleClaimType, role));
             }
         }
-
-        identity.AddClaim(new Claim(TransformedType, "true"));
-        return Task.FromResult(principal);
     }
 
     internal static IEnumerable<string> ReadRoles(ClaimsIdentity identity, string roleClaim)

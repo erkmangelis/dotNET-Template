@@ -39,6 +39,20 @@ internal static class NoteEndpoints
 
         return notes;
     }
+#if (UseAuth)
+
+    /// <summary>Every user's notes, for roles with <see cref="Permissions.NotesReadAll"/>.</summary>
+    public static RouteGroupBuilder MapNoteAdminEndpoints(this IEndpointRouteBuilder admin)
+    {
+        var notes = admin.MapGroup("/notes");
+        notes.MapGet("/", ListAllAsync)
+            .RequirePermission(Permissions.NotesReadAll)
+            .WithName("ListAllNotes")
+            .WithSummary("List every user's notes, newest first");
+
+        return notes;
+    }
+#endif
 
     private static async Task<Results<Created<NoteResponse>, ProblemHttpResult>> CreateAsync(
         CreateNoteRequest request,
@@ -117,4 +131,16 @@ internal static class NoteEndpoints
 #endif
         return TypedResults.Ok(notes.Map(NoteResponse.From));
     }
+#if (UseAuth)
+
+    private static async Task<Ok<PagedResult<AdminNoteResponse>>> ListAllAsync(
+        INoteStore store,
+        CancellationToken cancellationToken,
+        [Range(1, Paging.MaxPage)] int page = 1,
+        [Range(1, Paging.MaxPageSize)] int pageSize = Paging.DefaultPageSize)
+    {
+        var notes = await store.ListAsync(ownerId: null, page, pageSize, cancellationToken);
+        return TypedResults.Ok(notes.Map(AdminNoteResponse.From));
+    }
+#endif
 }

@@ -2,7 +2,9 @@ using System.Net.Http.Headers;
 #if (!UseOidc)
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.Extensions.DependencyInjection;
 #endif
 
 namespace MyProject.Api.IntegrationTests;
@@ -12,11 +14,11 @@ internal sealed record TestUser(string Id, string AccessToken, HttpClient Client
 
 internal static class TestUsers
 {
-    /// <summary>A new user at the provider: a fresh subject with a valid access token.</summary>
-    public static Task<TestUser> SignInNewUserAsync(ApiFactory api)
+    /// <summary>A new user at the provider: a fresh subject with a valid access token carrying <paramref name="roles"/>.</summary>
+    public static Task<TestUser> SignInNewUserAsync(ApiFactory api, params string[] roles)
     {
         var id = Guid.NewGuid().ToString();
-        var token = TestTokens.Create(TestTokens.Issuer, TestTokens.Audience, new() { ["sub"] = id });
+        var token = TestTokens.Create(TestTokens.Issuer, TestTokens.Audience, new() { ["sub"] = id, ["roles"] = roles });
         var client = api.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -30,12 +32,18 @@ internal static class TestUsers
 {
     public const string Password = "Correct-horse-battery-1";
 
-    /// <summary>Registers a new user, confirms the email through the captured link and signs in.</summary>
-    public static async Task<TestUser> SignInNewUserAsync(ApiFactory api)
+    /// <summary>Registers a new user, confirms the email through the captured link, adds <paramref name="roles"/> and signs in.</summary>
+    public static async Task<TestUser> SignInNewUserAsync(ApiFactory api, params string[] roles)
     {
         var client = api.CreateClient();
         var cancellationToken = TestContext.Current.CancellationToken;
         var email = await RegisterConfirmedUserAsync(api, client);
+        if (roles.Length > 0)
+        {
+            await using var scope = api.Services.CreateAsyncScope();
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+            await users.AddToRolesAsync((await users.FindByEmailAsync(email))!, roles);
+        }
 
         var token = await LoginAsync(client, email, Password, cancellationToken);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);

@@ -31,7 +31,7 @@ internal static class OidcSetup
             });
 
         services.AddAuthorization();
-        services.AddTransient<IClaimsTransformation, OidcRoleClaims>();
+        services.AddTransient<IClaimsTransformation, PermissionClaims>();
 
         return builder;
     }

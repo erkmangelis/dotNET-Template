@@ -92,6 +92,30 @@ In production, set `EMAIL_FROM` and the `SMTP_*` values in `.env`. The messages 
 `src/MyProject.Api/Infrastructure/Email/EmailTemplates.cs`.
 <!--#endif -->
 
+<!--#if (UseAuth) -->
+### Roles and permissions
+
+Endpoints check permissions; roles grant them. `src/MyProject.Api/Features/Auth/Permissions.cs`
+lists both: `admin` can do everything, `auditor` can read everything. Admin endpoints live under
+`/v1/admin`, for example `GET /v1/admin/notes`.
+<!--#if (UseIdentity) -->
+The roles are seeded by the migrations. Admins change a user's roles with
+`PUT /v1/admin/users/{id}/roles`; the change applies from the user's next sign-in. To make the first
+admin, add the role in the database:
+
+```sql
+INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
+SELECT u."Id", r."Id" FROM "AspNetUsers" u, "AspNetRoles" r
+WHERE u."NormalizedEmail" = upper('you@example.com') AND r."Name" = 'admin';
+```
+
+The development seed user `dev@example.com` is an admin.
+<!--#else -->
+Roles come from the provider's tokens (`Oidc:RoleClaim`). Create realm or app roles named `admin`
+and `auditor` there and assign them to users.
+<!--#endif -->
+
+<!--#endif -->
 ## Test it
 
 ```bash

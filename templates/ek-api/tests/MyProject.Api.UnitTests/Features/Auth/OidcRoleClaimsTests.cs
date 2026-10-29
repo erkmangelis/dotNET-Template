@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.Extensions.Options;
 
 namespace MyProject.Api.UnitTests.Features.Auth;
 
@@ -38,6 +37,9 @@ public sealed class OidcRoleClaimsTests
         Assert.Empty(principal.FindAll(ClaimTypes.Role));
     }
 
-    private static Task<ClaimsPrincipal> Transform(ClaimsIdentity identity, string roleClaim) =>
-        new OidcRoleClaims(Options.Create(new OidcOptions { RoleClaim = roleClaim })).TransformAsync(new ClaimsPrincipal(identity));
+    private static Task<ClaimsPrincipal> Transform(ClaimsIdentity identity, string roleClaim)
+    {
+        OidcRoleClaims.AddRoles(identity, roleClaim);
+        return Task.FromResult(new ClaimsPrincipal(identity));
+    }
 }

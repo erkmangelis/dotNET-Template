@@ -20,3 +20,11 @@ public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTi
 {
     internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt);
 }
+#if (UseAuth)
+
+/// <summary>A note as an admin sees it, with its owner.</summary>
+public sealed record AdminNoteResponse(Guid Id, string OwnerId, string Title, string? Content, DateTimeOffset CreatedAt)
+{
+    internal static AdminNoteResponse From(Note note) => new(note.Id, note.OwnerId, note.Title, note.Content, note.CreatedAt);
+}
+#endif

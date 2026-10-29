@@ -74,6 +74,8 @@ Never edit a migration that has been merged.
 - Cookie sessions are checked for an antiforgery token on every unsafe request
   (`BrowserSessions.UseBrowserSessionAntiforgery`). Do not add endpoints that bypass it.
 <!--#endif -->
+- Guard admin endpoints with `.RequirePermission(Permissions.X)`, never with role names. Roles map
+  to permissions in `Features/Auth/Permissions.cs`; add a permission there for a new admin action.
 - Check ownership with the resource policy (`NotePolicies.Owner` is the example) and answer 404,
   not 403, for another user's resource.
 - Add an integration test proving one user cannot read or change another user's data.

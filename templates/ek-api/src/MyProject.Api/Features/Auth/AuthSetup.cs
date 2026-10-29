@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.BearerToken;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -31,6 +32,7 @@ internal static class AuthSetup
 #endif
 
         services.AddAuthorization();
+        services.AddTransient<IClaimsTransformation, PermissionClaims>();
         services.AddIdentityApiEndpoints<AppUser>(options =>
             {
                 options.User.RequireUniqueEmail = true;
@@ -41,6 +43,7 @@ internal static class AuthSetup
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Stores.SchemaVersion = SchemaVersion;
             })
+            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>();
         services.AddOptions<IdentityOptions>().BindConfiguration("Identity");
 

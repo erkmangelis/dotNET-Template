@@ -25,6 +25,14 @@ var v1 = app.MapGroup("/v1");
 v1.MapAuthEndpoints();
 #endif
 v1.MapNoteEndpoints();
+#if (UseAuth)
+
+var admin = v1.MapGroup("/admin").WithTags("Admin");
+admin.MapNoteAdminEndpoints();
+#if (UseIdentity)
+admin.MapUserAdminEndpoints();
+#endif
+#endif
 
 #if (UsePostgres)
 await app.PrepareDatabaseAsync();

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyProject.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261029144925_Accounts")]
+    [Migration("20261029150247_Accounts")]
     partial class Accounts
     {
         /// <inheritdoc />
@@ -165,6 +165,22 @@ namespace MyProject.Api.Data.Migrations
                         .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e01",
+                            ConcurrencyStamp = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e11",
+                            Name = "admin",
+                            NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e02",
+                            ConcurrencyStamp = "7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e12",
+                            Name = "auditor",
+                            NormalizedName = "AUDITOR"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
