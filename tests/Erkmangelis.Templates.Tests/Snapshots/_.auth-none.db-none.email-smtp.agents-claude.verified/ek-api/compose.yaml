@@ -1,0 +1,48 @@
+﻿# Local run and the Raspberry Pi or VPS deployment. See docs/deployment.md.
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+# With the HTTPS tunnel: docker compose --profile tunnel up -d --build
+name: acme-notes
+
+services:
+  api:
+    build:
+      context: .
+      target: final
+    image: ${API_IMAGE:-acme-notes-api}:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # TLS ends at the tunnel; trust X-Forwarded-* only from the compose network.
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      Api__UseHttpsRedirection: "false"
+      Email__FromAddress: ${EMAIL_FROM:?set EMAIL_FROM in .env}
+      Email__Smtp__Host: ${SMTP_HOST:?set SMTP_HOST in .env}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Email__Smtp__UserName: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    stop_grace_period: 35s
+
+  # Catches mail for local testing: docker compose --profile mail up -d, with SMTP_HOST=mailpit,
+  # SMTP_PORT=1025 and SMTP_SECURITY=None. Read the mail at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.32
+    profiles: ["mail"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - api

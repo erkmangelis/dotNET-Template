@@ -14,6 +14,12 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
 #endif
 {
     public DbSet<Note> Notes => Set<Note>();
+#if (UseAuth)
+
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
+    public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+#endif
 
 #if (UseIdentity)
     /// <summary>Keys that sign bearer tokens, kept in the database so tokens survive restarts.</summary>

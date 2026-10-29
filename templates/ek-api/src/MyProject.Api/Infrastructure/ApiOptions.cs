@@ -25,6 +25,9 @@ internal sealed class CorsSettings
 
     public string[] AllowedOrigins { get; set; } = [];
 
+    /// <summary>Let those origins send cookies. Needed when a browser frontend on another origin uses cookie sessions.</summary>
+    public bool AllowCredentials { get; set; }
+
     internal static bool AreValid(CorsSettings settings) =>
         settings.AllowedOrigins.All(origin =>
             origin != "*"

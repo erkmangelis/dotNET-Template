@@ -8,7 +8,7 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
 {
     private HttpClient _client = null!;
 
-#if (UseIdentity)
+#if (UseAuth)
     public async ValueTask InitializeAsync() => _client = (await TestUsers.SignInNewUserAsync(api)).Client;
 #else
     public ValueTask InitializeAsync()
@@ -83,7 +83,7 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
 
         var response = await _client.PostAsJsonAsync(
             "/v1/notes",
-#if (UseIdentity)
+#if (UseAuth)
             new { id = forgedId, title = UniqueTitle(), createdAt = forgedDate, ownerId = "someone-else" },
 #else
             new { id = forgedId, title = UniqueTitle(), createdAt = forgedDate },

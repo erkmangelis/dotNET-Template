@@ -19,6 +19,24 @@ services:
 #if (UsePostgres)
       ConnectionStrings__Default: Host=db;Database=app;Username=app;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
 #endif
+#if (UseExternal)
+      ExternalAuth__Providers__Google__ClientIds__0: ${GOOGLE_CLIENT_ID:-}
+      ExternalAuth__Providers__Apple__ClientIds__0: ${APPLE_CLIENT_ID:-}
+      ExternalAuth__Providers__Microsoft__ClientIds__0: ${MICROSOFT_CLIENT_ID:-}
+#endif
+#if (UseOidc)
+      Oidc__Authority: ${OIDC_AUTHORITY:?set OIDC_AUTHORITY in .env}
+      Oidc__Audience: ${OIDC_AUDIENCE:?set OIDC_AUDIENCE in .env}
+      Oidc__RoleClaim: ${OIDC_ROLE_CLAIM:-roles}
+#endif
+#if (UseSmtp)
+      Email__FromAddress: ${EMAIL_FROM:?set EMAIL_FROM in .env}
+      Email__Smtp__Host: ${SMTP_HOST:?set SMTP_HOST in .env}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Email__Smtp__UserName: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+#endif
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${API_PORT:-8080}:8080"
@@ -59,6 +77,35 @@ services:
       retries: 10
 #endif
 
+#if (UseOidc)
+  # A development OpenID Connect provider: docker compose --profile sso up -d keycloak. It imports
+  # keycloak/realm.json (user dev@example.com, password dev-password, role admin) and forgets
+  # everything on restart. Admin console: http://localhost:8081 (admin / admin). Never deploy it.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    profiles: ["sso"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
+#endif
+#if (UseSmtp)
+  # Catches mail for local testing: docker compose --profile mail up -d, with SMTP_HOST=mailpit,
+  # SMTP_PORT=1025 and SMTP_SECURITY=None. Read the mail at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.32
+    profiles: ["mail"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+
+#endif
   tunnel:
     image: cloudflare/cloudflared:2026.9.3
     profiles: ["tunnel"]

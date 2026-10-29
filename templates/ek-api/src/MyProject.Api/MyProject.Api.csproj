@@ -19,6 +19,9 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+<!--#if (UseSmtp) -->
+    <PackageReference Include="MailKit" />
+<!--#endif -->
 <!--#if (UsePostgres) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
@@ -27,6 +30,12 @@
 <!--#if (UseIdentity) -->
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+<!--#endif -->
+<!--#if (UseExternal) -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+<!--#endif -->
+<!--#if (UseOidc) -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 <!--#endif -->
   </ItemGroup>
 

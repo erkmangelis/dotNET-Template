@@ -1,10 +1,10 @@
 # Erkmangelis .NET templates
 
-`dotnet new` templates for .NET 10. Release 0.1 has one: **`ek-api`**, a hardened ASP.NET Core HTTP
+`dotnet new` templates for .NET 10. Release 0.2 has one: **`ek-api`**, a hardened ASP.NET Core HTTP
 API that fixes the security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.1.0.nupkg
+dotnet new install Erkmangelis.Templates.0.2.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
@@ -14,25 +14,30 @@ New here? Follow [docs/getting-started.md](docs/getting-started.md).
 
 | Option | Values | Default | Adds |
 | --- | --- | --- | --- |
-| `--auth` | `none`, `identity` | `none` | ASP.NET Core Identity API endpoints with bearer tokens, lockout, email confirmation and reset, an owner-only policy on the example feature. Turns PostgreSQL on. |
+| `--auth` | `none`, `identity`, `external`, `oidc` | `none` | `identity`: ASP.NET Core Identity accounts with bearer tokens or same-site cookie sessions with antiforgery, lockout, email confirmation and reset, authenticator-app MFA, passkeys. `external`: the same accounts plus Google, Apple and Microsoft sign-in, linked only on a provider-verified email. `oidc`: no local accounts; the API trusts access tokens from one OpenID Connect provider, with a development Keycloak and an enterprise SSO (SAML) recipe. Every mode adds roles and permissions, admin endpoints, hashed and scoped API keys, user profiles and an owner-only policy on the example feature, and turns PostgreSQL on. |
 | `--db` | `none`, `postgres` | `none` | PostgreSQL 18 through EF Core and Npgsql, the first migration, Testcontainers, a migration bundle, a compose service and a backup script. |
+| `--email` | `none`, `smtp` | `none` | Templated confirmation and reset emails through SMTP (MailKit), Mailpit for local testing. With `none`, emails are only logged, in development. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
-`--auth identity` needs a database, so it always generates the PostgreSQL output, with or without
-`--db postgres`. That leaves three supported auth and database combinations, each with three agent
-choices.
+Every `--auth` mode but `none` needs a database, so it always generates the PostgreSQL output, with
+or without `--db postgres`. That leaves six auth and database combinations, each with two email
+choices: ten combinations that change code. `--agents` only adds or removes `AGENTS.md` and
+`CLAUDE.md`, so CI rotates it across the ten instead of multiplying them by three, and a snapshot
+test checks that it touches nothing else.
 
 ## Supported means tested
 
 A combination is supported only if CI generates it and it passes the acceptance test
-([scripts/acceptance.sh](scripts/acceptance.sh)). For each of the nine combinations, CI:
+([scripts/acceptance.sh](scripts/acceptance.sh)). For each of the ten combinations, CI:
 
 1. generates the project outside the source tree from the packed `.nupkg`,
 2. checks that no template markers and nothing from unselected options are left behind,
 3. restores, builds with warnings as errors and runs the format check,
-4. runs all generated tests, including the ownership, mass-assignment and no-secrets-in-logs tests with `--auth identity`,
+4. runs all generated tests, including ownership, forbidden-access, mass-assignment, API key scope,
+   no-secrets-in-logs and (with `--auth external`) unverified-email takeover tests,
 5. checks that a deliberate style violation fails the build,
-6. starts it with `docker compose` and expects 200 from `/health/ready`.
+6. starts it with `docker compose` and expects 200 from `/health/ready`, and with `--email smtp` and
+   local accounts, that registering sends a confirmation email to the bundled Mailpit.
 
 Snapshot tests ([tests/Erkmangelis.Templates.Tests](tests/Erkmangelis.Templates.Tests)) pin the
 generated files for each combination, so every change to the output shows up in review.
@@ -56,7 +61,7 @@ No default dependency needs a commercial licence: no MediatR, no AutoMapper.
 
 ```bash
 dotnet test tests/Erkmangelis.Templates.Tests        # snapshot tests
-scripts/acceptance.sh --auth identity --db postgres --agents claude --compose
+scripts/acceptance.sh --auth identity --db postgres --email smtp --agents claude --compose
 ```
 
 Template sources live in [templates/ek-api](templates/ek-api). Conditional code uses the template

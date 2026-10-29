@@ -19,10 +19,12 @@
     "auth": {
       "type": "parameter",
       "datatype": "choice",
-      "description": "Authentication. 'identity' adds ASP.NET Core Identity API endpoints with bearer tokens and always turns PostgreSQL on.",
+      "description": "Authentication. Every choice except 'none' turns PostgreSQL on.",
       "choices": [
         { "choice": "none", "description": "No authentication." },
-        { "choice": "identity", "description": "ASP.NET Core Identity API endpoints with bearer tokens (needs PostgreSQL)." }
+        { "choice": "identity", "description": "Accounts in your database with ASP.NET Core Identity: passwords, bearer tokens or cookies, MFA, passkeys." },
+        { "choice": "external", "description": "Everything in 'identity', plus sign-in with Google, Apple and Microsoft." },
+        { "choice": "oidc", "description": "Accounts in a hosted OpenID Connect provider such as Keycloak or Entra ID; the API validates its access tokens." }
       ],
       "defaultValue": "none"
     },
@@ -33,6 +35,16 @@
       "choices": [
         { "choice": "none", "description": "No database; notes are kept in memory." },
         { "choice": "postgres", "description": "PostgreSQL 18 through EF Core and Npgsql." }
+      ],
+      "defaultValue": "none"
+    },
+    "email": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Email delivery. 'smtp' adds an email transport (SMTP with MailKit, or the log in development) and templated messages.",
+      "choices": [
+        { "choice": "none", "description": "No email delivery." },
+        { "choice": "smtp", "description": "SMTP through MailKit, with a log transport for development." }
       ],
       "defaultValue": "none"
     },
@@ -47,13 +59,29 @@
       ],
       "defaultValue": "shared"
     },
+    "UseAuth": {
+      "type": "computed",
+      "value": "(auth != \"none\")"
+    },
     "UseIdentity": {
       "type": "computed",
-      "value": "(auth == \"identity\")"
+      "value": "(auth == \"identity\" || auth == \"external\")"
+    },
+    "UseExternal": {
+      "type": "computed",
+      "value": "(auth == \"external\")"
+    },
+    "UseOidc": {
+      "type": "computed",
+      "value": "(auth == \"oidc\")"
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || auth == \"identity\")"
+      "value": "(db == \"postgres\" || auth != \"none\")"
+    },
+    "UseSmtp": {
+      "type": "computed",
+      "value": "(email == \"smtp\")"
     },
     "UseAgents": {
       "type": "computed",
@@ -84,7 +112,22 @@
         "evaluator": "C++",
         "datatype": "string",
         "cases": [
+          { "condition": "(UseExternal)", "value": "external" },
           { "condition": "(UseIdentity)", "value": "identity" },
+          { "condition": "(UseOidc)", "value": "oidc" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "EmailValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_EMAIL",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseSmtp)", "value": "smtp" },
           { "condition": "(true)", "value": "none" }
         ]
       }
@@ -115,7 +158,7 @@
       "generator": "constant",
       "replaces": "EK_TEMPLATE_VERSION",
       "parameters": {
-        "value": "0.1.0"
+        "value": "0.2.0"
       }
     }
   },
@@ -157,14 +200,80 @@
           ]
         },
         {
+          "condition": "(!UseAuth)",
+          "exclude": [
+            "src/MyProject.Api/Features/ApiKeys/**",
+            "src/MyProject.Api/Features/Auth/**",
+            "src/MyProject.Api/Features/Profiles/**",
+            "src/MyProject.Api/Data/ApiKeyConfiguration.cs",
+            "src/MyProject.Api/Data/UserProfileConfiguration.cs",
+            "tests/MyProject.Api.IntegrationTests/ApiKeyTests.cs",
+            "tests/MyProject.Api.IntegrationTests/ProfileTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/ApiKeys/**",
+            "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
+            "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
+            "tests/MyProject.Api.IntegrationTests/PermissionTests.cs",
+            "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/**",
+            "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+          ]
+        },
+        {
           "condition": "(!UseIdentity)",
           "exclude": [
-            "src/MyProject.Api/Features/Auth/**",
-            "src/MyProject.Api/Features/Notes/NoteAuthorization.cs",
+            "src/MyProject.Api/Features/Auth/AppUser.cs",
+            "src/MyProject.Api/Features/Auth/AuthSetup.cs",
+            "src/MyProject.Api/Features/Auth/EmailSenders.cs",
+            "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
+            "src/MyProject.Api/Features/Auth/BrowserSessions.cs",
+            "src/MyProject.Api/Features/Auth/Passkeys.cs",
+            "src/MyProject.Api/Features/Auth/UserAdminEndpoints.cs",
+            "src/MyProject.Api/Data/RoleConfiguration.cs",
             "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
-            "tests/MyProject.Api.IntegrationTests/NoteOwnershipTests.cs",
-            "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
-            "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+            "tests/MyProject.Api.IntegrationTests/BrowserSessionTests.cs",
+            "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs",
+            "tests/MyProject.Api.IntegrationTests/MfaTests.cs",
+            "tests/MyProject.Api.IntegrationTests/PasskeyTests.cs",
+            "tests/MyProject.Api.IntegrationTests/TestAuthenticator.cs"
+          ]
+        },
+        {
+          "condition": "(!UseExternal)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/External*.cs",
+            "tests/MyProject.Api.IntegrationTests/ExternalSignInTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/External*.cs"
+          ]
+        },
+        {
+          "condition": "(!UseOidc)",
+          "exclude": [
+            "keycloak/**",
+            "docs/enterprise-sso.md",
+            "src/MyProject.Api/Features/Auth/Oidc*.cs",
+            "tests/MyProject.Api.IntegrationTests/OidcTests.cs",
+            "tests/MyProject.Api.UnitTests/Features/Auth/Oidc*.cs"
+          ]
+        },
+        {
+          "condition": "(!UseExternal && !UseOidc)",
+          "exclude": [
+            "tests/MyProject.Api.IntegrationTests/TestTokens.cs"
+          ]
+        },
+        {
+          "condition": "(!UseSmtp)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Email/**",
+            "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Email/**",
+            "tests/MyProject.Api.IntegrationTests/SmtpEmailTransportTests.cs"
+          ]
+        },
+        {
+          "condition": "(UseSmtp)",
+          "exclude": [
+            "src/MyProject.Api/Features/Auth/EmailSenders.cs"
           ]
         },
         {
@@ -189,13 +298,18 @@
       ]
     },
     {
-      "condition": "(UsePostgres && !UseIdentity)",
+      "condition": "(UsePostgres && !UseAuth)",
       "source": ".migrations/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
       "condition": "(UseIdentity)",
       "source": ".migrations/identity/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseOidc)",
+      "source": ".migrations/oidc/",
       "target": "src/MyProject.Api/Data/Migrations/"
     }
   ],

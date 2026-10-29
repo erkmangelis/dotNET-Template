@@ -65,6 +65,10 @@ internal static class ApiDefaults
                 if (settings.Value.AllowedOrigins.Length > 0)
                 {
                     policy.WithOrigins(settings.Value.AllowedOrigins).AllowAnyHeader().AllowAnyMethod();
+                    if (settings.Value.AllowCredentials)
+                    {
+                        policy.AllowCredentials();
+                    }
                 }
             }));
 
@@ -114,8 +118,12 @@ internal static class ApiDefaults
 
         app.UseSecurityHeaders();
         app.UseCors();
-#if (UseIdentity)
+#if (UseAuth)
         app.UseAuthentication();
+#if (UseIdentity)
+        // Before authorization: a policy with several schemes replaces the result this check reads.
+        app.UseBrowserSessionAntiforgery();
+#endif
         app.UseAuthorization();
 #endif
         app.UseRateLimiter();

@@ -8,7 +8,7 @@ internal sealed class Note
 
     public Guid Id { get; init; }
 
-#if (UseIdentity)
+#if (UseAuth)
     /// <summary>The signed-in user who created the note. Only they can read it.</summary>
     public required string OwnerId { get; init; }
 

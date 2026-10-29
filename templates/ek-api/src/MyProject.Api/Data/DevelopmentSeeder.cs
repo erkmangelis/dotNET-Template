@@ -13,6 +13,12 @@ internal sealed partial class DevelopmentSeeder(
     IConfiguration configuration,
     TimeProvider time,
     ILogger<DevelopmentSeeder> logger)
+#elif (UseOidc)
+internal sealed partial class DevelopmentSeeder(
+    AppDbContext db,
+    IConfiguration configuration,
+    TimeProvider time,
+    ILogger<DevelopmentSeeder> logger)
 #else
 internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
 #endif
@@ -47,6 +53,20 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
                 throw new InvalidOperationException(
                     $"Could not create the development user: {string.Join("; ", created.Errors.Select(error => error.Description))}");
             }
+
+            await users.AddToRoleAsync(user, Roles.Admin);
+        }
+
+        var ownerId = user.Id;
+#elif (UseOidc)
+        // Accounts live in the provider, so the notes go to the subject named in configuration. The
+        // default is the dev user in keycloak/realm.json; for another provider set your own sub:
+        // dotnet user-secrets set DevelopmentSeed:Subject "<your sub claim>"
+        var ownerId = configuration["DevelopmentSeed:Subject"];
+        if (string.IsNullOrEmpty(ownerId))
+        {
+            LogSeedSkipped(logger);
+            return;
         }
 
 #endif
@@ -58,8 +78,8 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
             db.Notes.Add(new Note
             {
                 Id = Guid.CreateVersion7(createdAt),
-#if (UseIdentity)
-                OwnerId = user.Id,
+#if (UseAuth)
+                OwnerId = ownerId,
 #endif
                 Title = titles[i],
                 Content = "Development seed data.",
@@ -72,6 +92,10 @@ internal sealed class DevelopmentSeeder(AppDbContext db, TimeProvider time)
 #if (UseIdentity)
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Development seed skipped: set DevelopmentSeed:UserPassword in user secrets to create " + UserEmail + " with sample notes.")]
+    private static partial void LogSeedSkipped(ILogger logger);
+#elif (UseOidc)
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Development seed skipped: set DevelopmentSeed:Subject in user secrets to your provider's sub claim to get sample notes.")]
     private static partial void LogSeedSkipped(ILogger logger);
 #endif
 }
