@@ -29,7 +29,9 @@ Never edit a migration that has been merged.
 
 - One project, feature folders: `src/Acme.Notes.Api/Features/<Feature>/` holds that feature's
   contracts, endpoints and storage. Cross-cutting setup lives in `Infrastructure/`.
-- Routes are versioned: map new endpoints on the `/v1` group in `Program.cs`.
+- Routes are versioned with Asp.Versioning (`Infrastructure/ApiVersions.cs`): map new endpoints on a
+  versioned group in `Program.cs`. Add a version only for a breaking change, and map only the
+  endpoints that change to it with `MapToApiVersion`; see `docs/api.md`.
 - Endpoints return `TypedResults`. Errors are ProblemDetails (`TypedResults.Problem`), never plain strings.
 - Validate request contracts with DataAnnotations; the built-in validation runs them.
 - Request contracts list only the fields a client may set. Never bind an entity directly.

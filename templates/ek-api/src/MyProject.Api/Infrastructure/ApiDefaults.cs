@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+using Asp.Versioning;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -55,12 +56,25 @@ internal static class ApiDefaults
                 Activity.Current?.TraceId.ToString() ?? context.HttpContext.TraceIdentifier);
         });
         services.AddValidation();
-        services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
-        {
-            document.Info.Title = "MyProject API";
-            document.Info.Version = "v1";
-            return Task.CompletedTask;
-        }));
+        // Versions live in the URL (/v1, /v2). Responses list the versions an endpoint supports in
+        // api-supported-versions and the deprecated ones in api-deprecated-versions.
+        services.AddApiVersioning(options =>
+            {
+                options.DefaultApiVersion = new ApiVersion(1);
+                options.ApiVersionReader = new UrlSegmentApiVersionReader();
+                options.ReportApiVersions = true;
+            })
+            .AddApiExplorer(options =>
+            {
+                options.GroupNameFormat = "'v'V";
+                options.SubstituteApiVersionInUrl = true;
+            })
+            // One OpenAPI document per version: /openapi/v1.json, /openapi/v2.json.
+            .AddOpenApi(options => options.Document.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info.Title = "MyProject API";
+                return Task.CompletedTask;
+            }));
 
         services.AddCors();
         services.AddOptions<Microsoft.AspNetCore.Cors.Infrastructure.CorsOptions>()
@@ -138,8 +152,8 @@ internal static class ApiDefaults
 
         if (api.ExposeOpenApi)
         {
-            app.MapOpenApi().DisableRateLimiting();
-            app.MapScalarApiReference().DisableRateLimiting();
+            app.MapOpenApi().WithDocumentPerVersion().DisableRateLimiting();
+            app.MapScalarApiReference(options => options.AddDocuments(ApiVersions.Documents)).DisableRateLimiting();
         }
 
         return app;

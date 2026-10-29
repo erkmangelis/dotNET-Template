@@ -20,7 +20,8 @@ internal static class NoteEndpoints
         notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
         notes.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNote").WithSummary("Delete a note");
         notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
-        notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListV2Async).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
         notes.MapGet("/export", Export).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 
         return notes;
@@ -30,7 +31,7 @@ internal static class NoteEndpoints
         CreateNoteRequest request,
         INoteStore store,
         TimeProvider time,
-        HttpResponse response,
+        HttpContext http,
         CancellationToken cancellationToken)
     {
         // The store fills in the record metadata when it saves.
@@ -46,8 +47,8 @@ internal static class NoteEndpoints
             return DuplicateTitle();
         }
 
-        response.Headers.ETag = ETags.For(note.Version);
-        return TypedResults.Created($"/v1/notes/{note.Id}", NoteResponse.From(note));
+        http.Response.Headers.ETag = ETags.For(note.Version);
+        return TypedResults.Created(ApiVersions.PathFor(http, $"notes/{note.Id}"), NoteResponse.From(note));
     }
 
     private static async Task<Results<Ok<NoteResponse>, NotFound, StatusCodeHttpResult>> GetAsync(
@@ -172,6 +173,16 @@ internal static class NoteEndpoints
     /// <summary>Streams the notes as they are read, so a large export never sits in memory whole.</summary>
     private static Ok<IAsyncEnumerable<NoteResponse>> Export([AsParameters] NoteFilter filter, INoteStore store) =>
         TypedResults.Ok(store.StreamAsync(filter).Select(NoteResponse.From));
+
+    /// <summary>Version 2 of the list: the same filters and page, but no total count, which costs a full scan on a large table.</summary>
+    private static async Task<Ok<PageSlice<NoteResponse>>> ListV2Async(
+        [AsParameters] NoteListQuery query,
+        INoteStore store,
+        CancellationToken cancellationToken)
+    {
+        var notes = await store.ListSliceAsync(query, cancellationToken);
+        return TypedResults.Ok(notes.Map(NoteResponse.From));
+    }
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
         [AsParameters] NoteListQuery query,

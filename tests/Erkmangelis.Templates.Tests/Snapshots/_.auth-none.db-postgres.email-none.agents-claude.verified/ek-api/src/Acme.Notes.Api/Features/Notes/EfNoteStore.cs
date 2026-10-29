@@ -74,6 +74,17 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         return new PagedResult<Note>(items, query.PageNumber, query.PageLength, total);
     }
 
+    public async Task<PageSlice<Note>> ListSliceAsync(NoteListQuery query, CancellationToken cancellationToken)
+    {
+        var notes = Matching(query);
+        var items = await query.Order(notes)
+            .Skip(Paging.Skip(query.PageNumber, query.PageLength))
+            .Take(query.PageLength + 1)
+            .ToListAsync(cancellationToken);
+
+        return PageSlice<Note>.FromOneExtra(items, query.PageNumber, query.PageLength);
+    }
+
     public IAsyncEnumerable<Note> StreamAsync(NoteFilter filter) =>
         filter.Order(Matching(filter)).AsAsyncEnumerable();
 

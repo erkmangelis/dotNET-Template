@@ -82,6 +82,20 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
         }
     }
 
+    public Task<PageSlice<Note>> ListSliceAsync(NoteListQuery query, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            var items = query.Order(Matching(query))
+                .Skip(Paging.Skip(query.PageNumber, query.PageLength))
+                .Take(query.PageLength + 1)
+                .Select(note => note.Clone())
+                .ToList();
+
+            return Task.FromResult(PageSlice<Note>.FromOneExtra(items, query.PageNumber, query.PageLength));
+        }
+    }
+
     public async IAsyncEnumerable<Note> StreamAsync(NoteFilter filter)
     {
         List<Note> notes;

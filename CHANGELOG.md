@@ -36,7 +36,16 @@ R03, Data and API depth.
   changed. `ETags` in `Common/` parses both headers for any feature.
 - Streaming: `GET /v1/notes/export` streams every note matching the list's filters as one JSON array
   through `IAsyncEnumerable`, never holding the result in memory.
+- API versions: Asp.Versioning (MIT) with the version in the URL, one OpenAPI document per version,
+  both in the Scalar reference, and `api-supported-versions` on responses. Notes serve v1 and v2;
+  `GET /v2/notes` drops the total count (`PageSlice<T>`), everything else is unchanged in v2.
+  Location headers follow the requested version.
 - `docs/api.md` in generated projects: the API conventions above, for clients and for new features.
+
+### Changed
+
+- Notes gain `PUT` and `DELETE`, and responses gain `updatedAt` and `version`.
+- `/v1` routes are mapped through Asp.Versioning instead of a plain route group.
 
 ## [0.2.0] - Unreleased
 

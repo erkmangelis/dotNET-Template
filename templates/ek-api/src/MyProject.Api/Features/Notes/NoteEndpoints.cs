@@ -43,7 +43,8 @@ internal static class NoteEndpoints
 #if (UsePostgres)
         notes.MapGet("/{id:guid}/history", HistoryAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
 #endif
-        notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListV2Async).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
         notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 #else
         notes.MapPost("/", CreateAsync).WithIdempotency().WithName("CreateNote").WithSummary("Create a note");
@@ -53,7 +54,8 @@ internal static class NoteEndpoints
 #if (UsePostgres)
         notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
 #endif
-        notes.MapGet("/", ListAsync).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
+        notes.MapGet("/", ListV2Async).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
         notes.MapGet("/export", Export).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 #endif
 
@@ -78,7 +80,7 @@ internal static class NoteEndpoints
         CreateNoteRequest request,
         INoteStore store,
         TimeProvider time,
-        HttpResponse response,
+        HttpContext http,
 #if (UseAuth)
         ClaimsPrincipal user,
 #endif
@@ -100,8 +102,8 @@ internal static class NoteEndpoints
             return DuplicateTitle();
         }
 
-        response.Headers.ETag = ETags.For(note.Version);
-        return TypedResults.Created($"/v1/notes/{note.Id}", NoteResponse.From(note));
+        http.Response.Headers.ETag = ETags.For(note.Version);
+        return TypedResults.Created(ApiVersions.PathFor(http, $"notes/{note.Id}"), NoteResponse.From(note));
     }
 
     private static async Task<Results<Ok<NoteResponse>, NotFound, StatusCodeHttpResult>> GetAsync(
@@ -283,6 +285,23 @@ internal static class NoteEndpoints
     private static Ok<IAsyncEnumerable<NoteResponse>> Export([AsParameters] NoteFilter filter, INoteStore store) =>
         TypedResults.Ok(store.StreamAsync(filter).Select(NoteResponse.From));
 #endif
+
+    /// <summary>Version 2 of the list: the same filters and page, but no total count, which costs a full scan on a large table.</summary>
+    private static async Task<Ok<PageSlice<NoteResponse>>> ListV2Async(
+        [AsParameters] NoteListQuery query,
+        INoteStore store,
+#if (UseAuth)
+        ClaimsPrincipal user,
+#endif
+        CancellationToken cancellationToken)
+    {
+#if (UseAuth)
+        var notes = await store.ListSliceAsync(user.GetUserId(), query, cancellationToken);
+#else
+        var notes = await store.ListSliceAsync(query, cancellationToken);
+#endif
+        return TypedResults.Ok(notes.Map(NoteResponse.From));
+    }
 
     private static async Task<Ok<PagedResult<NoteResponse>>> ListAsync(
         [AsParameters] NoteListQuery query,

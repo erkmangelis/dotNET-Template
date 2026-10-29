@@ -11,8 +11,9 @@ var app = builder.Build();
 app.UseApiDefaults();
 app.MapHealthEndpoints();
 
-var v1 = app.MapGroup("/v1");
-v1.MapNoteEndpoints();
+var api = app.NewVersionedApi();
+// Notes is the first feature with a second version.
+api.MapVersionedGroup(ApiVersions.V1, ApiVersions.V2).MapNoteEndpoints();
 
 await app.PrepareDatabaseAsync();
 await app.RunAsync();

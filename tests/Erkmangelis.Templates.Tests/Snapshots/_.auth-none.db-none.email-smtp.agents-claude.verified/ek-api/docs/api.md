@@ -2,6 +2,28 @@
 
 How the endpoints behave, using Notes as the example. Follow the same rules when you add a feature.
 
+## Versions
+
+The version is the first path segment: `/v1/notes`, `/v2/notes`. Each version has its own OpenAPI
+document (`/openapi/v1.json`, `/openapi/v2.json`), and the API reference at `/scalar` lists both.
+Every response names the versions its endpoint serves in `api-supported-versions`.
+
+A new version exists only for a breaking change: removing or renaming a field, changing a type or a
+status code. Adding a response field or an optional request field ships in the current version.
+Version 2 changes one thing: `GET /v2/notes` drops `totalCount` and `totalPages`, because counting
+every match costs a full scan on a large table, and keeps `hasNextPage`. Every other Notes endpoint
+serves both versions unchanged, and the rest of the API is version 1 only.
+
+To change an endpoint in a new version:
+
+1. Add the version to `ApiVersions` and its document to `ApiVersions.Documents`.
+2. Serve the feature's group in both versions (`api.MapVersionedGroup(ApiVersions.V1, ApiVersions.V3)`).
+3. Map the old handler with `.MapToApiVersion(V1)` and the new one with `.MapToApiVersion(V3)`, each
+   with its own `WithName`.
+
+When a version is on its way out, mark it with `.HasDeprecatedApiVersion(...)` so responses list it in
+`api-deprecated-versions`, tell clients the date, and remove it only after that date.
+
 ## Lists: paging, filtering and sorting
 
 `GET /v1/notes` returns one page: `items`, `page`, `pageSize`, `totalCount`, `totalPages` and
