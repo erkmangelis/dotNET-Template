@@ -124,7 +124,7 @@ services:
   # keycloak/realm.json (user dev@example.com, password dev-password, role admin) and forgets
   # everything on restart. Admin console: http://localhost:8081 (admin / admin). Never deploy it.
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4.2
+    image: quay.io/keycloak/keycloak:26.8.1-1
     profiles: ["sso"]
     command: ["start-dev", "--import-realm"]
     environment:
