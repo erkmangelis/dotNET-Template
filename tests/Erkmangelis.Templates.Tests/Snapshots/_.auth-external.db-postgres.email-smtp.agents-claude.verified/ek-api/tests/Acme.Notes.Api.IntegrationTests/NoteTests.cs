@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -132,6 +133,61 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_unchanged_note_answers_304_to_its_etag()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var etag = created.Headers.ETag;
+        Assert.NotNull(etag);
+        Assert.False(etag.IsWeak);
+
+        using var conditional = new HttpRequestMessage(HttpMethod.Get, created.Headers.Location);
+        conditional.Headers.IfNoneMatch.Add(etag);
+        var unchanged = await _client.SendAsync(conditional, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NotModified, unchanged.StatusCode);
+        Assert.Empty(await unchanged.Content.ReadAsByteArrayAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(etag, unchanged.Headers.ETag);
+    }
+
+    [Fact]
+    public async Task An_update_with_an_old_etag_in_if_match_answers_412_and_changes_nothing()
+    {
+        var created = await _client.PostAsJsonAsync("/v1/notes", new { title = UniqueTitle() }, TestContext.Current.CancellationToken);
+        var original = created.Headers.ETag!;
+        var first = await SendWithIfMatchAsync(HttpMethod.Put, created.Headers.Location!, original, new { title = UniqueTitle() });
+
+        var second = await SendWithIfMatchAsync(HttpMethod.Put, created.Headers.Location!, original, new { title = UniqueTitle() });
+        var delete = await SendWithIfMatchAsync(HttpMethod.Delete, created.Headers.Location!, original, body: null);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.NotEqual(original, first.Headers.ETag);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, second.StatusCode);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, delete.StatusCode);
+        var current = await _client.GetAsync(created.Headers.Location, TestContext.Current.CancellationToken);
+        Assert.Equal(first.Headers.ETag, current.Headers.ETag);
+        var deleted = await SendWithIfMatchAsync(HttpMethod.Delete, created.Headers.Location!, current.Headers.ETag!, body: null);
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_export_streams_every_matching_note_in_order()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        // More than one page, to show the export is not paged.
+        var titles = Enumerable.Range(0, Paging.DefaultPageSize + 5).Select(i => $"{marker} {i:D3}").ToList();
+        foreach (var title in titles)
+        {
+            await _client.PostAsJsonAsync("/v1/notes", new { title }, TestContext.Current.CancellationToken);
+        }
+
+        var exported = await _client.GetFromJsonAsync<List<NoteResponse>>(
+            $"/v1/notes/export?search={marker}&sort=title",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(titles, exported!.Select(note => note.Title));
+    }
+
+    [Fact]
     public async Task Updating_to_another_notes_title_answers_409()
     {
         var first = await CreateAsync(UniqueTitle());
@@ -245,6 +301,18 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.True(problem.GetProperty("errors").TryGetProperty("Sort", out _));
+    }
+
+    private async Task<HttpResponseMessage> SendWithIfMatchAsync(HttpMethod method, Uri location, EntityTagHeaderValue etag, object? body)
+    {
+        using var request = new HttpRequestMessage(method, location);
+        request.Headers.IfMatch.Add(etag);
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body);
+        }
+
+        return await _client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
     private async Task<NoteResponse> CreateAsync(string title)

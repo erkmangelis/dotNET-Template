@@ -70,12 +70,7 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
     {
         lock (_lock)
         {
-            var matching = query.Filter(_notes.Where(note => note.DeletedAt is null).AsQueryable());
-            if (!string.IsNullOrEmpty(query.Search))
-            {
-                matching = matching.Where(note => note.Title.Contains(query.Search, StringComparison.OrdinalIgnoreCase));
-            }
-
+            var matching = Matching(query);
             var total = matching.LongCount();
             var items = query.Order(matching)
                 .Skip(Paging.Skip(query.PageNumber, query.PageLength))
@@ -85,6 +80,29 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
 
             return Task.FromResult(new PagedResult<Note>(items, query.PageNumber, query.PageLength, total));
         }
+    }
+
+    public async IAsyncEnumerable<Note> StreamAsync(NoteFilter filter)
+    {
+        List<Note> notes;
+        lock (_lock)
+        {
+            notes = [.. filter.Order(Matching(filter)).Select(note => note.Clone())];
+        }
+
+        foreach (var note in notes)
+        {
+            await Task.Yield();
+            yield return note;
+        }
+    }
+
+    private IQueryable<Note> Matching(NoteFilter filter)
+    {
+        var matching = filter.Filter(_notes.Where(note => note.DeletedAt is null).AsQueryable());
+        return string.IsNullOrEmpty(filter.Search)
+            ? matching
+            : matching.Where(note => note.Title.Contains(filter.Search, StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsStale(Note note) =>

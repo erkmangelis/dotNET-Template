@@ -31,6 +31,11 @@ R03, Data and API depth.
   different request with the key answers 422, a retry while the first runs answers 409, and 5xx
   responses are not kept. Keys are per caller, stored in the database (in memory with `--db none`)
   for `Idempotency:RetentionHours` and cleaned up hourly.
+- Conditional requests: notes answer with a strong `ETag` from their version; `If-None-Match` on
+  `GET /v1/notes/{id}` answers 304, and `If-Match` on `PUT` and `DELETE` answers 412 when the note
+  changed. `ETags` in `Common/` parses both headers for any feature.
+- Streaming: `GET /v1/notes/export` streams every note matching the list's filters as one JSON array
+  through `IAsyncEnumerable`, never holding the result in memory.
 - `docs/api.md` in generated projects: the API conventions above, for clients and for new features.
 
 ## [0.2.0] - Unreleased

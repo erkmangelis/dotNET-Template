@@ -64,14 +64,7 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 
     public async Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {
-        var notes = db.Notes.AsNoTracking();
-        notes = query.Filter(notes);
-        if (!string.IsNullOrEmpty(query.Search))
-        {
-            var pattern = $"%{EscapeLike(query.Search)}%";
-            notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
-        }
-
+        var notes = Matching(query);
         var total = await notes.LongCountAsync(cancellationToken);
         var items = await query.Order(notes)
             .Skip(Paging.Skip(query.PageNumber, query.PageLength))
@@ -79,6 +72,22 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
             .ToListAsync(cancellationToken);
 
         return new PagedResult<Note>(items, query.PageNumber, query.PageLength, total);
+    }
+
+    public IAsyncEnumerable<Note> StreamAsync(NoteFilter filter) =>
+        filter.Order(Matching(filter)).AsAsyncEnumerable();
+
+    private IQueryable<Note> Matching(NoteFilter filter)
+    {
+        var notes = db.Notes.AsNoTracking();
+        notes = filter.Filter(notes);
+        if (!string.IsNullOrEmpty(filter.Search))
+        {
+            var pattern = $"%{EscapeLike(filter.Search)}%";
+            notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
+        }
+
+        return notes;
     }
 
     /// <summary>Whether another note of the same owner already has this note's title. Deleted notes do not count.</summary>

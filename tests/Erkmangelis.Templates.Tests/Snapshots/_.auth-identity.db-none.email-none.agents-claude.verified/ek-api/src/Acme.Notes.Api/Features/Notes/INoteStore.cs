@@ -31,4 +31,7 @@ internal interface INoteStore
 
     /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, filtered and sorted by <paramref name="query"/>.</summary>
     Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>All of the owner's notes that match <paramref name="filter"/>, one at a time, without loading them all into memory.</summary>
+    IAsyncEnumerable<Note> StreamAsync(string ownerId, NoteFilter filter);
 }

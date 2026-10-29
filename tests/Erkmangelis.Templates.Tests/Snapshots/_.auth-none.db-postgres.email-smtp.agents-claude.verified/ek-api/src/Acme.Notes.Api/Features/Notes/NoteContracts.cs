@@ -17,10 +17,10 @@ public sealed record CreateNoteRequest
 }
 
 /// <summary>
-/// Filters, sort and page for listing notes, bound from the query string. Sorting is limited to
-/// <see cref="Sorts"/>, and every sort ends with the id so pages never overlap.
+/// Which notes to return and in what order, bound from the query string. Sorting is limited to
+/// <see cref="Sorts"/>, and every sort ends with the id so the order is stable.
 /// </summary>
-public sealed record NoteListQuery : IValidatableObject
+public record NoteFilter : IValidatableObject
 {
     public const string DefaultSort = "-createdAt";
 
@@ -41,17 +41,6 @@ public sealed record NoteListQuery : IValidatableObject
 
     /// <summary>Comma-separated fields, each optionally prefixed with <c>-</c> for descending. Newest first by default.</summary>
     public string? Sort { get; init; }
-
-    /// <summary>The page to return, from 1. Nullable only so the query string may leave it out.</summary>
-    [Range(1, Paging.MaxPage)]
-    public int? Page { get; init; }
-
-    [Range(1, Paging.MaxPageSize)]
-    public int? PageSize { get; init; }
-
-    internal int PageNumber => Page ?? 1;
-
-    internal int PageLength => PageSize ?? Paging.DefaultPageSize;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -85,6 +74,21 @@ public sealed record NoteListQuery : IValidatableObject
         Sorts.Apply(notes, Sort ?? DefaultSort).ThenByDescending(note => note.Id);
 }
 
+/// <summary>A <see cref="NoteFilter"/> plus the page to return.</summary>
+public sealed record NoteListQuery : NoteFilter
+{
+    /// <summary>The page to return, from 1. Nullable only so the query string may leave it out.</summary>
+    [Range(1, Paging.MaxPage)]
+    public int? Page { get; init; }
+
+    [Range(1, Paging.MaxPageSize)]
+    public int? PageSize { get; init; }
+
+    internal int PageNumber => Page ?? 1;
+
+    internal int PageLength => PageSize ?? Paging.DefaultPageSize;
+}
+
 /// <summary>Replaces a note's title and content.</summary>
 public sealed record UpdateNoteRequest
 {
@@ -102,7 +106,10 @@ public sealed record UpdateNoteRequest
     public string? Content { get; init; }
 }
 
-/// <summary>A note. <c>Version</c> changes on every save; send it back with an update so it cannot overwrite someone else's change.</summary>
+/// <summary>
+/// A note. <c>Version</c> changes on every save, and the <c>ETag</c> response header carries it: send
+/// either back with an update so it cannot overwrite someone else's change.
+/// </summary>
 public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, uint Version)
 {
     internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt, note.UpdatedAt, note.Version);

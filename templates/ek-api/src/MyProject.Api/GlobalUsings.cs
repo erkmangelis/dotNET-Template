@@ -17,7 +17,7 @@ global using MyProject.Api.Features.Notes;
 global using MyProject.Api.Features.Profiles;
 #endif
 global using MyProject.Api.Infrastructure;
-global using MyProject.Api.Infrastructure.Idempotency;
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif
+global using MyProject.Api.Infrastructure.Idempotency;

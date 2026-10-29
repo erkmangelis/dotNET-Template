@@ -68,19 +68,12 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
 #if (UseAuth)
     public async Task<PagedResult<Note>> ListAsync(string? ownerId, NoteListQuery query, CancellationToken cancellationToken)
     {
-        var notes = ownerId is null ? db.Notes.AsNoTracking() : db.Notes.AsNoTracking().Where(note => note.OwnerId == ownerId);
+        var notes = Matching(ownerId, query);
 #else
     public async Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {
-        var notes = db.Notes.AsNoTracking();
+        var notes = Matching(query);
 #endif
-        notes = query.Filter(notes);
-        if (!string.IsNullOrEmpty(query.Search))
-        {
-            var pattern = $"%{EscapeLike(query.Search)}%";
-            notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
-        }
-
         var total = await notes.LongCountAsync(cancellationToken);
         var items = await query.Order(notes)
             .Skip(Paging.Skip(query.PageNumber, query.PageLength))
@@ -88,6 +81,31 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
             .ToListAsync(cancellationToken);
 
         return new PagedResult<Note>(items, query.PageNumber, query.PageLength, total);
+    }
+
+#if (UseAuth)
+    public IAsyncEnumerable<Note> StreamAsync(string ownerId, NoteFilter filter) =>
+        filter.Order(Matching(ownerId, filter)).AsAsyncEnumerable();
+
+    private IQueryable<Note> Matching(string? ownerId, NoteFilter filter)
+    {
+        var notes = ownerId is null ? db.Notes.AsNoTracking() : db.Notes.AsNoTracking().Where(note => note.OwnerId == ownerId);
+#else
+    public IAsyncEnumerable<Note> StreamAsync(NoteFilter filter) =>
+        filter.Order(Matching(filter)).AsAsyncEnumerable();
+
+    private IQueryable<Note> Matching(NoteFilter filter)
+    {
+        var notes = db.Notes.AsNoTracking();
+#endif
+        notes = filter.Filter(notes);
+        if (!string.IsNullOrEmpty(filter.Search))
+        {
+            var pattern = $"%{EscapeLike(filter.Search)}%";
+            notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
+        }
+
+        return notes;
     }
 
     /// <summary>Whether another note of the same owner already has this note's title. Deleted notes do not count.</summary>

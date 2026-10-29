@@ -31,4 +31,7 @@ internal interface INoteStore
 
     /// <summary>All notes, filtered and sorted by <paramref name="query"/>.</summary>
     Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken);
+
+    /// <summary>All notes that match <paramref name="filter"/>, one at a time, without loading them all into memory.</summary>
+    IAsyncEnumerable<Note> StreamAsync(NoteFilter filter);
 }
