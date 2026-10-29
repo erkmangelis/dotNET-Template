@@ -49,7 +49,7 @@ internal static class NoteEndpoints
 #endif
         CancellationToken cancellationToken)
     {
-        // Whole microseconds, the precision PostgreSQL stores, so the response matches later reads.
+        // Whole microseconds, the precision databases usually store, so the response matches later reads.
         var utcNow = time.GetUtcNow();
         var now = utcNow.AddTicks(-(utcNow.Ticks % TimeSpan.TicksPerMicrosecond));
         var note = new Note

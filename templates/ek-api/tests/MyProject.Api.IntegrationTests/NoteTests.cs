@@ -83,7 +83,11 @@ public sealed class NoteTests(ApiFactory api) : IAsyncLifetime
 
         var response = await _client.PostAsJsonAsync(
             "/v1/notes",
+#if (UseIdentity)
             new { id = forgedId, title = UniqueTitle(), createdAt = forgedDate, ownerId = "someone-else" },
+#else
+            new { id = forgedId, title = UniqueTitle(), createdAt = forgedDate },
+#endif
             TestContext.Current.CancellationToken);
 
         var note = await response.Content.ReadFromJsonAsync<NoteResponse>(TestContext.Current.CancellationToken);

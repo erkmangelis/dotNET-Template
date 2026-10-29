@@ -103,6 +103,13 @@
         ]
       }
     },
+    "AppSlug": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "slug",
+      "replaces": "ek-app-slug",
+      "description": "The project name made safe for Docker Compose project and image names."
+    },
     "TemplateVersion": {
       "type": "generated",
       "generator": "constant",
@@ -110,6 +117,20 @@
       "parameters": {
         "value": "0.1.0"
       }
+    }
+  },
+  "forms": {
+    "slug": {
+      "identifier": "chain",
+      "steps": [ "slugLowerCase", "slugReplace" ]
+    },
+    "slugLowerCase": {
+      "identifier": "lowerCaseInvariant"
+    },
+    "slugReplace": {
+      "identifier": "replace",
+      "pattern": "[^a-z0-9]+",
+      "replacement": "-"
     }
   },
   "sources": [
@@ -210,6 +231,21 @@
       ]
     },
     "**/.env.example": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/.editorconfig": {
       "operations": [
         {
           "type": "conditional",
