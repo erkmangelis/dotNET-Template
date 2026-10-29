@@ -37,6 +37,10 @@ internal sealed class JobsOptions
     [Range(0, 3600)]
     public int RetryDelaySeconds { get; set; } = 10;
 
+    /// <summary>How long <see cref="JobIdempotency"/> remembers that a job's key is done.</summary>
+    [Range(1, 365)]
+    public int IdempotencyRetentionDays { get; set; } = 7;
+
     /// <summary>How many jobs run at the same time in this app.</summary>
     [Range(1, 100)]
     public int WorkerCount { get; set; } = 2;

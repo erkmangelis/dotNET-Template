@@ -36,6 +36,7 @@ internal static class JobsSetup
 #endif
             .ValidateOnStart();
 
+        services.AddScoped<JobIdempotency>();
 #if (UseHostedJobs)
         services.AddSingleton<InProcessJobQueue>();
         services.AddSingleton<IJobQueue>(provider => provider.GetRequiredService<InProcessJobQueue>());

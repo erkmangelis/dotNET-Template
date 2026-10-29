@@ -16,6 +16,7 @@ internal static class JobsSetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddScoped<JobIdempotency>();
         services.AddHangfire((provider, hangfire) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;

@@ -51,6 +51,23 @@ Change a schedule without a deploy through settings, for example
 `Jobs__Schedules__purge-deleted-notes="0 4 * * *"`. Five fields: minute, hour, day of month, month,
 day of week.
 
+### Running a job's effect once
+
+Any job can run more than once: a retry after it failed half-way, a second delivery after a crash, a
+requeue. Some work is naturally safe to repeat (delete what is expired). For the rest, wrap it in
+`JobIdempotency.RunOnceAsync(jobName, key, work)` with a key that names this piece of work, the way
+`ImportNotesJob` uses the import's id:
+
+```csharp
+await idempotency.RunOnceAsync(nameof(ImportNotesJob), import.ImportId.ToString(), token => ImportAsync(import, token), cancellationToken);
+```
+
+A run with a key that already finished does nothing and returns false.
+If the work throws, the key is dropped so the retry runs it. Without a database the keys are kept in
+memory, so they are forgotten when the app stops.
+`JobIdempotencyTests` proves that running an import twice creates its notes once, even when one was
+deleted in between.
+
 ### Retries and failed jobs
 
 A job that throws runs again, up to `Jobs:MaxAttempts` times in all (default 5). The first retry

@@ -14,6 +14,7 @@ internal static class JobsSetup
                 "Jobs:Schedules values must be cron expressions with five fields.")
             .ValidateOnStart();
 
+        services.AddScoped<JobIdempotency>();
         services.AddSingleton<InProcessJobQueue>();
         services.AddSingleton<IJobQueue>(provider => provider.GetRequiredService<InProcessJobQueue>());
         services.AddSingleton<InProcessFailedJobs>();

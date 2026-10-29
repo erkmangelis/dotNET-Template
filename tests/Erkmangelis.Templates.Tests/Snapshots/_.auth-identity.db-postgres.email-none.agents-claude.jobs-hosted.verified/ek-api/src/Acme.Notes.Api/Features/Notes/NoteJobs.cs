@@ -24,12 +24,25 @@ public sealed record ImportNotesResponse(Guid ImportId, string JobId);
 internal sealed record NoteImport(Guid ImportId, string OwnerId, CreateNoteRequest[] Notes);
 
 /// <summary>
-/// Creates the notes of an import. A title the owner already uses is skipped, as a single create
-/// would refuse it.
+/// Creates the notes of an import, once: a second run of the same import (a retry or a second
+/// delivery) changes nothing, even when a note it created was deleted since. A title the owner
+/// already uses is skipped, as a single create would refuse it.
 /// </summary>
-internal sealed partial class ImportNotesJob(INoteStore store, TimeProvider time, ILogger<ImportNotesJob> logger) : IJob<NoteImport>
+internal sealed partial class ImportNotesJob(
+    INoteStore store,
+    JobIdempotency idempotency,
+    TimeProvider time,
+    ILogger<ImportNotesJob> logger) : IJob<NoteImport>
 {
     public async Task RunAsync(NoteImport import, CancellationToken cancellationToken)
+    {
+        if (!await idempotency.RunOnceAsync(nameof(ImportNotesJob), import.ImportId.ToString(), token => ImportAsync(import, token), cancellationToken))
+        {
+            LogAlreadyDone(logger, import.ImportId);
+        }
+    }
+
+    private async Task ImportAsync(NoteImport import, CancellationToken cancellationToken)
     {
         var created = 0;
         foreach (var item in import.Notes)
@@ -54,6 +67,9 @@ internal sealed partial class ImportNotesJob(INoteStore store, TimeProvider time
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Note import {ImportId} created {Created} notes and skipped {Skipped} duplicate titles")]
     private static partial void LogImported(ILogger logger, Guid importId, int created, int skipped);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Note import {ImportId} already ran; nothing to do")]
+    private static partial void LogAlreadyDone(ILogger logger, Guid importId);
 }
 
 /// <summary>Removes notes for good <see cref="RetentionPeriod"/> after they were deleted. Their audit history stays.</summary>

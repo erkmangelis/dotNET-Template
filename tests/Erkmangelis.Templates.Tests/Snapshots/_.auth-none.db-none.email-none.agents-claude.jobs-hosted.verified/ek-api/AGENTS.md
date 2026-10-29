@@ -37,7 +37,8 @@ dotnet test
   timer. See `docs/background-work.md`.
 - Slow work a request asks for goes into a job (`IJob<TArgs>`, queued with `IJobQueue`); scheduled
   work is an `IRecurringJob`. Job arguments are records of ids and values with arrays, never
-  entities or services. Make every job safe to run twice.
+  entities or services. Every job must be safe to run twice: wrap effects that must happen once
+  in `JobIdempotency.RunOnceAsync` with a key for that piece of work.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

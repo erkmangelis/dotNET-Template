@@ -343,12 +343,14 @@
             "src/MyProject.Api/Infrastructure/Jobs/Jobs.cs",
             "src/MyProject.Api/Infrastructure/Jobs/JobsOptions.cs",
             "src/MyProject.Api/Infrastructure/Jobs/JobsSetup.cs",
+            "src/MyProject.Api/Infrastructure/Jobs/JobIdempotency.cs",
             "src/MyProject.Api/Features/Notes/NoteJobs.cs",
             "src/MyProject.Api/Features/Jobs/**",
             "tests/MyProject.Api.IntegrationTests/Eventually.cs",
             "tests/MyProject.Api.IntegrationTests/JobTests.cs",
             "tests/MyProject.Api.IntegrationTests/JobFailureTests.cs",
             "tests/MyProject.Api.IntegrationTests/FlakyJob.cs",
+            "tests/MyProject.Api.IntegrationTests/JobIdempotencyTests.cs",
             "tests/MyProject.Api.UnitTests/Infrastructure/Jobs/JobsOptionsTests.cs"
           ]
         },
