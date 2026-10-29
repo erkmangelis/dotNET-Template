@@ -26,7 +26,7 @@ jobs:
         run: dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts
       - name: Snapshot tests
         run: dotnet test tests/Erkmangelis.Templates.Tests -c Release
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package
           path: artifacts/*.nupkg
