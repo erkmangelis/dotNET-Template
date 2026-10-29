@@ -1,7 +1,7 @@
 namespace MyProject.Api.Features.Notes;
 
 /// <summary>The example feature: a short text note.</summary>
-#if (UsePostgres)
+#if (UseDatabase)
 internal sealed class Note : IRecordMetadata, ISoftDeletable, IAudited
 #else
 internal sealed class Note : IRecordMetadata, ISoftDeletable
@@ -36,10 +36,17 @@ internal sealed class Note : IRecordMetadata, ISoftDeletable
 
 #if (UsePostgres)
     /// <summary>Changes on every save: PostgreSQL's <c>xmin</c> row version. A save that expects an older one fails.</summary>
+    public uint Version { get; set; }
+#elif (UseSqlServer)
+    /// <summary>Changes on every save: SQL Server's <c>rowversion</c>. A save that expects an older one fails.</summary>
+    public ulong Version { get; set; }
+#elif (UseSqlite)
+    /// <summary>Changes on every save: <see cref="EfNoteStore"/> increments it. A save that expects an older one fails.</summary>
+    public ulong Version { get; set; }
 #else
     /// <summary>Changes on every save. A save that expects an older one fails.</summary>
-#endif
     public uint Version { get; set; }
+#endif
 #if (UseAuth)
 
     public string? DeletedBy { get; set; }

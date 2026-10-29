@@ -19,7 +19,7 @@
     "auth": {
       "type": "parameter",
       "datatype": "choice",
-      "description": "Authentication. Every choice except 'none' turns PostgreSQL on.",
+      "description": "Authentication. Every choice except 'none' needs a database, and turns PostgreSQL on when --db is none.",
       "choices": [
         { "choice": "none", "description": "No authentication." },
         { "choice": "identity", "description": "Accounts in your database with ASP.NET Core Identity: passwords, bearer tokens or cookies, MFA, passkeys." },
@@ -31,10 +31,12 @@
     "db": {
       "type": "parameter",
       "datatype": "choice",
-      "description": "Database. 'postgres' adds EF Core with Npgsql, migrations, Testcontainers and a compose service.",
+      "description": "Database, through EF Core with migrations, audit history and a compose deployment.",
       "choices": [
         { "choice": "none", "description": "No database; notes are kept in memory." },
-        { "choice": "postgres", "description": "PostgreSQL 18 through EF Core and Npgsql." }
+        { "choice": "postgres", "description": "PostgreSQL 18 through Npgsql, with Testcontainers." },
+        { "choice": "sqlserver", "description": "SQL Server 2022 through Microsoft.Data.SqlClient, with Testcontainers. Runs on amd64 only." },
+        { "choice": "sqlite", "description": "SQLite in a file next to the app: one machine, light write load." }
       ],
       "defaultValue": "none"
     },
@@ -77,7 +79,19 @@
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || auth != \"none\")"
+      "value": "(db == \"postgres\" || (db == \"none\" && auth != \"none\"))"
+    },
+    "UseSqlServer": {
+      "type": "computed",
+      "value": "(db == \"sqlserver\")"
+    },
+    "UseSqlite": {
+      "type": "computed",
+      "value": "(db == \"sqlite\")"
+    },
+    "UseDatabase": {
+      "type": "computed",
+      "value": "(db != \"none\" || auth != \"none\")"
     },
     "UseSmtp": {
       "type": "computed",
@@ -100,6 +114,8 @@
         "datatype": "string",
         "cases": [
           { "condition": "(UsePostgres)", "value": "postgres" },
+          { "condition": "(UseSqlServer)", "value": "sqlserver" },
+          { "condition": "(UseSqlite)", "value": "sqlite" },
           { "condition": "(true)", "value": "none" }
         ]
       }
@@ -180,7 +196,7 @@
     {
       "modifiers": [
         {
-          "condition": "(!UsePostgres)",
+          "condition": "(!UseDatabase)",
           "exclude": [
             "src/MyProject.Api/Data/**",
             "src/MyProject.Api/Features/Audit/**",
@@ -190,12 +206,13 @@
             "tests/MyProject.Api.UnitTests/Data/**",
             ".config/**",
             "docs/database.md",
+            "docs/dapper.md",
             "scripts/backup.sh",
             ".migrations/**"
           ]
         },
         {
-          "condition": "(UsePostgres)",
+          "condition": "(UseDatabase)",
           "exclude": [
             "src/MyProject.Api/Features/Notes/InMemoryNoteStore.cs",
             "src/MyProject.Api/Infrastructure/Idempotency/InMemoryIdempotencyStore.cs",
@@ -305,17 +322,47 @@
     },
     {
       "condition": "(UsePostgres && !UseAuth)",
-      "source": ".migrations/notes/",
+      "source": ".migrations/postgres/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseIdentity)",
-      "source": ".migrations/identity/",
+      "condition": "(UsePostgres && UseIdentity)",
+      "source": ".migrations/postgres/identity/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseOidc)",
-      "source": ".migrations/oidc/",
+      "condition": "(UsePostgres && UseOidc)",
+      "source": ".migrations/postgres/oidc/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && !UseAuth)",
+      "source": ".migrations/sqlserver/notes/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && UseIdentity)",
+      "source": ".migrations/sqlserver/identity/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && UseOidc)",
+      "source": ".migrations/sqlserver/oidc/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && !UseAuth)",
+      "source": ".migrations/sqlite/notes/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && UseIdentity)",
+      "source": ".migrations/sqlite/identity/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && UseOidc)",
+      "source": ".migrations/sqlite/oidc/",
       "target": "src/MyProject.Api/Data/Migrations/"
     }
   ],

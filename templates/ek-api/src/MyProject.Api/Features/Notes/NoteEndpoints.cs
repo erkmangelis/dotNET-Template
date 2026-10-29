@@ -1,4 +1,4 @@
-#if (UsePostgres)
+#if (UseDatabase)
 using System.ComponentModel.DataAnnotations;
 #endif
 #if (UseAuth)
@@ -13,7 +13,7 @@ internal static class NoteEndpoints
 {
     public static IServiceCollection AddNotes(this IServiceCollection services)
     {
-#if (UsePostgres)
+#if (UseDatabase)
         services.AddScoped<INoteStore, EfNoteStore>();
 #else
         services.AddSingleton<INoteStore, InMemoryNoteStore>();
@@ -40,7 +40,7 @@ internal static class NoteEndpoints
         notes.MapGet("/{id:guid}", GetAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).RequireAuthorization(NotePolicies.Write).WithName("UpdateNote").WithSummary("Replace a note's title and content");
         notes.MapDelete("/{id:guid}", DeleteAsync).RequireAuthorization(NotePolicies.Write).WithName("DeleteNote").WithSummary("Delete a note");
-#if (UsePostgres)
+#if (UseDatabase)
         notes.MapGet("/{id:guid}/history", HistoryAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
 #endif
         notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
@@ -51,7 +51,7 @@ internal static class NoteEndpoints
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
         notes.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNote").WithSummary("Delete a note");
-#if (UsePostgres)
+#if (UseDatabase)
         notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
 #endif
         notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
@@ -215,7 +215,7 @@ internal static class NoteEndpoints
             _ => EditConflict(),
         };
     }
-#if (UsePostgres)
+#if (UseDatabase)
 
     private static async Task<Results<Ok<PagedResult<AuditEntryResponse>>, NotFound>> HistoryAsync(
         Guid id,

@@ -191,7 +191,7 @@ internal static class IdempotencySetup
             .BindConfiguration(IdempotencyOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
-#if (UsePostgres)
+#if (UseDatabase)
         services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();
 #else
         services.AddSingleton<IIdempotencyStore, InMemoryIdempotencyStore>();

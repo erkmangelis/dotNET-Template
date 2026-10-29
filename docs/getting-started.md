@@ -33,7 +33,9 @@ Pick the options you need:
   accounts, `--auth oidc` when an identity provider (Keycloak, Entra ID, Auth0) owns the accounts.
 - `--email smtp` to send confirmation and reset emails through an SMTP server; `none` logs them in
   development only.
-- `--db none` keeps notes in memory, handy for a prototype; `--db postgres` for real data.
+- `--db none` keeps notes in memory, handy for a prototype. For real data, `--db postgres` is the
+  default choice; `--db sqlserver` when the organisation runs SQL Server (amd64 only, Express
+  edition by default); `--db sqlite` for a small single-instance app with no database server.
 - `--agents claude` if you use Claude Code, `shared` for other coding agents, `none` for neither.
 
 ## 3. Run it locally

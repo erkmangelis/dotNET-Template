@@ -1,28 +1,66 @@
 # Database
 
+<!--#if (UsePostgres) -->
 PostgreSQL 18 through EF Core and Npgsql. The context is `AppDbContext` in `src/MyProject.Api/Data`.
+<!--#elif (UseSqlServer) -->
+SQL Server 2022 through EF Core and Microsoft.Data.SqlClient. The context is `AppDbContext` in
+`src/MyProject.Api/Data`.
+<!--#else -->
+SQLite through EF Core and Microsoft.Data.Sqlite. The context is `AppDbContext` in
+`src/MyProject.Api/Data`. SQLite suits one API instance on one machine; it has no row version, so
+`EfNoteStore` keeps `Version` itself, and it cannot sort `DateTimeOffset`, so `AppDbContext` stores
+those as UTC ticks.
+<!--#endif -->
 
 ## Connection string
 
+<!--#if (UseSqlite) -->
+`ConnectionStrings:Default` names the database file. Development uses `app.db` in the project
+folder (`appsettings.Development.json`, ignored by git); compose sets `Data Source=/data/app.db` on
+the `app-data` volume. The app refuses to start without it.
+
+## Local database
+
+None to start: in Development the app creates `app.db`, applies migrations on start
+(`Database:MigrateOnStartup`) and adds sample notes (`Database:SeedDevelopmentData`). Neither runs
+in any other environment unless you turn it on. Delete `app.db` to start over.
+<!--#else -->
 `ConnectionStrings:Default` is never stored in an appsettings file.
 
+<!--#if (UsePostgres) -->
 - Development: `dotnet user-secrets set ConnectionStrings:Default "Host=localhost;Database=app;Username=app;Password=<password>" --project src/MyProject.Api`
 - Everywhere else: the `ConnectionStrings__Default` environment variable. `compose.yaml` builds it from `POSTGRES_PASSWORD` in `.env`.
+<!--#else -->
+- Development: `dotnet user-secrets set ConnectionStrings:Default "Server=localhost;Database=app;User Id=sa;Password=<password>;TrustServerCertificate=True" --project src/MyProject.Api`
+- Everywhere else: the `ConnectionStrings__Default` environment variable. `compose.yaml` builds it from `MSSQL_SA_PASSWORD` in `.env`.
+<!--#endif -->
 
 The app refuses to start without it.
 
 ## Local database
 
 ```bash
+<!--#if (UsePostgres) -->
 cp .env.example .env            # set POSTGRES_PASSWORD
+<!--#else -->
+cp .env.example .env            # set MSSQL_ACCEPT_EULA=Y and MSSQL_SA_PASSWORD
+<!--#endif -->
 docker compose up -d db
 ```
 
+<!--#if (UsePostgres) -->
 The compose database listens on `127.0.0.1:5432` only (`POSTGRES_PORT` in `.env` changes the port),
 so `dotnet run` on the same machine can reach it and the network cannot.
+<!--#else -->
+The compose database listens on `127.0.0.1:1433` only (`MSSQL_PORT` in `.env` changes the port),
+so `dotnet run` on the same machine can reach it and the network cannot. The image runs on amd64
+only. `MSSQL_PID` picks the edition: `Express` (the default) is free in production up to 10 GB per
+database; `Developer` is free but only for development and testing.
+<!--#endif -->
 
 In Development the app applies migrations on start (`Database:MigrateOnStartup`) and adds sample
 notes (`Database:SeedDevelopmentData`). Neither runs in any other environment unless you turn it on.
+<!--#endif -->
 
 ## Migrations
 
@@ -80,8 +118,16 @@ nullable, backfill, then tighten in a later release). That keeps rollbacks to an
 
 ## Backups
 
+<!--#if (UsePostgres) -->
 `scripts/backup.sh` writes a compressed `pg_dump` to `backups/` and deletes dumps older than
 14 days (`KEEP_DAYS`). Run it nightly from cron on the host:
+<!--#elif (UseSqlServer) -->
+`scripts/backup.sh` writes a compressed full backup (`BACKUP DATABASE`) to `backups/` and deletes
+backups older than 14 days (`KEEP_DAYS`). Run it nightly from cron on the host:
+<!--#else -->
+`scripts/backup.sh` copies the database with SQLite's online backup (safe while the API writes) to
+`backups/` and deletes copies older than 14 days (`KEEP_DAYS`). Run it nightly from cron on the host:
+<!--#endif -->
 
 ```bash
 15 3 * * * cd /srv/ek-app-slug && ./scripts/backup.sh >> backups/backup.log 2>&1
@@ -92,8 +138,25 @@ same SD card or disk as the database is not a backup.
 
 Restore into the running database:
 
+<!--#if (UsePostgres) -->
 ```bash
 docker compose exec -T db pg_restore --username app --dbname app --clean --if-exists < backups/<file>.dump
 ```
+<!--#elif (UseSqlServer) -->
+```bash
+docker compose stop api
+docker compose cp backups/<file>.bak db:/var/opt/mssql/data/restore.bak
+docker compose exec db bash -c '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q \
+  "ALTER DATABASE [app] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; RESTORE DATABASE [app] FROM DISK = N'\''/var/opt/mssql/data/restore.bak'\'' WITH REPLACE; ALTER DATABASE [app] SET MULTI_USER"'
+docker compose start api
+```
+<!--#else -->
+```bash
+docker compose stop api
+docker run --rm -v ek-app-slug_app-data:/data -v "$PWD/backups:/backups:ro" alpine:3.22 \
+  sh -c 'cp /backups/<file>.db /data/app.db && rm -f /data/app.db-wal /data/app.db-shm && chown 1654 /data/app.db'
+docker compose start api
+```
+<!--#endif -->
 
 Test a restore every few months on a scratch machine.

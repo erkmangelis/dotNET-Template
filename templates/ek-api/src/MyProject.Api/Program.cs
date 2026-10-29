@@ -2,7 +2,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddApiDefaults();
 builder.AddObservability();
-#if (UsePostgres)
+#if (UseDatabase)
 builder.AddDatabase();
 #endif
 #if (UseSmtp)
@@ -43,7 +43,7 @@ admin.MapUserAdminEndpoints();
 #endif
 #endif
 
-#if (UsePostgres)
+#if (UseDatabase)
 await app.PrepareDatabaseAsync();
 #endif
 await app.RunAsync();

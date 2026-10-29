@@ -14,16 +14,16 @@ New here? Follow [docs/getting-started.md](docs/getting-started.md).
 
 | Option | Values | Default | Adds |
 | --- | --- | --- | --- |
-| `--auth` | `none`, `identity`, `external`, `oidc` | `none` | `identity`: ASP.NET Core Identity accounts with bearer tokens or same-site cookie sessions with antiforgery, lockout, email confirmation and reset, authenticator-app MFA, passkeys. `external`: the same accounts plus Google, Apple and Microsoft sign-in, linked only on a provider-verified email. `oidc`: no local accounts; the API trusts access tokens from one OpenID Connect provider, with a development Keycloak and an enterprise SSO (SAML) recipe. Every mode adds roles and permissions, admin endpoints, hashed and scoped API keys, user profiles and an owner-only policy on the example feature, and turns PostgreSQL on. |
-| `--db` | `none`, `postgres` | `none` | PostgreSQL 18 through EF Core and Npgsql, the first migration, Testcontainers, a migration bundle, a compose service and a backup script. |
+| `--auth` | `none`, `identity`, `external`, `oidc` | `none` | `identity`: ASP.NET Core Identity accounts with bearer tokens or same-site cookie sessions with antiforgery, lockout, email confirmation and reset, authenticator-app MFA, passkeys. `external`: the same accounts plus Google, Apple and Microsoft sign-in, linked only on a provider-verified email. `oidc`: no local accounts; the API trusts access tokens from one OpenID Connect provider, with a development Keycloak and an enterprise SSO (SAML) recipe. Every mode adds roles and permissions, admin endpoints, hashed and scoped API keys, user profiles and an owner-only policy on the example feature, and turns PostgreSQL on when `--db` is `none`. |
+| `--db` | `none`, `postgres`, `sqlserver`, `sqlite` | `none` | EF Core with migrations, record metadata, soft delete, audit history, a migration bundle, compose and a backup script. `postgres`: PostgreSQL 18 through Npgsql. `sqlserver`: SQL Server 2022 (Express by default; you accept its licence in `.env`; amd64 only). `sqlite`: one file on a volume, no database server. PostgreSQL and SQL Server tests use Testcontainers. A Dapper recipe covers hand-written SQL for hot read paths. |
 | `--email` | `none`, `smtp` | `none` | Templated confirmation and reset emails through SMTP (MailKit), Mailpit for local testing. With `none`, emails are only logged, in development. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
-Every `--auth` mode but `none` needs a database, so it always generates the PostgreSQL output, with
-or without `--db postgres`. That leaves six auth and database combinations, each with two email
-choices: ten combinations that change code. `--agents` only adds or removes `AGENTS.md` and
-`CLAUDE.md`, so CI rotates it across the ten instead of multiplying them by three, and a snapshot
-test checks that it touches nothing else.
+Every `--auth` mode but `none` needs a database, so with `--db none` it generates the PostgreSQL
+output. CI runs every auth and email choice on PostgreSQL, and every auth choice on SQL Server and
+SQLite (the email option does not touch database code): eighteen combinations that change code.
+`--agents` only adds or removes `AGENTS.md` and `CLAUDE.md`, so CI rotates it across them instead of
+multiplying them by three, and a snapshot test checks that it touches nothing else.
 
 ## Supported means tested
 

@@ -64,7 +64,8 @@ register it in `Program.cs` the way Notes is.
 
 `docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
 covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
-[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups.
+[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups, and
+[docs/dapper.md](docs/dapper.md) hand-written SQL for a hot read path.
 
 ## Secrets
 

@@ -1,0 +1,70 @@
+﻿# Local run and the Raspberry Pi or VPS deployment. See docs/deployment.md.
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+# With the HTTPS tunnel: docker compose --profile tunnel up -d --build
+name: acme-notes
+
+services:
+  api:
+    build:
+      context: .
+      target: final
+    image: ${API_IMAGE:-acme-notes-api}:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # TLS ends at the tunnel; trust X-Forwarded-* only from the compose network.
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      Api__UseHttpsRedirection: "false"
+      ConnectionStrings__Default: Data Source=/data/app.db
+      Oidc__Authority: ${OIDC_AUTHORITY:?set OIDC_AUTHORITY in .env}
+      Oidc__Audience: ${OIDC_AUDIENCE:?set OIDC_AUDIENCE in .env}
+      Oidc__RoleClaim: ${OIDC_ROLE_CLAIM:-roles}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    stop_grace_period: 35s
+    volumes:
+      - app-data:/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: ${API_IMAGE:-acme-notes-api}-migrator:${API_TAG:-local}
+    environment:
+      ConnectionStrings__Default: Data Source=/data/app.db
+    volumes:
+      - app-data:/data
+    restart: "no"
+
+  # A development OpenID Connect provider: docker compose --profile sso up -d keycloak. It imports
+  # keycloak/realm.json (user dev@example.com, password dev-password, role admin) and forgets
+  # everything on restart. Admin console: http://localhost:8081 (admin / admin). Never deploy it.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    profiles: ["sso"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - api
+
+volumes:
+  app-data:

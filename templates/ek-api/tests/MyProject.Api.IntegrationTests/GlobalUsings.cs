@@ -1,12 +1,12 @@
 // The project's own namespaces, kept here so every file's using list stays sorted whatever the project is named.
 global using MyProject.Api.Common;
-#if (UsePostgres)
+#if (UseDatabase)
 global using MyProject.Api.Data;
 #endif
 #if (UseAuth)
 global using MyProject.Api.Features.ApiKeys;
 #endif
-#if (UsePostgres)
+#if (UseDatabase)
 global using MyProject.Api.Features.Audit;
 #endif
 #if (UseAuth)

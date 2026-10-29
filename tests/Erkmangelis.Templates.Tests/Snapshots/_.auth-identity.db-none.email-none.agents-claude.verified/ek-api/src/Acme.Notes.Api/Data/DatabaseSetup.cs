@@ -16,7 +16,7 @@ internal static class DatabaseSetup
 
         builder.Services.AddSingleton<AuditableEntityInterceptor>();
         builder.Services.AddDbContext<AppDbContext>((services, options) => options
-            .UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString)
+            .UseAppDatabase(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString)
             .AddInterceptors(services.GetRequiredService<AuditableEntityInterceptor>()));
 
         builder.Services.AddHealthChecks().AddDbContextCheck<AppDbContext>(tags: [Observability.ReadyTag]);
@@ -24,6 +24,14 @@ internal static class DatabaseSetup
         builder.Services.AddScoped<DevelopmentSeeder>();
 
         return builder;
+    }
+
+    /// <summary>The database provider, in one place for the app and <see cref="AppDbContextFactory"/>.</summary>
+    public static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string? connectionString)
+        where TBuilder : DbContextOptionsBuilder
+    {
+        options.UseNpgsql(connectionString);
+        return options;
     }
 
     /// <summary>Applies migrations and development seed data when the settings ask for it.</summary>

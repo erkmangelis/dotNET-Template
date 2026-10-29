@@ -14,6 +14,9 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         }
 
         // The unique index still decides when two requests race past the check above.
+#if (UseSqlite)
+        note.Version = 1;
+#endif
         db.Notes.Add(note);
         return await TrySaveAsync(cancellationToken) == NoteSaveResult.Saved;
     }
@@ -119,7 +122,15 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         if (!string.IsNullOrEmpty(filter.Search))
         {
             var pattern = $"%{EscapeLike(filter.Search)}%";
+#if (UsePostgres)
             notes = notes.Where(note => EF.Functions.ILike(note.Title, pattern, LikeEscape));
+#elif (UseSqlServer)
+            // Ignores case through the database's default collation.
+            notes = notes.Where(note => EF.Functions.Like(note.Title, pattern, LikeEscape));
+#else
+            // SQLite's LIKE ignores case for ASCII letters only.
+            notes = notes.Where(note => EF.Functions.Like(note.Title, pattern, LikeEscape));
+#endif
         }
 
         return notes;
@@ -140,12 +151,29 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
     /// Makes the save's UPDATE match only the row version the caller read, so a change made in between
     /// fails the save instead of being overwritten.
     /// </summary>
+#if (UseSqlite)
+    private void ExpectVersion(Note stored, ulong version)
+    {
+        // SQLite has no row version: the UPDATE checks the old value and writes the next one.
+        var property = db.Entry(stored).Property(row => row.Version);
+        property.OriginalValue = version;
+        property.CurrentValue = version + 1;
+    }
+#elif (UseSqlServer)
+    private void ExpectVersion(Note stored, ulong version)
+    {
+        var property = db.Entry(stored).Property(row => row.Version);
+        property.OriginalValue = version;
+        property.IsModified = false;
+    }
+#else
     private void ExpectVersion(Note stored, uint version)
     {
         var property = db.Entry(stored).Property(row => row.Version);
         property.OriginalValue = version;
         property.IsModified = false;
     }
+#endif
 
     private async Task<NoteSaveResult> TrySaveAsync(CancellationToken cancellationToken)
     {
@@ -171,5 +199,10 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
     private static string EscapeLike(string text) =>
         text.Replace(LikeEscape, LikeEscape + LikeEscape, StringComparison.Ordinal)
             .Replace("%", LikeEscape + "%", StringComparison.Ordinal)
+#if (UseSqlServer)
+            .Replace("_", LikeEscape + "_", StringComparison.Ordinal)
+            .Replace("[", LikeEscape + "[", StringComparison.Ordinal);
+#else
             .Replace("_", LikeEscape + "_", StringComparison.Ordinal);
+#endif
 }

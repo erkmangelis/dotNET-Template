@@ -19,6 +19,10 @@ template with these options:
 <!--#endif -->
 <!--#if (UsePostgres) -->
 - Database: PostgreSQL 18 through EF Core and Npgsql (`src/MyProject.Api/Data`).
+<!--#elif (UseSqlServer) -->
+- Database: SQL Server 2022 through EF Core and Microsoft.Data.SqlClient (`src/MyProject.Api/Data`).
+<!--#elif (UseSqlite) -->
+- Database: SQLite through EF Core and Microsoft.Data.Sqlite (`src/MyProject.Api/Data`).
 <!--#else -->
 - Database: none. Notes are kept in memory by `InMemoryNoteStore`.
 <!--#endif -->
@@ -36,8 +40,14 @@ dotnet format --verify-no-changes
 dotnet test
 ```
 
+<!--#if (UseDatabase) -->
 <!--#if (UsePostgres) -->
 Integration tests need Docker (Testcontainers starts PostgreSQL).
+<!--#elif (UseSqlServer) -->
+Integration tests need Docker (Testcontainers starts SQL Server).
+<!--#else -->
+Integration tests run against a temporary SQLite file.
+<!--#endif -->
 
 After changing an entity or its configuration, add a migration:
 `dotnet tool restore && dotnet ef migrations add <Name> --project src/MyProject.Api --output-dir Data/Migrations`.
@@ -56,9 +66,11 @@ Never edit a migration that has been merged.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
 - Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
   a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
+- Queries go through EF Core. Hand-written SQL (Dapper) is only for a measured hot read path; follow
+  `docs/dapper.md`, which keeps the soft-delete filter and parameters.
 <!--#endif -->
 <!--#if (UseSmtp) -->
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and

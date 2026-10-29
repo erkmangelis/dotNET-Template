@@ -96,7 +96,11 @@ public sealed record UpdateNoteRequest
     /// The <c>version</c> you read. When it is no longer current, someone else changed the note and
     /// the update answers 409 instead of overwriting their change.
     /// </summary>
+#if (UseSqlServer || UseSqlite)
+    public ulong? Version { get; init; }
+#else
     public uint? Version { get; init; }
+#endif
 
     [Required]
     [StringLength(Note.TitleMaxLength)]
@@ -110,7 +114,11 @@ public sealed record UpdateNoteRequest
 /// A note. <c>Version</c> changes on every save, and the <c>ETag</c> response header carries it: send
 /// either back with an update so it cannot overwrite someone else's change.
 /// </summary>
+#if (UseSqlServer || UseSqlite)
+public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, ulong Version)
+#else
 public sealed record NoteResponse(Guid Id, string Title, string? Content, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, uint Version)
+#endif
 {
     internal static NoteResponse From(Note note) => new(note.Id, note.Title, note.Content, note.CreatedAt, note.UpdatedAt, note.Version);
 }

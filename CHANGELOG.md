@@ -10,7 +10,7 @@ R03, Data and API depth.
 
 - Filtering and sorting on `GET /v1/notes` (and the admin list): `search` matches titles ignoring
   case with LIKE wildcards taken literally, `createdFrom` and `createdBefore` bound the creation
-  time, and `sort` takes up to three allowlisted fields (`createdAt`, `title`), each with an optional
+  time, and `sort` takes up to three allowlisted fields (`createdAt`, `updatedAt`, `title`), each with an optional
   `-` for descending. Anything else answers 400. `SortFields<T>` is the reusable allowlist.
 - Record metadata: `CreatedAt`, `UpdatedAt` and, with sign-in, `CreatedBy` and `UpdatedBy`, filled
   in by an EF Core `SaveChangesInterceptor` (and the in-memory store) from `TimeProvider` and the
@@ -41,11 +41,23 @@ R03, Data and API depth.
   `GET /v2/notes` drops the total count (`PageSlice<T>`), everything else is unchanged in v2.
   Location headers follow the requested version.
 - `docs/api.md` in generated projects: the API conventions above, for clients and for new features.
+- `--db sqlserver`: SQL Server 2022 through Microsoft.Data.SqlClient, with a `rowversion` for the
+  note version, Testcontainers, a compose service (Express edition by default; `MSSQL_ACCEPT_EULA`
+  in `.env` accepts the licence, so the template never does), and `BACKUP DATABASE` backups. The
+  image is amd64 only.
+- `--db sqlite`: one database file on the `app-data` volume, no database server. The note version is
+  a concurrency token the store increments, `DateTimeOffset` values are stored as UTC ticks so they
+  sort, integration tests use a temporary file, and backups use SQLite's online backup.
+- `docs/dapper.md`: a Dapper recipe for hot read paths, for each provider, that keeps the
+  soft-delete and owner filters and is checked against EF by a test.
 
 ### Changed
 
 - Notes gain `PUT` and `DELETE`, and responses gain `updatedAt` and `version`.
 - `/v1` routes are mapped through Asp.Versioning instead of a plain route group.
+- The template's migration sets live under `.migrations/<provider>/`; `scripts/add-migration.sh`
+  covers all nine and starts a new set with `InitialCreate`.
+- CI runs eighteen combinations: every auth mode on SQL Server and SQLite as well.
 
 ## [0.2.0] - Unreleased
 

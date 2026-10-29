@@ -1,0 +1,52 @@
+﻿name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore
+      - name: Build (warnings are errors)
+        run: dotnet build --no-restore -c Release -warnaserror
+      - name: Format check
+        run: dotnet format --verify-no-changes --no-restore
+      - name: Test
+        run: dotnet test --no-build -c Release
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start with docker compose
+        run: |
+          # Accepts the SQL Server licence for this throwaway CI database only.
+          printf 'MSSQL_ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=Ci-%s\n' "$(openssl rand -hex 16)" > .env
+          docker compose up -d --build
+      - name: Wait for /health/ready
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8080/health/ready && exit 0
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Stop
+        if: always()
+        run: docker compose down -v

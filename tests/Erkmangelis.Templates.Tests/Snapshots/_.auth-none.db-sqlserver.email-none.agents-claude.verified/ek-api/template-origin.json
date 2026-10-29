@@ -1,0 +1,11 @@
+﻿{
+  "template": "Erkmangelis.Templates.Api",
+  "package": "Erkmangelis.Templates",
+  "version": "0.2.0",
+  "options": {
+    "auth": "none",
+    "db": "sqlserver",
+    "email": "none",
+    "agents": "claude"
+  }
+}

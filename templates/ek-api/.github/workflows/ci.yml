@@ -38,13 +38,16 @@ jobs:
         run: |
 #if (UsePostgres)
           echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" > .env
+#elif (UseSqlServer)
+          # Accepts the SQL Server licence for this throwaway CI database only.
+          printf 'MSSQL_ACCEPT_EULA=Y\nMSSQL_SA_PASSWORD=Ci-%s\n' "$(openssl rand -hex 16)" > .env
 #else
           touch .env
 #endif
           docker compose up -d --build
       - name: Wait for /health/ready
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -fsS http://localhost:8080/health/ready && exit 0
             sleep 2
           done

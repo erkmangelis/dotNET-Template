@@ -9,6 +9,10 @@ An HTTP API on .NET 10, generated from the `ek-api` template (see `template-orig
 cp .env.example .env                 # set POSTGRES_PASSWORD
 docker compose up -d db
 dotnet user-secrets set ConnectionStrings:Default "Host=localhost;Database=app;Username=app;Password=<the same password>" --project src/MyProject.Api
+<!--#elif (UseSqlServer) -->
+cp .env.example .env                 # set MSSQL_ACCEPT_EULA=Y and MSSQL_SA_PASSWORD
+docker compose up -d db
+dotnet user-secrets set ConnectionStrings:Default "Server=localhost;Database=app;User Id=sa;Password=<the same password>;TrustServerCertificate=True" --project src/MyProject.Api
 <!--#endif -->
 dotnet run --project src/MyProject.Api
 ```
@@ -158,6 +162,10 @@ dotnet test
 
 <!--#if (UsePostgres) -->
 Integration tests start a throwaway PostgreSQL container with Testcontainers, so Docker must be running.
+<!--#elif (UseSqlServer) -->
+Integration tests start a throwaway SQL Server container with Testcontainers, so Docker must be running.
+<!--#elif (UseSqlite) -->
+Integration tests use a throwaway SQLite file, so they need no Docker.
 <!--#endif -->
 CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 
@@ -180,7 +188,7 @@ src/MyProject.Api/
 <!--#elif (UseOidc) -->
   Features/Auth/          access-token validation for the OpenID Connect provider
 <!--#endif -->
-<!--#if (UsePostgres) -->
+<!--#if (UseDatabase) -->
   Data/                   AppDbContext, entity configuration, audit interceptor, migrations, development seed
   Features/Audit/         audit history endpoints
 <!--#endif -->
@@ -195,8 +203,9 @@ register it in `Program.cs` the way Notes is.
 
 `docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
 covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
-<!--#if (UsePostgres) -->
-[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups.
+<!--#if (UseDatabase) -->
+[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups, and
+[docs/dapper.md](docs/dapper.md) hand-written SQL for a hot read path.
 <!--#endif -->
 
 ## Secrets

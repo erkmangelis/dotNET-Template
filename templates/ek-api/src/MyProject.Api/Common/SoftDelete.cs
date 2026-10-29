@@ -12,7 +12,7 @@ internal interface ISoftDeletable
     string? DeletedBy { get; set; }
 #endif
 }
-#if (UsePostgres)
+#if (UseDatabase)
 
 internal static class SoftDelete
 {

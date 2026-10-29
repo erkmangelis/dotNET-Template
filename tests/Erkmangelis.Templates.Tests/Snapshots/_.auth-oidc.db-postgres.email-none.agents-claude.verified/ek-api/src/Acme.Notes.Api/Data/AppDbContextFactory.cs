@@ -15,6 +15,6 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
             ?? "Host=localhost;Database=design_time";
 
-        return new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);
+        return new(new DbContextOptionsBuilder<AppDbContext>().UseAppDatabase(connectionString).Options);
     }
 }

@@ -5,14 +5,23 @@ namespace MyProject.Api.Data;
 
 internal sealed class NoteConfiguration : IEntityTypeConfiguration<Note>
 {
+#if (UseSqlServer)
+    private const string NotDeleted = "[DeletedAt] IS NULL";
+#else
     private const string NotDeleted = "\"DeletedAt\" IS NULL";
+#endif
 
     public void Configure(EntityTypeBuilder<Note> builder)
     {
         builder.HasQueryFilter(SoftDelete.Filter, note => note.DeletedAt == null);
         builder.HasKey(note => note.Id);
         builder.Property(note => note.Id).ValueGeneratedNever();
+#if (UseSqlite)
+        // SQLite has no row version, so EfNoteStore increments this on every save.
+        builder.Property(note => note.Version).IsConcurrencyToken();
+#else
         builder.Property(note => note.Version).IsRowVersion();
+#endif
         builder.Property(note => note.Title).HasMaxLength(Note.TitleMaxLength);
         builder.Property(note => note.Content).HasMaxLength(Note.ContentMaxLength);
 #if (UseAuth)
