@@ -198,6 +198,7 @@
           "condition": "(UsePostgres)",
           "exclude": [
             "src/MyProject.Api/Features/Notes/InMemoryNoteStore.cs",
+            "src/MyProject.Api/Infrastructure/Idempotency/InMemoryIdempotencyStore.cs",
             "tests/MyProject.Api.UnitTests/Features/Notes/InMemoryNoteStoreTests.cs"
           ]
         },

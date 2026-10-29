@@ -99,6 +99,8 @@ internal static class ApiDefaults
             options.OnRejected = WriteRateLimitProblemAsync;
         });
 
+        services.AddIdempotency();
+
         return builder;
     }
 
@@ -131,6 +133,8 @@ internal static class ApiDefaults
         app.UseAuthorization();
 #endif
         app.UseRateLimiter();
+        // After authentication and rate limiting, so keys belong to a caller and rejected requests store nothing.
+        app.UseMiddleware<IdempotencyMiddleware>();
 
         if (api.ExposeOpenApi)
         {

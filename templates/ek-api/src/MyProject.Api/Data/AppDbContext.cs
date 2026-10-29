@@ -16,6 +16,8 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
     public DbSet<Note> Notes => Set<Note>();
 
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 #if (UseAuth)
 
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();

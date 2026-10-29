@@ -14,6 +14,7 @@ dotnet run --project src/MyProject.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries.
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -166,10 +167,11 @@ CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
+  Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
 <!--#endif -->
-  Common/                 shared types such as paging
+  Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage
 <!--#if (UseExternal) -->
   Features/Auth/          ASP.NET Core Identity setup, email senders, Google/Apple/Microsoft sign-in
@@ -179,7 +181,8 @@ src/MyProject.Api/
   Features/Auth/          access-token validation for the OpenID Connect provider
 <!--#endif -->
 <!--#if (UsePostgres) -->
-  Data/                   AppDbContext, entity configuration, migrations, development seed
+  Data/                   AppDbContext, entity configuration, audit interceptor, migrations, development seed
+  Features/Audit/         audit history endpoints
 <!--#endif -->
 tests/MyProject.Api.UnitTests/
 tests/MyProject.Api.IntegrationTests/

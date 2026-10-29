@@ -26,6 +26,12 @@ R03, Data and API depth.
   An update can send the version it read; the save's `UPDATE` matches only that version, so a stale
   update or a change racing between read and write answers 409 ProblemDetails ("Edit conflict")
   instead of overwriting someone else's change.
+- Idempotency keys: `.WithIdempotency()` endpoints (`POST /v1/notes`) honour `Idempotency-Key`. A
+  retry with the same key and request replays the stored response (`Idempotent-Replayed: true`), a
+  different request with the key answers 422, a retry while the first runs answers 409, and 5xx
+  responses are not kept. Keys are per caller, stored in the database (in memory with `--db none`)
+  for `Idempotency:RetentionHours` and cleaned up hourly.
+- `docs/api.md` in generated projects: the API conventions above, for clients and for new features.
 
 ## [0.2.0] - Unreleased
 

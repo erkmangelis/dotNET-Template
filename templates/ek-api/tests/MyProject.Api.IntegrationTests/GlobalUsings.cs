@@ -19,3 +19,4 @@ global using MyProject.Api.Features.Profiles;
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif
+global using MyProject.Api.Infrastructure.Idempotency;

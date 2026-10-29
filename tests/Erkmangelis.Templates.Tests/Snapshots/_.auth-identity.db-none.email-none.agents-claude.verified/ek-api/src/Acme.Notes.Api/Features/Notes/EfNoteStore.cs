@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Acme.Notes.Api.Features.Notes;
 
@@ -113,16 +112,13 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
             db.ChangeTracker.Clear();
             return NoteSaveResult.Stale;
         }
-        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        catch (DbUpdateException exception) when (DatabaseErrors.IsUniqueViolation(exception))
         {
             // Drops the failed changes, and the audit entries written for them.
             db.ChangeTracker.Clear();
             return NoteSaveResult.DuplicateTitle;
         }
     }
-
-    private static bool IsUniqueViolation(DbUpdateException exception) =>
-        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     /// <summary>Makes the client's text match literally: <c>%</c>, <c>_</c> and the escape character lose their meaning.</summary>
     private static string EscapeLike(string text) =>

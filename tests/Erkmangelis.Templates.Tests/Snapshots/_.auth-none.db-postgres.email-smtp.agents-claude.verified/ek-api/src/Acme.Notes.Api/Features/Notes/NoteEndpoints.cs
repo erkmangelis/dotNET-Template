@@ -15,7 +15,7 @@ internal static class NoteEndpoints
     {
         var notes = routes.MapGroup("/notes").WithTags("Notes");
 
-        notes.MapPost("/", CreateAsync).WithName("CreateNote").WithSummary("Create a note");
+        notes.MapPost("/", CreateAsync).WithIdempotency().WithName("CreateNote").WithSummary("Create a note");
         notes.MapGet("/{id:guid}", GetAsync).WithName("GetNote").WithSummary("Get a note");
         notes.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNote").WithSummary("Replace a note's title and content");
         notes.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNote").WithSummary("Delete a note");
