@@ -65,6 +65,10 @@ internal static class ApiDefaults
                 if (settings.Value.AllowedOrigins.Length > 0)
                 {
                     policy.WithOrigins(settings.Value.AllowedOrigins).AllowAnyHeader().AllowAnyMethod();
+                    if (settings.Value.AllowCredentials)
+                    {
+                        policy.AllowCredentials();
+                    }
                 }
             }));
 
@@ -117,6 +121,9 @@ internal static class ApiDefaults
 #if (UseAuth)
         app.UseAuthentication();
         app.UseAuthorization();
+#endif
+#if (UseIdentity)
+        app.UseBrowserSessionAntiforgery();
 #endif
         app.UseRateLimiter();
 

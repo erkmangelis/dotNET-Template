@@ -70,6 +70,10 @@ Never edit a migration that has been merged.
 ## Security rules
 
 - Every endpoint that touches user data requires authorization.
+<!--#if (UseIdentity) -->
+- Cookie sessions are checked for an antiforgery token on every unsafe request
+  (`BrowserSessions.UseBrowserSessionAntiforgery`). Do not add endpoints that bypass it.
+<!--#endif -->
 - Check ownership with the resource policy (`NotePolicies.Owner` is the example) and answer 404,
   not 403, for another user's resource.
 - Add an integration test proving one user cannot read or change another user's data.

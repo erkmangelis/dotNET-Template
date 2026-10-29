@@ -85,6 +85,7 @@ All settings can be set as environment variables with `__` between sections.
 | `Api__ExposeOpenApi` | `false` (`true` in Development) | Serves `/openapi/v1.json` and the Scalar UI at `/scalar` |
 | `Api__UseHttpsRedirection` | `true` (`false` in compose) | Redirects plain HTTP to HTTPS |
 | `Cors__AllowedOrigins__0` | none | Browser origins allowed to call the API |
+| `Cors__AllowCredentials` | `false` | Let those origins send cookies (cookie sessions from another origin) |
 | `RateLimiting__PermitLimit` | `100` | Requests per caller per window |
 | `RateLimiting__WindowSeconds` | `60` | Rate limit window |
 | `ForwardedHeaders__KnownNetworks__0` | none | Proxy networks trusted for `X-Forwarded-*` |

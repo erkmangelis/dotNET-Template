@@ -217,7 +217,9 @@
             "src/MyProject.Api/Features/Auth/AuthSetup.cs",
             "src/MyProject.Api/Features/Auth/EmailSenders.cs",
             "src/MyProject.Api/Features/Auth/IdentityEmailSender.cs",
+            "src/MyProject.Api/Features/Auth/BrowserSessions.cs",
             "tests/MyProject.Api.IntegrationTests/AuthTests.cs",
+            "tests/MyProject.Api.IntegrationTests/BrowserSessionTests.cs",
             "tests/MyProject.Api.IntegrationTests/CapturedEmails.cs"
           ]
         },

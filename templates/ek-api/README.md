@@ -32,6 +32,17 @@ Set `Oidc:Authority` (the issuer) and `Oidc:Audience` (the `aud` the provider gi
 2. In Development the confirmation link is written to the console log. Open it.
 3. `POST /v1/auth/login` returns an access token and a refresh token. Send `Authorization: Bearer <accessToken>`.
 4. `POST /v1/auth/refresh` with the refresh token when the access token expires (after 60 minutes).
+
+Browser frontends on the same site (for example a Next.js app on `app.example.com` calling
+`api.example.com`) should use a cookie session instead of tokens:
+
+1. `POST /v1/auth/login?useCookies=true`. The session cookie is HttpOnly, Secure, SameSite=Strict.
+2. `GET /v1/auth/antiforgery`, then send its `token` in the `X-CSRF-TOKEN` header on every
+   POST, PUT, PATCH and DELETE. Requests made with the cookie and without the token get 400.
+3. `POST /v1/auth/logout` ends the session.
+
+If the frontend calls the API from another origin, list it in `Cors:AllowedOrigins` and set
+`Cors:AllowCredentials` to `true`. A frontend that proxies the API under its own origin needs neither.
 <!--#if (UseExternal) -->
 
 To sign in with Google, Apple or Microsoft, the app uses the provider's own SDK (Google Identity

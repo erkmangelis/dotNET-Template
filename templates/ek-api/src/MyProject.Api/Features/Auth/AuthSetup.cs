@@ -44,6 +44,7 @@ internal static class AuthSetup
             .AddEntityFrameworkStores<AppDbContext>();
         services.AddOptions<IdentityOptions>().BindConfiguration("Identity");
 
+        services.AddBrowserSessions();
         services.Configure<BearerTokenOptions>(IdentityConstants.BearerScheme, options =>
         {
             options.BearerTokenExpiration = TimeSpan.FromMinutes(60);
@@ -72,6 +73,7 @@ internal static class AuthSetup
     {
         var auth = routes.MapGroup("/auth").WithTags("Auth");
         auth.MapIdentityApi<AppUser>();
+        auth.MapBrowserSessionEndpoints();
 #if (UseExternal)
         auth.MapExternalAuthEndpoints();
 #endif

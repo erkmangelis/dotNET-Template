@@ -33,8 +33,20 @@ internal static class TestUsers
     /// <summary>Registers a new user, confirms the email through the captured link and signs in.</summary>
     public static async Task<TestUser> SignInNewUserAsync(ApiFactory api)
     {
-        var email = $"user-{Guid.NewGuid():N}@example.com";
         var client = api.CreateClient();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var email = await RegisterConfirmedUserAsync(api, client);
+
+        var token = await LoginAsync(client, email, Password, cancellationToken);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+
+        return new TestUser(email, Password, token.AccessToken, client);
+    }
+
+    /// <summary>Registers a new user with <see cref="Password"/> and confirms the email. Returns the email.</summary>
+    public static async Task<string> RegisterConfirmedUserAsync(ApiFactory api, HttpClient client)
+    {
+        var email = $"user-{Guid.NewGuid():N}@example.com";
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var registered = await client.PostAsJsonAsync("/v1/auth/register", new RegisterRequest { Email = email, Password = Password }, cancellationToken);
@@ -43,10 +55,7 @@ internal static class TestUsers
         var confirmed = await client.GetAsync(api.Emails.ConfirmationLinkFor(email), cancellationToken);
         confirmed.EnsureSuccessStatusCode();
 
-        var token = await LoginAsync(client, email, Password, cancellationToken);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-
-        return new TestUser(email, Password, token.AccessToken, client);
+        return email;
     }
 
     public static async Task<AccessTokenResponse> LoginAsync(HttpClient client, string email, string password, CancellationToken cancellationToken)
