@@ -154,3 +154,10 @@ covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
 Nothing secret lives in the repository. Development uses user secrets; containers read environment
 variables from `.env`, which git ignores. The app refuses to start when a required setting is
 missing or invalid.
+
+## Update from the template
+
+`template-origin.json` records the template version and options this project was generated with.
+With the [`ek` tool](https://github.com/erkmangelis/dotNET-Template/blob/main/docs/cli.md), run
+`ek update` on a clean git working tree to take a newer template version's changes: it merges them
+into your files, marks conflicts for review and never overwrites what you changed.
