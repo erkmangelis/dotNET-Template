@@ -1,7 +1,7 @@
 # Erkmangelis .NET templates
 
 `dotnet new` templates for .NET 10, and `ek`, a tool that generates and updates projects from them.
-Release 0.5 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API that fixes the
+Release 0.6 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API that fixes the
 security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash

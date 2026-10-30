@@ -88,6 +88,7 @@ error: This combination is not supported:
 | `auth-needs-database` | `--auth identity`, `external` or `oidc` | a database; PostgreSQL if you chose none |
 | `hangfire-needs-database` | `--jobs hangfire` | a database; PostgreSQL if you chose none |
 | `worker-needs-hangfire` | `--worker` | `--jobs hangfire`, set for you if you chose none |
+| `storage-needs-database` | `--storage s3` | a database; PostgreSQL if you chose none |
 
 Plain `dotnet new` applies the same rules through the template's computed symbols but cannot reject
 anything: `dotnet new ek-api --auth identity --db none` quietly generates PostgreSQL. Tests check
@@ -134,7 +135,7 @@ Versions are looked up in the `--source` folders, then `~/.ek/packages`, then do
 repository's GitHub releases into that cache. While the repository is private the download fails;
 pass `--from` with the old `.nupkg` (from the release page) or a `--source` folder holding it.
 
-CI generates projects with released versions (0.1.0, 0.3.0 and 0.4.0), adds a file of the team's
+CI generates projects with released versions (0.1.0, 0.3.0, 0.4.0 and 0.5.0), adds a file of the team's
 own, runs `ek update` to the current version and runs the full acceptance test on the result.
 
 ## Maintainers
