@@ -1,5 +1,6 @@
 #if (UseHangfire)
 using Hangfire;
+using Hangfire.AspNetCore;
 #if (UsePostgres)
 using Hangfire.PostgreSql;
 #elif (UseSqlServer)
@@ -55,6 +56,9 @@ internal static class JobsSetup
         services.AddHostedService<RecurringJobScheduler>();
         services.AddScoped<RecurringJobRunner>();
 #else
+        // Jobs run with this app's own services. Hangfire's default activator is a static that the
+        // last app to start in the process replaces, which breaks when tests start several apps.
+        services.AddSingleton<JobActivator>(provider => new AspNetCoreJobActivator(provider.GetRequiredService<IServiceScopeFactory>()));
         services.AddHangfire((provider, hangfire) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;

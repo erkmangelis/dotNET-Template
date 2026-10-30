@@ -1,4 +1,5 @@
 ﻿using Hangfire;
+using Hangfire.AspNetCore;
 using Hangfire.PostgreSql;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,9 @@ internal static class JobsSetup
 
         services.AddScoped<JobIdempotency>();
         services.AddSingleton<IDistributedLock, PostgresDistributedLock>();
+        // Jobs run with this app's own services. Hangfire's default activator is a static that the
+        // last app to start in the process replaces, which breaks when tests start several apps.
+        services.AddSingleton<JobActivator>(provider => new AspNetCoreJobActivator(provider.GetRequiredService<IServiceScopeFactory>()));
         services.AddHangfire((provider, hangfire) =>
         {
             var connectionString = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.ConnectionString;
