@@ -2,6 +2,40 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - Unreleased
+
+R05, generator tooling.
+
+### Added
+
+- `ek`, a dotnet tool (`Erkmangelis.Ek`) that carries the template package of its own version:
+  - `ek new` asks for the name and a preset or each option, offering only values the rules accept
+    with the earlier answers, prints the equivalent `dotnet new` command and runs it in a private
+    template hive. `-y`, `--spec`, `--save-spec`, `--dry-run`, `-o` and `--package`.
+  - `ek update` regenerates the project at its recorded version and at the new one and three-way
+    merges the difference into the project, Copier-style: unchanged files take the new version,
+    changed files are merged line by line, overlapping changes get conflict markers, and nothing
+    the project changed is overwritten. Needs a clean git working tree. Keeps user secrets ids.
+  - `ek check`, `ek list`, `ek schema`, `ek matrix`.
+- A versioned project spec (`specVersion` 1) with a JSON Schema,
+  [schemas/ek-spec.schema.json](schemas/ek-spec.schema.json), generated from the catalog.
+- [catalog/modules.json](catalog/modules.json): the template's options with `requires`, `excludes`
+  and fallback rules, each with a reason. Tests check it against the template's real symbols and
+  that its rules give the same effective options as the template's computed symbols.
+- Presets in [catalog/presets.json](catalog/presets.json): `minimal`, `saas-api`, `api-worker`
+  (alias `ek-worker`), `sso-api` and `single-box`.
+- Generated projects: a README section on updating with `ek update`.
+- CI: an `update` job that generates projects with 0.1.0, 0.3.0 and 0.4.0, adds a file of the
+  team's own, runs `ek update` and the full acceptance test on the result.
+
+### Changed
+
+- `template-origin.json` is now a full spec: it adds `specVersion` and the project `name`, so
+  `ek new --spec template-origin.json` reproduces the project.
+- The CI acceptance matrix comes from `ek matrix`: every preset plus pairwise coverage of the
+  option values (18 combinations, was 32 picked by hand). The release workflow also packs and
+  attests the tool.
+
 ## [0.4.0] - 2026-10-30
 
 R04, background work and the worker.

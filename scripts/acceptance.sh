@@ -10,13 +10,19 @@
 #   --jobs but none (or --worker) a background job imports notes in the container (the worker's,
 #   with --worker).
 #
+# With --update-from, the project is first generated from that older package (with the options it
+# already had), committed with a file of the team's own, and then brought to the package under test
+# with `ek update`. The update must finish without conflicts, keep the team's file, and the result
+# must pass every check above. This is how "an old project updates to the current version" is tested.
+#
 # Usage:
 #   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
 #       --email none|smtp --jobs none|hosted|hangfire --worker false|true --aspire false|true \
-#       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep]
+#       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep] \
+#       [--update-from path/to/older/Erkmangelis.Templates.*.nupkg]
 set -euo pipefail
 
-AUTH=none DB=none EMAIL=none JOBS=none WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false
+AUTH=none DB=none EMAIL=none JOBS=none WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auth) AUTH="$2"; shift 2 ;;
@@ -26,9 +32,10 @@ while [[ $# -gt 0 ]]; do
     --worker) WORKER="$2"; shift 2 ;;
     --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
-    --package) PACKAGE="$2"; shift 2 ;;
+    --package) PACKAGE="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --compose) COMPOSE=true; shift ;;
     --keep) KEEP=true; shift ;;
+    --update-from) UPDATE_FROM="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -64,14 +71,40 @@ if [[ -z "$PACKAGE" ]]; then
   PACKAGE="$(ls "$WORK"/package/Erkmangelis.Templates.*.nupkg)"
 fi
 
-step "Install $(basename "$PACKAGE") into an isolated template hive"
-dotnet new install "$PACKAGE" --debug:custom-hive "$HIVE" >/dev/null
+if [[ -z "$UPDATE_FROM" ]]; then
+  step "Install $(basename "$PACKAGE") into an isolated template hive"
+  dotnet new install "$PACKAGE" --debug:custom-hive "$HIVE" >/dev/null
 
-step "Generate $OPTIONS"
-# shellcheck disable=SC2086
-dotnet new ek-api -n "$NAME" -o "$OUT" $OPTIONS --debug:custom-hive "$HIVE"
-cd "$OUT"
-git init -q && git add -A
+  step "Generate $OPTIONS"
+  # shellcheck disable=SC2086
+  dotnet new ek-api -n "$NAME" -o "$OUT" $OPTIONS --debug:custom-hive "$HIVE"
+  cd "$OUT"
+  git init -q && git add -A
+else
+  step "Generate with $(basename "$UPDATE_FROM"), using the options it already had"
+  dotnet new install "$UPDATE_FROM" --debug:custom-hive "$HIVE" >/dev/null
+  help="$(dotnet new ek-api --help --debug:custom-hive "$HIVE")"
+  OLD_OPTIONS=""
+  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
+    # An option whose short name is its name shows as -db, not --db.
+    if grep -qE -- "(^|[ ,])--?${pair%% *} " <<<"$help"; then OLD_OPTIONS="$OLD_OPTIONS --$pair"; else [[ "${pair#* }" =~ ^(none|false)$ ]] || fail "the old template has no --${pair%% *}"; fi
+  done
+  # shellcheck disable=SC2086
+  dotnet new ek-api -n "$NAME" -o "$OUT" $OLD_OPTIONS --debug:custom-hive "$HIVE"
+  cd "$OUT"
+  git init -q && git add -A && git -c user.name=acceptance -c user.email=acceptance@example.com commit -qm "Generated"
+  printf '# Team notes\n\nOur own file, which the update must keep.\n' > docs/team-notes.md
+  git add -A && git -c user.name=acceptance -c user.email=acceptance@example.com commit -qm "Team notes"
+
+  step "ek update to $(basename "$PACKAGE")"
+  dotnet build "$REPO/src/Erkmangelis.Ek" -c Release -p:EkBundleTemplate=false --nologo -v quiet -o "$WORK/ek"
+  dotnet "$WORK/ek/Erkmangelis.Ek.dll" update --from "$UPDATE_FROM" --to "$PACKAGE" || fail "ek update did not finish cleanly"
+  [[ -f docs/team-notes.md ]] || fail "the update removed the team's own file"
+  git add -A
+fi
+
+step "No merge conflict markers are left"
+if git grep -nE '^(<<<<<<<|>>>>>>>) ' -- . ; then fail "conflict markers left in the output"; fi
 
 step "No template markers or placeholders are left"
 if grep -rnE '^\s*(//)?#(if|else|elif|elseif|endif)\b|<!--#(if|else|endif)|MyProject|myproject|EK_[A-Z_]+|ek-app-slug' \

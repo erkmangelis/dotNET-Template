@@ -1,6 +1,10 @@
 <Solution>
   <Project Path="Erkmangelis.Templates.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/Erkmangelis.Ek/Erkmangelis.Ek.csproj" />
+  </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Erkmangelis.Ek.Tests/Erkmangelis.Ek.Tests.csproj" />
     <Project Path="tests/Erkmangelis.Templates.Tests/Erkmangelis.Templates.Tests.csproj" />
   </Folder>
 </Solution>
