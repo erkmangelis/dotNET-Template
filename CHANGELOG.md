@@ -2,7 +2,7 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-30
 
 R04, background work and the worker.
 
