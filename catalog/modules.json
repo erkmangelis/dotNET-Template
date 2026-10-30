@@ -95,6 +95,30 @@
       ]
     },
     {
+      "name": "storage",
+      "type": "choice",
+      "default": "none",
+      "question": "Store files?",
+      "description": "File storage. 's3' adds uploads, downloads and signed links on any S3-compatible storage, and needs a database: it turns PostgreSQL on when --db is none.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No file storage."
+        },
+        {
+          "value": "s3",
+          "description": "Private files on S3-compatible storage (RustFS in compose, Cloudflare R2 or S3 in production): type checks, virus scanning, thumbnails, signed links, resumable uploads, cleanup."
+        }
+      ]
+    },
+    {
+      "name": "documents",
+      "type": "bool",
+      "default": false,
+      "question": "Add CSV, Excel and PDF documents?",
+      "description": "Add CSV and Excel import and export of notes, and a PDF report."
+    },
+    {
       "name": "worker",
       "type": "bool",
       "default": false,
@@ -170,6 +194,25 @@
         "db": "postgres"
       },
       "reason": "Hangfire stores its jobs in the database."
+    },
+    {
+      "id": "storage-needs-database",
+      "when": {
+        "storage": [
+          "s3"
+        ]
+      },
+      "requires": {
+        "db": [
+          "postgres",
+          "sqlserver",
+          "sqlite"
+        ]
+      },
+      "fallback": {
+        "db": "postgres"
+      },
+      "reason": "File records (owner, type, size, status) live in the database."
     },
     {
       "id": "worker-needs-hangfire",

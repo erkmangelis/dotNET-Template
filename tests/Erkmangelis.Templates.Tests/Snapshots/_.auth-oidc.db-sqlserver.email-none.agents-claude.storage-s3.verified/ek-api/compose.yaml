@@ -1,0 +1,136 @@
+﻿# Local run and the Raspberry Pi or VPS deployment. See docs/deployment.md.
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+# With the HTTPS tunnel: docker compose --profile tunnel up -d --build
+name: acme-notes
+
+services:
+  api:
+    build:
+      context: .
+      target: final
+    image: ${API_IMAGE:-acme-notes-api}:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # TLS ends at the tunnel; trust X-Forwarded-* only from the compose network.
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      Api__UseHttpsRedirection: "false"
+      ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
+      Oidc__Authority: ${OIDC_AUTHORITY:?set OIDC_AUTHORITY in .env}
+      Oidc__Audience: ${OIDC_AUDIENCE:?set OIDC_AUDIENCE in .env}
+      Oidc__RoleClaim: ${OIDC_ROLE_CLAIM:-roles}
+      Storage__ServiceUrl: ${STORAGE_SERVICE_URL:-http://storage:9000}
+      Storage__PublicServiceUrl: ${STORAGE_PUBLIC_URL:-http://localhost:9000}
+      Storage__Region: ${STORAGE_REGION:-us-east-1}
+      Storage__Bucket: ${STORAGE_BUCKET:-files}
+      Storage__AccessKey: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
+      Storage__SecretKey: ${STORAGE_SECRET_KEY:?set STORAGE_SECRET_KEY in .env}
+      Storage__CreateBucket: ${STORAGE_CREATE_BUCKET:-true}
+      Files__Tus__Directory: /uploads
+      Files__Scanning__Enabled: ${FILES_SCANNING:-false}
+      Files__Scanning__Host: clamav
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    stop_grace_period: 35s
+    volumes:
+      - upload-data:/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: ${API_IMAGE:-acme-notes-api}-migrator:${API_TAG:-local}
+    environment:
+      ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  db:
+    # Runs on amd64 only: there is no SQL Server image for ARM (a Raspberry Pi).
+    image: mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: ${MSSQL_ACCEPT_EULA:?set MSSQL_ACCEPT_EULA=Y in .env to accept the SQL Server licence}
+      MSSQL_PID: ${MSSQL_PID:-Express}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    # Loopback only: reachable from `dotnet run` on this machine, never from the network.
+    ports:
+      - "127.0.0.1:${MSSQL_PORT:-1433}:1433"
+    volumes:
+      - db-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # Private S3-compatible object storage on this machine (RustFS, Apache-2.0). To use Cloudflare R2
+  # or another provider instead, remove this service and the api's dependency on it, and set the
+  # STORAGE_* values in .env. Signed links point at STORAGE_PUBLIC_URL, so clients must reach it:
+  # route a hostname to storage:9000 through the tunnel, as for the API.
+  storage:
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
+      RUSTFS_SECRET_KEY: ${STORAGE_SECRET_KEY:?set STORAGE_SECRET_KEY in .env}
+    # Loopback only: signed links work from this machine. Expose it through the tunnel for clients elsewhere.
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-9000}:9000"
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Virus scanning: docker compose --profile scan up -d, with FILES_SCANNING=true. clamd downloads
+  # its signatures at start, which takes a few minutes and about 1.5 GB of memory.
+  clamav:
+    image: clamav/clamav:1.5.4
+    profiles: ["scan"]
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+  # A development OpenID Connect provider: docker compose --profile sso up -d keycloak. It imports
+  # keycloak/realm.json (user dev@example.com, password dev-password, role admin) and forgets
+  # everything on restart. Admin console: http://localhost:8081 (admin / admin). Never deploy it.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2
+    profiles: ["sso"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  storage-data:
+  upload-data:
+  clamav-data:

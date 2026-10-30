@@ -68,6 +68,9 @@ internal static class NoteEndpoints
         notes.MapPost("/imports", ImportAsync).WithIdempotency().WithName("ImportNotes").WithSummary("Create up to 100 notes in a background job");
 #endif
 #endif
+#if (UseDocuments)
+        notes.MapNoteDocumentEndpoints();
+#endif
 
         return notes;
     }

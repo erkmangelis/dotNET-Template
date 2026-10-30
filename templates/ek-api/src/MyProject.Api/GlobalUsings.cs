@@ -12,6 +12,9 @@ global using MyProject.Api.Features.Audit;
 #if (UseAuth)
 global using MyProject.Api.Features.Auth;
 #endif
+#if (UseStorage)
+global using MyProject.Api.Features.Files;
+#endif
 #if (UseAuth && UseJobs)
 global using MyProject.Api.Features.Jobs;
 #endif
@@ -20,8 +23,14 @@ global using MyProject.Api.Features.Notes;
 global using MyProject.Api.Features.Profiles;
 #endif
 global using MyProject.Api.Infrastructure;
+#if (UseDocuments)
+global using MyProject.Api.Infrastructure.Documents;
+#endif
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif
 global using MyProject.Api.Infrastructure.Idempotency;
 global using MyProject.Api.Infrastructure.Jobs;
+#if (UseStorage)
+global using MyProject.Api.Infrastructure.Storage;
+#endif

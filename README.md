@@ -5,14 +5,14 @@ Release 0.5 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API tha
 security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.5.0.nupkg
+dotnet new install Erkmangelis.Templates.0.6.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
 Or with the tool, which asks what you need, offers presets and rejects unsupported combinations:
 
 ```bash
-dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.5.0.nupkg>
+dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.6.0.nupkg>
 ek new RideSense --preset saas-api
 ek update        # later, inside the project: merge a newer template version's changes
 ```
@@ -27,11 +27,13 @@ New here? Follow [docs/getting-started.md](docs/getting-started.md). The tool: [
 | `--db` | `none`, `postgres`, `sqlserver`, `sqlite` | `none` | EF Core with migrations, record metadata, soft delete, audit history, a migration bundle, compose and a backup script. `postgres`: PostgreSQL 18 through Npgsql. `sqlserver`: SQL Server 2022 (Express by default; you accept its licence in `.env`; amd64 only). `sqlite`: one file on a volume, no database server. PostgreSQL and SQL Server tests use Testcontainers. A Dapper recipe covers hand-written SQL for hot read paths. |
 | `--email` | `none`, `smtp` | `none` | Templated confirmation and reset emails through SMTP (MailKit), Mailpit for local testing. With `none`, emails are only logged, in development. |
 | `--jobs` | `none`, `hosted`, `hangfire` | `none` | Background jobs: queued jobs (`IJob<TArgs>` through `IJobQueue`) and cron-scheduled recurring jobs, bounded retries with backoff, failed-job listing and requeue for admins, idempotent job effects (`JobIdempotency`) and distributed locks (PostgreSQL advisory locks, SQL Server app locks, lock files with SQLite). `hosted`: an in-process queue and cron schedules on hosted services; queued jobs are lost on restart. `hangfire`: Hangfire (LGPL-3.0) storing jobs in the database, so they survive restarts, with a dashboard behind the `jobs.manage` permission; turns PostgreSQL on when `--db` is `none`. Every choice has the scoped background loop for housekeeping. |
+| `--storage` | `none`, `s3` | `none` | Private files on any S3-compatible storage (RustFS in compose, Cloudflare R2 or Amazon S3 in production): uploads through the API, signed upload and download links, and resumable tus uploads; size limits, type checks by file signature, optional ClamAV scanning, SHA-256, WebP thumbnails (SkiaSharp), owner-only access and a cleanup loop for temporary, unfinished, refused and orphaned files. Turns PostgreSQL on when `--db` is `none`. |
+| `--documents` | `false`, `true` | `false` | CSV and Excel export and import of notes (MiniExcel, Apache-2.0) with formula cells defused, and a PDF report (PdfPig, Apache-2.0, with an embedded Liberation Sans font). |
 | `--worker` | `false`, `true` | `false` | A worker project and image that runs the jobs while the API only queues them. Means `--jobs hangfire`. |
 | `--aspire` | `false`, `true` | `false` | A .NET Aspire AppHost (MIT) that starts the database, the API and the worker for local development, with the Aspire dashboard. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
-Every `--auth` mode but `none`, and `--jobs hangfire`, need a database, so with `--db none` they
+Every `--auth` mode but `none`, `--jobs hangfire` and `--storage s3` need a database, so with `--db none` they
 generate the PostgreSQL output; `--worker` means `--jobs hangfire`. These rules live in
 [catalog/modules.json](catalog/modules.json): `ek` applies them and rejects a combination that
 breaks one, with the reason. Presets (`minimal`, `saas-api`, `api-worker` alias `ek-worker`,
@@ -41,7 +43,7 @@ breaks one, with the reason. Presets (`minimal`, `saas-api`, `api-worker` alias 
 
 Every combination the catalog's rules accept is supported, and CI tests a set chosen from the
 catalog by `ek matrix`: every preset, plus combinations that cover every pair of option values that
-can occur together (18 in all, instead of the hundreds of possible combinations). For each, CI runs
+can occur together (17 in all, instead of the hundreds of possible combinations). For each, CI runs
 the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
 
 1. generates the project outside the source tree from the packed `.nupkg`,
@@ -52,9 +54,11 @@ the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
 5. checks that a deliberate style violation fails the build,
 6. starts it with `docker compose` and expects 200 from `/health/ready`, and with `--email smtp` and
    local accounts, that registering sends a confirmation email to the bundled Mailpit, and with
-   `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers.
+   `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers,
+   and with `--storage s3` and no sign-in, that a file uploads to the bundled storage and downloads
+   again through the API and a signed link.
 
-CI also generates projects with released versions (0.1.0, 0.3.0 and 0.4.0), commits a file of
+CI also generates projects with released versions (0.1.0, 0.3.0, 0.4.0 and 0.5.0), commits a file of
 the team's own, runs `ek update` to the current version and runs the same acceptance test on the
 result, and builds the API and worker images for amd64 and arm64.
 

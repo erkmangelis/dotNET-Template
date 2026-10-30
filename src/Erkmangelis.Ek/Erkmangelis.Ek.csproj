@@ -10,7 +10,7 @@
     <ToolCommandName>ek</ToolCommandName>
     <PackageId>Erkmangelis.Ek</PackageId>
     <!-- Always the template package's version: the tool carries that package and its rules. -->
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Title>ek: the Erkmangelis template CLI</Title>
     <Authors>erkmangelis</Authors>
     <Description>Generate and update projects from the Erkmangelis .NET templates: presets, interactive questions, a versioned project spec, option rules with clear reasons, and `ek update`, which three-way merges a newer template version into a generated project.</Description>

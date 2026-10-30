@@ -1,0 +1,6 @@
+﻿// The project's own namespaces, kept here so every file's using list stays sorted whatever the project is named.
+global using Acme.Notes.Api.Common;
+global using Acme.Notes.Api.Features.Notes;
+global using Acme.Notes.Api.Infrastructure;
+global using Acme.Notes.Api.Infrastructure.Documents;
+global using Acme.Notes.Api.Infrastructure.Jobs;

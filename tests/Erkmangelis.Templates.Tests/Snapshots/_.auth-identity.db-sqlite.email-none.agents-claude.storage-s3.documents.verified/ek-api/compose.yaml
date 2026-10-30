@@ -1,0 +1,98 @@
+﻿# Local run and the Raspberry Pi or VPS deployment. See docs/deployment.md.
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+# With the HTTPS tunnel: docker compose --profile tunnel up -d --build
+name: acme-notes
+
+services:
+  api:
+    build:
+      context: .
+      target: final
+    image: ${API_IMAGE:-acme-notes-api}:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # TLS ends at the tunnel; trust X-Forwarded-* only from the compose network.
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      Api__UseHttpsRedirection: "false"
+      ConnectionStrings__Default: Data Source=/data/app.db
+      Storage__ServiceUrl: ${STORAGE_SERVICE_URL:-http://storage:9000}
+      Storage__PublicServiceUrl: ${STORAGE_PUBLIC_URL:-http://localhost:9000}
+      Storage__Region: ${STORAGE_REGION:-us-east-1}
+      Storage__Bucket: ${STORAGE_BUCKET:-files}
+      Storage__AccessKey: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
+      Storage__SecretKey: ${STORAGE_SECRET_KEY:?set STORAGE_SECRET_KEY in .env}
+      Storage__CreateBucket: ${STORAGE_CREATE_BUCKET:-true}
+      Files__Tus__Directory: /uploads
+      Files__Scanning__Enabled: ${FILES_SCANNING:-false}
+      Files__Scanning__Host: clamav
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    stop_grace_period: 35s
+    volumes:
+      - app-data:/data
+      - upload-data:/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    image: ${API_IMAGE:-acme-notes-api}-migrator:${API_TAG:-local}
+    environment:
+      ConnectionStrings__Default: Data Source=/data/app.db
+    volumes:
+      - app-data:/data
+    restart: "no"
+
+  # Private S3-compatible object storage on this machine (RustFS, Apache-2.0). To use Cloudflare R2
+  # or another provider instead, remove this service and the api's dependency on it, and set the
+  # STORAGE_* values in .env. Signed links point at STORAGE_PUBLIC_URL, so clients must reach it:
+  # route a hostname to storage:9000 through the tunnel, as for the API.
+  storage:
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
+      RUSTFS_SECRET_KEY: ${STORAGE_SECRET_KEY:?set STORAGE_SECRET_KEY in .env}
+    # Loopback only: signed links work from this machine. Expose it through the tunnel for clients elsewhere.
+    ports:
+      - "127.0.0.1:${STORAGE_PORT:-9000}:9000"
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Virus scanning: docker compose --profile scan up -d, with FILES_SCANNING=true. clamd downloads
+  # its signatures at start, which takes a few minutes and about 1.5 GB of memory.
+  clamav:
+    image: clamav/clamav:1.5.4
+    profiles: ["scan"]
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - api
+
+volumes:
+  app-data:
+  storage-data:
+  upload-data:
+  clamav-data:

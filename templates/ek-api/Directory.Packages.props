@@ -70,6 +70,23 @@
 <!--#endif -->
   </ItemGroup>
 <!--#endif -->
+<!--#if (UseDocuments) -->
+  <ItemGroup Label="Documents">
+    <!-- Apache-2.0. Not ClosedXML (it needs SixLabors.Fonts) and not PDFsharp 6.5+ (AGPL) or QuestPDF (paid above a revenue limit). -->
+    <PackageVersion Include="MiniExcel" Version="1.46.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
+  </ItemGroup>
+<!--#endif -->
+<!--#if (UseStorage) -->
+  <ItemGroup Label="Files">
+    <!-- All Apache-2.0 or MIT. Not ImageSharp: its licence needs a paid licence above a revenue limit. -->
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.8" />
+    <PackageVersion Include="SkiaSharp" Version="4.154.0" />
+    <!-- Skia's native library without fontconfig, so it runs in the chiseled container image. -->
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
+    <PackageVersion Include="tusdotnet" Version="2.12.0" />
+  </ItemGroup>
+<!--#endif -->
 <!--#if (UseOidc) -->
   <ItemGroup Label="OpenID Connect">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
@@ -82,7 +99,7 @@
 <!--#if (UseIdentity) -->
     <PackageVersion Include="System.Formats.Cbor" Version="10.0.14" />
 <!--#endif -->
-<!--#if (UseSmtp) -->
+<!--#if (UseSmtp || UseStorage) -->
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
 <!--#endif -->
 <!--#if (UsePostgres) -->

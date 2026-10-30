@@ -4,7 +4,7 @@
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>Erkmangelis.Templates</PackageId>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Title>Erkmangelis .NET templates</Title>
     <Authors>erkmangelis</Authors>
     <Description>A hardened ASP.NET Core HTTP API template for .NET 10 with optional sign-in (ASP.NET Core Identity or OpenID Connect), PostgreSQL, SQL Server or SQLite, background jobs (hosted or Hangfire), a worker, .NET Aspire and AI agent guidance.</Description>

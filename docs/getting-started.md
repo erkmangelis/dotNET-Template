@@ -12,18 +12,18 @@ Download `Erkmangelis.Templates.<version>.nupkg` from the
 [latest release](https://github.com/erkmangelis/dotNET-Template/releases), then:
 
 ```bash
-dotnet new install ./Erkmangelis.Templates.0.5.0.nupkg
+dotnet new install ./Erkmangelis.Templates.0.6.0.nupkg
 dotnet new ek-api --help
 ```
 
-To check the download first: `gh attestation verify Erkmangelis.Templates.0.5.0.nupkg --repo erkmangelis/dotNET-Template`.
+To check the download first: `gh attestation verify Erkmangelis.Templates.0.6.0.nupkg --repo erkmangelis/dotNET-Template`.
 
 ## 2. Create a project
 
 ```bash
 dotnet new ek-api -n Garage --auth identity --db postgres --agents claude
 cd Garage
-git init && git add -A && git commit -m "Start from ek-api 0.5.0"
+git init && git add -A && git commit -m "Start from ek-api 0.6.0"
 ```
 
 Or let the `ek` tool ask: `ek new Garage` asks for a preset or each option, and only offers
@@ -42,6 +42,9 @@ Pick the options you need:
 - `--jobs hosted` for background work that may be lost on a restart (in-process queue and cron
   schedules, no extra service), `--jobs hangfire` for durable jobs with retries and a dashboard,
   stored in the database. Add `--worker` to run them in a separate worker process and container.
+- `--storage s3` for user files: uploads, downloads, signed links and resumable uploads on private
+  S3-compatible storage, RustFS in compose or Cloudflare R2 in production.
+- `--documents` for CSV and Excel import and export and PDF reports.
 - `--aspire` to start the API, the worker and the database with one `dotnet run` during development,
   with a dashboard for their logs and traces.
 - `--agents claude` if you use Claude Code, `shared` for other coding agents, `none` for neither.

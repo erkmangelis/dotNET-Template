@@ -5,7 +5,7 @@ with newer template versions. It carries the template package of its own version
 need to install the template first, and it never changes the templates installed in `dotnet new`.
 
 ```bash
-dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.5.0.nupkg>
+dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.6.0.nupkg>
 ek version
 ```
 
@@ -44,10 +44,10 @@ Running that command gives the same files (CI checks this for every preset). Oth
 | Preset | For | Options |
 | --- | --- | --- |
 | `minimal` | The hardened API alone, notes in memory | everything `none`/`false` |
-| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --agents claude` |
+| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --storage s3 --documents --agents claude` |
 | `api-worker` (alias `ek-worker`) | An API plus a worker that runs its jobs | `--db postgres --jobs hangfire --worker --aspire` |
 | `sso-api` | Accounts in your identity provider | `--auth oidc --db postgres` |
-| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted` |
+| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted --storage s3` |
 
 `ek list` prints the options, rules and presets. Presets live in
 [catalog/presets.json](../catalog/presets.json); options given next to a preset win over its values.
@@ -109,7 +109,7 @@ version (with the same name and options), and applies the difference to your pro
 
 - a file you never changed takes the new version, and a new template file is added;
 - a file you changed and the template changed is merged line by line; where both changed the same
-  lines it gets conflict markers (`<<<<<<< your project` ... `>>>>>>> template 0.5.0`), and
+  lines it gets conflict markers (`<<<<<<< your project` ... `>>>>>>> template 0.6.0`), and
   `ek update` exits with 1 and lists them;
 - a file you changed that the template removed, and a file you deleted that the template changed,
   are left as they are and listed for you to check;

@@ -11,7 +11,7 @@
 <!--#if (UseIdentity) -->
     <PackageReference Include="System.Formats.Cbor" />
 <!--#endif -->
-<!--#if (UseSmtp) -->
+<!--#if (UseSmtp || UseStorage) -->
     <PackageReference Include="Testcontainers" />
 <!--#endif -->
 <!--#if (UsePostgres) -->

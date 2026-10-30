@@ -40,6 +40,13 @@ internal static class ApiKeyScopes
 
     public const string NotesRead = "notes:read";
     public const string NotesWrite = "notes:write";
+#if (UseStorage)
+    public const string FilesRead = "files:read";
+    public const string FilesWrite = "files:write";
+
+    public static readonly string[] All = [NotesRead, NotesWrite, FilesRead, FilesWrite];
+#else
 
     public static readonly string[] All = [NotesRead, NotesWrite];
+#endif
 }
