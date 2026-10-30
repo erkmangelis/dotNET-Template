@@ -31,6 +31,36 @@
 <!--#endif -->
   </ItemGroup>
 <!--#endif -->
+<!--#if (UseHostedJobs) -->
+  <ItemGroup Label="Jobs">
+    <PackageVersion Include="Cronos" Version="0.13.0" />
+  </ItemGroup>
+<!--#endif -->
+<!--#if (UseHangfire) -->
+  <ItemGroup Label="Jobs">
+    <!-- Hangfire is LGPL-3.0 (free for commercial use); Hangfire Pro is not needed. -->
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
+<!--#if (UsePostgres) -->
+    <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+<!--#elif (UseSqlServer) -->
+    <PackageVersion Include="Hangfire.SqlServer" Version="1.8.25" />
+<!--#elif (UseSqlite) -->
+    <PackageVersion Include="Hangfire.Storage.SQLite" Version="0.4.3" />
+<!--#endif -->
+    <!-- Hangfire.Core asks for 11.0.1, which has a known vulnerability. -->
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+<!--#endif -->
+<!--#if (UseAspire && (UsePostgres || UseSqlServer)) -->
+  <ItemGroup Label="Aspire">
+    <!-- The AppHost's SDK version is in src/MyProject.AppHost/MyProject.AppHost.csproj; keep them equal. -->
+<!--#if (UsePostgres) -->
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
+<!--#else -->
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
+<!--#endif -->
+  </ItemGroup>
+<!--#endif -->
 <!--#if (UseIdentity) -->
   <ItemGroup Label="Identity">
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.14" />
@@ -48,6 +78,7 @@
   <ItemGroup Label="Tests">
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="10.11.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
 <!--#if (UseIdentity) -->
     <PackageVersion Include="System.Formats.Cbor" Version="10.0.14" />
 <!--#endif -->

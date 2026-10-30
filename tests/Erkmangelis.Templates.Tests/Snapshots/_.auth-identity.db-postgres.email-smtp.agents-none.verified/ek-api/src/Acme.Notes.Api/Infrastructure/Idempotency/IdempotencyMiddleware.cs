@@ -155,32 +155,24 @@ internal sealed class IdempotencyMiddleware(RequestDelegate next, IOptions<Idemp
 }
 
 /// <summary>Deletes expired idempotency keys every hour.</summary>
-internal sealed partial class IdempotencyCleanup(IServiceScopeFactory scopes, TimeProvider time, ILogger<IdempotencyCleanup> logger) : BackgroundService
+internal sealed partial class IdempotencyCleanup(IServiceScopeFactory scopes, TimeProvider time, ILogger<IdempotencyCleanup> logger)
+    : ScopedBackgroundLoop(scopes, time, logger)
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    private readonly ILogger _logger = logger;
+    private readonly TimeProvider _time = time;
+
+    protected override string Name => "idempotency-cleanup";
+
+    protected override TimeSpan Interval => TimeSpan.FromHours(1);
+
+    protected override async Task RunOnceAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(1), time);
-        do
-        {
-            try
-            {
-                await using var scope = scopes.CreateAsyncScope();
-                var deleted = await scope.ServiceProvider.GetRequiredService<IIdempotencyStore>().DeleteExpiredAsync(time.GetUtcNow(), stoppingToken);
-                LogDeleted(logger, deleted);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                LogFailed(logger, exception);
-            }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        var deleted = await services.GetRequiredService<IIdempotencyStore>().DeleteExpiredAsync(_time.GetUtcNow(), cancellationToken);
+        LogDeleted(_logger, deleted);
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "Deleted {Count} expired idempotency keys")]
     private static partial void LogDeleted(ILogger logger, int count);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Deleting expired idempotency keys failed; retrying in an hour")]
-    private static partial void LogFailed(ILogger logger, Exception exception);
 }
 
 internal static class IdempotencySetup

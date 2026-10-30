@@ -32,6 +32,8 @@ dotnet test
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+- Repeating in-process work derives from `ScopedBackgroundLoop`; never start a raw `Task.Run` or
+  timer. See `docs/background-work.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

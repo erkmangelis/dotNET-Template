@@ -15,10 +15,20 @@ docker compose up -d db
 dotnet user-secrets set ConnectionStrings:Default "Server=localhost;Database=app;User Id=sa;Password=<the same password>;TrustServerCertificate=True" --project src/MyProject.Api
 <!--#endif -->
 dotnet run --project src/MyProject.Api
+<!--#if (UseWorker) -->
+dotnet run --project src/MyProject.Worker    # in a second terminal: runs the jobs the API queues
+<!--#endif -->
 ```
+<!--#if (UseAspire) -->
+
+Or start everything at once with .NET Aspire (Docker must be running), which also opens a dashboard
+with every app's logs, traces and metrics: `dotnet run --project src/MyProject.AppHost`. See
+[docs/aspire.md](docs/aspire.md).
+<!--#endif -->
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
-[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
+[docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -176,6 +186,13 @@ src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+<!--#if (UseHostedJobs) -->
+  Infrastructure/Jobs/    background work: the scoped background loop, in-process job queue and cron schedules
+<!--#elif (UseHangfire) -->
+  Infrastructure/Jobs/    background work: the scoped background loop and Hangfire jobs
+<!--#else -->
+  Infrastructure/Jobs/    background work: the scoped background loop
+<!--#endif -->
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
 <!--#endif -->
@@ -191,6 +208,12 @@ src/MyProject.Api/
 <!--#if (UseDatabase) -->
   Data/                   AppDbContext, entity configuration, audit interceptor, migrations, development seed
   Features/Audit/         audit history endpoints
+<!--#endif -->
+<!--#if (UseWorker) -->
+src/MyProject.Worker/     runs the API's jobs in its own process and container
+<!--#endif -->
+<!--#if (UseAspire) -->
+src/MyProject.AppHost/    .NET Aspire: starts the apps and the database for local development
 <!--#endif -->
 tests/MyProject.Api.UnitTests/
 tests/MyProject.Api.IntegrationTests/

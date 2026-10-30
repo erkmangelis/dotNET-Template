@@ -65,6 +65,14 @@ internal sealed class EfNoteStore(AppDbContext db) : INoteStore
         return await TrySaveAsync(cancellationToken);
     }
 
+#if (UseJobs)
+    public Task<int> PurgeDeletedAsync(DateTimeOffset deletedBefore, CancellationToken cancellationToken) =>
+        // A bulk delete skips AuditableEntityInterceptor, so it really removes the rows.
+        db.Notes.IgnoreQueryFilters([SoftDelete.Filter])
+            .Where(note => note.DeletedAt < deletedBefore)
+            .ExecuteDeleteAsync(cancellationToken);
+
+#endif
     public Task<Note?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         db.Notes.AsNoTracking().FirstOrDefaultAsync(note => note.Id == id, cancellationToken);
 

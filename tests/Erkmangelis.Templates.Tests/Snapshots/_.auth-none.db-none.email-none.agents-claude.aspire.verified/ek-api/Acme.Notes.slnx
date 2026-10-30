@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Acme.Notes.Api/Acme.Notes.Api.csproj" />
+    <Project Path="src/Acme.Notes.AppHost/Acme.Notes.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Acme.Notes.Api.IntegrationTests/Acme.Notes.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Acme.Notes.Api.UnitTests/Acme.Notes.Api.UnitTests.csproj" />
+  </Folder>
+</Solution>

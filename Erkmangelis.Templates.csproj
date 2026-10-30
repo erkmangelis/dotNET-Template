@@ -4,11 +4,11 @@
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>Erkmangelis.Templates</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Title>Erkmangelis .NET templates</Title>
     <Authors>erkmangelis</Authors>
-    <Description>A hardened ASP.NET Core HTTP API template for .NET 10 with optional ASP.NET Core Identity, PostgreSQL and AI agent guidance.</Description>
-    <PackageTags>dotnet-new;templates;aspnetcore;webapi;postgresql;identity</PackageTags>
+    <Description>A hardened ASP.NET Core HTTP API template for .NET 10 with optional sign-in (ASP.NET Core Identity or OpenID Connect), PostgreSQL, SQL Server or SQLite, background jobs (hosted or Hangfire), a worker, .NET Aspire and AI agent guidance.</Description>
+    <PackageTags>dotnet-new;templates;aspnetcore;webapi;postgresql;sqlserver;sqlite;identity;hangfire;aspire</PackageTags>
     <RepositoryUrl>https://github.com/erkmangelis/dotNET-Template</RepositoryUrl>
     <PackageProjectUrl>https://github.com/erkmangelis/dotNET-Template</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>

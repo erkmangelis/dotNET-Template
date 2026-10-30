@@ -7,7 +7,13 @@ ARG TARGETARCH
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/MyProject.Api/MyProject.Api.csproj src/MyProject.Api/
+#if (UseWorker)
+COPY src/MyProject.Worker/MyProject.Worker.csproj src/MyProject.Worker/
+# Restoring the worker restores the API it references.
+RUN dotnet restore src/MyProject.Worker/MyProject.Worker.csproj -a $TARGETARCH
+#else
 RUN dotnet restore src/MyProject.Api/MyProject.Api.csproj -a $TARGETARCH
+#endif
 COPY .editorconfig ./
 COPY src/ src/
 RUN dotnet publish src/MyProject.Api/MyProject.Api.csproj -c Release -a $TARGETARCH --no-restore -o /app/publish -p:UseAppHost=false
@@ -30,6 +36,23 @@ RUN mkdir /data && chown $APP_UID /data
 #endif
 USER $APP_UID
 ENTRYPOINT ["/app/efbundle"]
+
+#endif
+#if (UseWorker)
+FROM build AS worker-build
+ARG TARGETARCH
+RUN dotnet publish src/MyProject.Worker/MyProject.Worker.csproj -c Release -a $TARGETARCH --no-restore -o /app/worker -p:UseAppHost=false
+
+# The worker image: runs the jobs the API queues. Build it with --target worker.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS worker
+WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080
+COPY --from=worker-build /app/worker .
+#if (UseSqlite)
+RUN mkdir /data && chown $APP_UID /data
+#endif
+USER $APP_UID
+ENTRYPOINT ["dotnet", "MyProject.Worker.dll"]
 
 #endif
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final

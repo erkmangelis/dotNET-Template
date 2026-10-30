@@ -12,7 +12,8 @@ dotnet run --project src/Acme.Notes.Api
 ```
 
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
-[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
+[docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
 
 ### Email
 
@@ -48,6 +49,7 @@ src/Acme.Notes.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Jobs/    background work: the scoped background loop
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
   Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage

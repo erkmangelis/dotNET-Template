@@ -6,6 +6,9 @@
     "auth": "EK_AUTH",
     "db": "EK_EFFECTIVE_DB",
     "email": "EK_EMAIL",
+    "jobs": "EK_JOBS",
+    "worker": "EK_WORKER",
+    "aspire": "EK_ASPIRE",
     "agents": "EK_AGENTS"
   }
 }

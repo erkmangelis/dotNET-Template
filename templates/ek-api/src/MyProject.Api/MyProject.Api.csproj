@@ -9,6 +9,9 @@
     <!-- Lets the test projects use internal types. -->
     <InternalsVisibleTo Include="MyProject.Api.UnitTests" />
     <InternalsVisibleTo Include="MyProject.Api.IntegrationTests" />
+<!--#if (UseWorker) -->
+    <InternalsVisibleTo Include="MyProject.Worker" />
+<!--#endif -->
   </ItemGroup>
 
   <ItemGroup>
@@ -35,6 +38,20 @@
 <!--#elif (UseSqlite) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
 <!--#endif -->
+<!--#endif -->
+<!--#if (UseHostedJobs) -->
+    <PackageReference Include="Cronos" />
+<!--#endif -->
+<!--#if (UseHangfire) -->
+    <PackageReference Include="Hangfire.AspNetCore" />
+<!--#if (UsePostgres) -->
+    <PackageReference Include="Hangfire.PostgreSql" />
+<!--#elif (UseSqlServer) -->
+    <PackageReference Include="Hangfire.SqlServer" />
+<!--#elif (UseSqlite) -->
+    <PackageReference Include="Hangfire.Storage.SQLite" />
+<!--#endif -->
+    <PackageReference Include="Newtonsoft.Json" />
 <!--#endif -->
 <!--#if (UseIdentity) -->
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />

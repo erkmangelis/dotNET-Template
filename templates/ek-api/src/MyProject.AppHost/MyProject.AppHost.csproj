@@ -1,0 +1,28 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Runs with `dotnet run` and the dashboard and orchestrator packages from NuGet; the Aspire CLI
+         is optional. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+    <UserSecretsId>MyProject-AppHost-0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+<!--#if (UsePostgres) -->
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+<!--#elif (UseSqlServer) -->
+    <PackageReference Include="Aspire.Hosting.SqlServer" />
+    <!-- Aspire.Hosting.SqlServer brings in a vulnerable version; the pin is in Directory.Packages.props. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+<!--#endif -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyProject.Api\MyProject.Api.csproj" />
+<!--#if (UseWorker) -->
+    <ProjectReference Include="..\MyProject.Worker\MyProject.Worker.csproj" />
+<!--#endif -->
+  </ItemGroup>
+
+</Project>

@@ -29,6 +29,19 @@ template with these options:
 <!--#if (UseSmtp) -->
 - Email: SMTP through MailKit, or the log in Development (`src/MyProject.Api/Infrastructure/Email`).
 <!--#endif -->
+<!--#if (UseHostedJobs) -->
+- Jobs: an in-process queue and cron schedules on hosted services (`src/MyProject.Api/Infrastructure/Jobs`).
+<!--#elif (UseHangfire) -->
+- Jobs: Hangfire, stored in the database (`src/MyProject.Api/Infrastructure/Jobs`).
+<!--#endif -->
+<!--#if (UseWorker) -->
+- Worker: `src/MyProject.Worker` runs the jobs; the API only queues them (`Jobs:RunServer` is off).
+  The worker references the API project and registers the same services, so a job's dependencies
+  must be registered in both `Program.cs` files.
+<!--#endif -->
+<!--#if (UseAspire) -->
+- Local orchestration: .NET Aspire AppHost in `src/MyProject.AppHost` (development only, never deployed).
+<!--#endif -->
 
 ## Commands
 
@@ -66,6 +79,15 @@ Never edit a migration that has been merged.
 - Request contracts list only the fields a client may set. Never bind an entity directly.
 - Settings are typed options classes with `ValidateOnStart`. No secrets in appsettings files.
 - Use the injected `TimeProvider`, not `DateTime.Now`, so tests can control time.
+- Repeating in-process work derives from `ScopedBackgroundLoop`; never start a raw `Task.Run` or
+  timer. See `docs/background-work.md`.
+<!--#if (UseJobs) -->
+- Slow work a request asks for goes into a job (`IJob<TArgs>`, queued with `IJobQueue`); scheduled
+  work is an `IRecurringJob`. Job arguments are records of ids and values with arrays, never
+  entities or services. Every job must be safe to run twice: wrap effects that must happen once
+  in `JobIdempotency.RunOnceAsync` with a key for that piece of work.
+- Work that only one instance may do at a time takes an `IDistributedLock` and skips when it is held.
+<!--#endif -->
 <!--#if (UseDatabase) -->
 - Never set `CreatedAt`, `UpdatedAt` or `DeletedAt` (or the `*By` fields) by hand, and never hard-delete
   a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.

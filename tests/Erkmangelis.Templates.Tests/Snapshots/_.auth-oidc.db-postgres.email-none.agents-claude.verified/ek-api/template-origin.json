@@ -1,11 +1,14 @@
 ﻿{
   "template": "Erkmangelis.Templates.Api",
   "package": "Erkmangelis.Templates",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "options": {
     "auth": "oidc",
     "db": "postgres",
     "email": "none",
+    "jobs": "none",
+    "worker": false,
+    "aspire": false,
     "agents": "claude"
   }
 }

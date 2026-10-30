@@ -25,6 +25,10 @@ jobs:
           - target: migrator
             suffix: "-migrator"
 #endif
+#if (UseWorker)
+          - target: worker
+            suffix: "-worker"
+#endif
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3

@@ -2,6 +2,43 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - Unreleased
+
+R04, background work and the worker.
+
+### Added
+
+- `ScopedBackgroundLoop`: a hosted service base for repeating in-process work, with a new DI scope
+  per run, `TimeProvider` timers and failures logged without stopping the loop. Idempotency key
+  cleanup now runs on it.
+- `--jobs none|hosted|hangfire`. Both job choices share the contracts: `IJob<TArgs>` queued through
+  `IJobQueue`, and `IRecurringJob` with a cron schedule (overridable in `Jobs:Schedules`). The notes
+  feature gains `POST /v1/notes/imports` (202, a job creates the notes) and a daily job that purges
+  notes deleted more than 30 days ago.
+  - `hosted`: a bounded in-process queue, `Jobs:WorkerCount` runners and a Cronos (MIT) scheduler.
+    Queued jobs are lost on restart.
+  - `hangfire`: Hangfire 1.8 (LGPL-3.0) storing jobs in PostgreSQL, SQL Server or a SQLite file
+    next to the database, so a queued job survives a restart (tested). The dashboard at `/jobs`
+    (`Jobs:Dashboard`) needs the new `jobs.manage` permission, or local requests without sign-in.
+    Turns PostgreSQL on when `--db` is `none`.
+- Retries: a failing job runs up to `Jobs:MaxAttempts` times with exponential backoff from
+  `Jobs:RetryDelaySeconds`, then stays failed and is logged as an error. With sign-in, admins list
+  failed jobs (`GET /v1/admin/jobs/failed`) and requeue one with all its attempts
+  (`POST /v1/admin/jobs/failed/{id}/requeue`).
+- `JobIdempotency.RunOnceAsync`: a job's effect happens once per key, in the same transaction as the
+  work when there is a database, so a repeated or retried job has no repeated effect (tested).
+- `IDistributedLock`: PostgreSQL advisory locks, SQL Server application locks, lock files next to a
+  SQLite database, or an in-process lock. The hosted scheduler uses it with `JobIdempotency` so a
+  recurring job runs once per scheduled time across instances.
+- `--worker`: `src/MyProject.Worker` references the API project and runs the Hangfire server while
+  the API only queues jobs. It has its own image stage (published for amd64 and arm64 by the
+  generated container workflow) and compose service. Means `--jobs hangfire`.
+- `--aspire`: a .NET Aspire 13.6 AppHost (MIT) that starts PostgreSQL or SQL Server, the API and the
+  worker for local development; the dashboard receives the apps' existing OTLP telemetry.
+- `template-origin.json` records `jobs`, `worker` and `aspire`.
+- CI: fourteen new combinations (32 in all) and a job that builds the API and worker images for
+  linux/amd64 and linux/arm64.
+
 ## [0.3.0] - Unreleased
 
 R03, Data and API depth.

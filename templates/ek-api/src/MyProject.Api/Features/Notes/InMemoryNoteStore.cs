@@ -65,6 +65,16 @@ internal sealed class InMemoryNoteStore(TimeProvider time) : INoteStore
             return Task.FromResult(NoteSaveResult.Saved);
         }
     }
+#if (UseJobs)
+
+    public Task<int> PurgeDeletedAsync(DateTimeOffset deletedBefore, CancellationToken cancellationToken)
+    {
+        lock (_lock)
+        {
+            return Task.FromResult(_notes.RemoveAll(note => note.DeletedAt < deletedBefore));
+        }
+    }
+#endif
 
     public Task<PagedResult<Note>> ListAsync(NoteListQuery query, CancellationToken cancellationToken)
     {

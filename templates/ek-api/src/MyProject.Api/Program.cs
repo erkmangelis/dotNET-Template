@@ -8,6 +8,9 @@ builder.AddDatabase();
 #if (UseSmtp)
 builder.AddEmail();
 #endif
+#if (UseJobs)
+builder.AddJobs();
+#endif
 #if (UseIdentity)
 builder.AddIdentityAuth();
 #elif (UseOidc)
@@ -38,11 +41,18 @@ v1.MapProfileEndpoints();
 var admin = v1.MapGroup("/admin").WithTags("Admin");
 admin.MapNoteAdminEndpoints();
 admin.MapAuditAdminEndpoints();
+#if (UseJobs)
+admin.MapJobAdminEndpoints();
+#endif
 #if (UseIdentity)
 admin.MapUserAdminEndpoints();
 #endif
 #endif
 
+#if (UseHangfire)
+app.MapJobsDashboard();
+
+#endif
 #if (UseDatabase)
 await app.PrepareDatabaseAsync();
 #endif

@@ -28,6 +28,11 @@ internal interface INoteStore
     /// still current. From then on no read returns it.
     /// </summary>
     Task<NoteSaveResult> TryDeleteAsync(Note note, CancellationToken cancellationToken);
+#if (UseJobs)
+
+    /// <summary>Removes notes deleted before <paramref name="deletedBefore"/> for good, and returns how many.</summary>
+    Task<int> PurgeDeletedAsync(DateTimeOffset deletedBefore, CancellationToken cancellationToken);
+#endif
 
 #if (UseAuth)
     /// <summary>The owner's notes, or everyone's when <paramref name="ownerId"/> is null, filtered and sorted by <paramref name="query"/>.</summary>

@@ -14,3 +14,4 @@ global using MyProject.Api.Infrastructure;
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif
+global using MyProject.Api.Infrastructure.Jobs;

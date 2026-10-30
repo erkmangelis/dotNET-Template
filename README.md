@@ -1,10 +1,10 @@
 # Erkmangelis .NET templates
 
-`dotnet new` templates for .NET 10. Release 0.2 has one: **`ek-api`**, a hardened ASP.NET Core HTTP
+`dotnet new` templates for .NET 10. Release 0.4 has one: **`ek-api`**, a hardened ASP.NET Core HTTP
 API that fixes the security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.3.0.nupkg
+dotnet new install Erkmangelis.Templates.0.4.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
@@ -17,18 +17,24 @@ New here? Follow [docs/getting-started.md](docs/getting-started.md).
 | `--auth` | `none`, `identity`, `external`, `oidc` | `none` | `identity`: ASP.NET Core Identity accounts with bearer tokens or same-site cookie sessions with antiforgery, lockout, email confirmation and reset, authenticator-app MFA, passkeys. `external`: the same accounts plus Google, Apple and Microsoft sign-in, linked only on a provider-verified email. `oidc`: no local accounts; the API trusts access tokens from one OpenID Connect provider, with a development Keycloak and an enterprise SSO (SAML) recipe. Every mode adds roles and permissions, admin endpoints, hashed and scoped API keys, user profiles and an owner-only policy on the example feature, and turns PostgreSQL on when `--db` is `none`. |
 | `--db` | `none`, `postgres`, `sqlserver`, `sqlite` | `none` | EF Core with migrations, record metadata, soft delete, audit history, a migration bundle, compose and a backup script. `postgres`: PostgreSQL 18 through Npgsql. `sqlserver`: SQL Server 2022 (Express by default; you accept its licence in `.env`; amd64 only). `sqlite`: one file on a volume, no database server. PostgreSQL and SQL Server tests use Testcontainers. A Dapper recipe covers hand-written SQL for hot read paths. |
 | `--email` | `none`, `smtp` | `none` | Templated confirmation and reset emails through SMTP (MailKit), Mailpit for local testing. With `none`, emails are only logged, in development. |
+| `--jobs` | `none`, `hosted`, `hangfire` | `none` | Background jobs: queued jobs (`IJob<TArgs>` through `IJobQueue`) and cron-scheduled recurring jobs, bounded retries with backoff, failed-job listing and requeue for admins, idempotent job effects (`JobIdempotency`) and distributed locks (PostgreSQL advisory locks, SQL Server app locks, lock files with SQLite). `hosted`: an in-process queue and cron schedules on hosted services; queued jobs are lost on restart. `hangfire`: Hangfire (LGPL-3.0) storing jobs in the database, so they survive restarts, with a dashboard behind the `jobs.manage` permission; turns PostgreSQL on when `--db` is `none`. Every choice has the scoped background loop for housekeeping. |
+| `--worker` | `false`, `true` | `false` | A worker project and image that runs the jobs while the API only queues them. Means `--jobs hangfire`. |
+| `--aspire` | `false`, `true` | `false` | A .NET Aspire AppHost (MIT) that starts the database, the API and the worker for local development, with the Aspire dashboard. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
-Every `--auth` mode but `none` needs a database, so with `--db none` it generates the PostgreSQL
-output. CI runs every auth and email choice on PostgreSQL, and every auth choice on SQL Server and
-SQLite (the email option does not touch database code): eighteen combinations that change code.
+Every `--auth` mode but `none`, and `--jobs hangfire`, need a database, so with `--db none` they
+generate the PostgreSQL output. CI runs every auth and email choice on PostgreSQL, and every auth
+choice on SQL Server and SQLite (the email option does not touch database code), each `--jobs`
+choice on every database with and without sign-in, `--worker` on every database and `--aspire` with
+and without a database and a worker: thirty-two combinations that change code. CI also builds the
+API and worker images for amd64 and arm64.
 `--agents` only adds or removes `AGENTS.md` and `CLAUDE.md`, so CI rotates it across them instead of
 multiplying them by three, and a snapshot test checks that it touches nothing else.
 
 ## Supported means tested
 
 A combination is supported only if CI generates it and it passes the acceptance test
-([scripts/acceptance.sh](scripts/acceptance.sh)). For each of the ten combinations, CI:
+([scripts/acceptance.sh](scripts/acceptance.sh)). For each combination, CI:
 
 1. generates the project outside the source tree from the packed `.nupkg`,
 2. checks that no template markers and nothing from unselected options are left behind,
@@ -37,7 +43,8 @@ A combination is supported only if CI generates it and it passes the acceptance 
    no-secrets-in-logs and (with `--auth external`) unverified-email takeover tests,
 5. checks that a deliberate style violation fails the build,
 6. starts it with `docker compose` and expects 200 from `/health/ready`, and with `--email smtp` and
-   local accounts, that registering sends a confirmation email to the bundled Mailpit.
+   local accounts, that registering sends a confirmation email to the bundled Mailpit, and with
+   `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers.
 
 Snapshot tests ([tests/Erkmangelis.Templates.Tests](tests/Erkmangelis.Templates.Tests)) pin the
 generated files for each combination, so every change to the output shows up in review.
@@ -55,13 +62,13 @@ generated files for each combination, so every change to the output shows up in 
 - A multi-arch Docker image (amd64 and arm64), Docker Compose, and a Raspberry Pi or VPS recipe with HTTPS through a Cloudflare Tunnel
 - CI, container publishing with signed provenance, and Dependabot
 
-No default dependency needs a commercial licence: no MediatR, no AutoMapper.
+No default dependency needs a commercial licence: no MediatR, no AutoMapper, no Hangfire Pro.
 
 ## Working on the template
 
 ```bash
 dotnet test tests/Erkmangelis.Templates.Tests        # snapshot tests
-scripts/acceptance.sh --auth identity --db postgres --email smtp --agents claude --compose
+scripts/acceptance.sh --auth identity --db postgres --email smtp --jobs hangfire --worker true --agents claude --compose
 ```
 
 Template sources live in [templates/ek-api](templates/ek-api). Conditional code uses the template

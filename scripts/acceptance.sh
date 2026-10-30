@@ -5,21 +5,26 @@
 # "supported" means for this template:
 #   restore, build with warnings as errors, format check, all tests, no leftovers from
 #   unselected options, a deliberate style violation fails the build, and (with --compose)
-#   docker compose starts, /health/ready answers 200 and, with --auth identity|external and
-#   --email smtp, a confirmation email reaches the bundled Mailpit.
+#   docker compose starts, /health/ready answers 200, with --auth identity|external and
+#   --email smtp a confirmation email reaches the bundled Mailpit, and with --auth none and any
+#   --jobs but none (or --worker) a background job imports notes in the container (the worker's,
+#   with --worker).
 #
 # Usage:
 #   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
-#       --email none|smtp --agents none|shared|claude \
-#       [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep]
+#       --email none|smtp --jobs none|hosted|hangfire --worker false|true --aspire false|true \
+#       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep]
 set -euo pipefail
 
-AUTH=none DB=none EMAIL=none AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false
+AUTH=none DB=none EMAIL=none JOBS=none WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auth) AUTH="$2"; shift 2 ;;
     --db) DB="$2"; shift 2 ;;
     --email) EMAIL="$2"; shift 2 ;;
+    --jobs) JOBS="$2"; shift 2 ;;
+    --worker) WORKER="$2"; shift 2 ;;
+    --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
     --package) PACKAGE="$2"; shift 2 ;;
     --compose) COMPOSE=true; shift ;;
@@ -33,8 +38,13 @@ WORK="$(mktemp -d "${RUNNER_TEMP:-/tmp}/ek-acceptance.XXXXXX")"
 HIVE="$WORK/hive"
 NAME="Acme.Notes"
 OUT="$WORK/$NAME"
-# Every sign-in mode stores users' data, so any --auth but none turns PostgreSQL on when --db is none.
-EFFECTIVE_DB="$DB"; [[ "$AUTH" != none && "$DB" == none ]] && EFFECTIVE_DB=postgres
+# The worker runs Hangfire jobs, so --worker means --jobs hangfire.
+OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
+if [[ "$WORKER" == true ]]; then JOBS=hangfire; fi
+# Every sign-in mode stores users' data and Hangfire stores jobs, so any --auth but none and
+# --jobs hangfire turn PostgreSQL on when --db is none.
+EFFECTIVE_DB="$DB"
+if [[ "$DB" == none && ( "$AUTH" != none || "$JOBS" == hangfire ) ]]; then EFFECTIVE_DB=postgres; fi
 ACCOUNTS=false; [[ "$AUTH" == identity || "$AUTH" == external ]] && ACCOUNTS=true
 
 cleanup() {
@@ -57,7 +67,6 @@ fi
 step "Install $(basename "$PACKAGE") into an isolated template hive"
 dotnet new install "$PACKAGE" --debug:custom-hive "$HIVE" >/dev/null
 
-OPTIONS="--auth $AUTH --db $DB --email $EMAIL --agents $AGENTS"
 step "Generate $OPTIONS"
 # shellcheck disable=SC2086
 dotnet new ek-api -n "$NAME" -o "$OUT" $OPTIONS --debug:custom-hive "$HIVE"
@@ -105,13 +114,28 @@ if [[ "$EMAIL" == none ]]; then
   leftover 'MailKit|Mailpit|SMTP_HOST' "SMTP code or settings left with --email none"
   [[ ! -e src/$NAME.Api/Infrastructure/Email ]] || fail "email folder left with --email none"
 fi
+case "$JOBS" in
+  none) leftover 'Hangfire|Cronos|IJobQueue|IRecurringJob' "job code or settings left with --jobs none" ;;
+  # The background work guide points at --jobs hangfire as the durable choice.
+  hosted) leftover 'Hangfire' "Hangfire code or settings left with --jobs hosted" ':!docs/background-work.md' ;;
+  hangfire) leftover 'Cronos|InProcessJob|RecurringJobScheduler' "in-process job code left with --jobs hangfire" ;;
+esac
+if [[ "$WORKER" == false ]]; then
+  leftover "$NAME\.Worker|worker-build|RunServer\": false" "worker project or settings left with --worker false"
+  [[ ! -e src/$NAME.Worker ]] || fail "worker folder left with --worker false"
+fi
+if [[ "$ASPIRE" == false ]]; then
+  leftover 'Aspire|\.AppHost' "Aspire AppHost or settings left with --aspire false"
+  [[ ! -e src/$NAME.AppHost ]] || fail "AppHost folder left with --aspire false"
+fi
 case "$AGENTS" in
   none) [[ ! -e AGENTS.md && ! -e CLAUDE.md ]] || fail "agent files left with --agents none" ;;
   shared) [[ -e AGENTS.md && ! -e CLAUDE.md ]] || fail "--agents shared must give AGENTS.md only" ;;
   claude) [[ -e AGENTS.md && -e CLAUDE.md ]] || fail "--agents claude must give AGENTS.md and CLAUDE.md" ;;
 esac
 grep -q "\"auth\": \"$AUTH\"" template-origin.json && grep -q "\"db\": \"$EFFECTIVE_DB\"" template-origin.json \
-  && grep -q "\"email\": \"$EMAIL\"" template-origin.json \
+  && grep -q "\"email\": \"$EMAIL\"" template-origin.json && grep -q "\"jobs\": \"$JOBS\"" template-origin.json \
+  && grep -q "\"worker\": $WORKER" template-origin.json && grep -q "\"aspire\": $ASPIRE" template-origin.json \
   || fail "template-origin.json does not record the options"
 
 step "Restore"
@@ -179,6 +203,21 @@ if [[ "$COMPOSE" == true ]]; then
     done
     curl -fsS http://localhost:8025/api/v1/messages | grep -q 'acceptance@example.com' \
       || { docker compose logs api; fail "no confirmation email reached Mailpit"; }
+  fi
+
+  if [[ "$JOBS" != none && "$AUTH" == none ]]; then
+    step "A background job imports notes"
+    title="Acceptance import $(openssl rand -hex 8)"
+    status="$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+      -d "{\"notes\":[{\"title\":\"$title\"}]}" http://localhost:8080/v1/notes/imports)"
+    [[ "$status" == 202 ]] || { docker compose logs api; fail "the import answered $status"; }
+    query="search=$(sed 's/ /%20/g' <<<"$title")"
+    for _ in $(seq 1 30); do
+      if curl -fsS "http://localhost:8080/v1/notes?$query" | grep -q "$title"; then break; fi
+      sleep 1
+    done
+    curl -fsS "http://localhost:8080/v1/notes?$query" | grep -q "$title" \
+      || { docker compose logs api worker 2>/dev/null || docker compose logs api; fail "the import job did not create the note"; }
   fi
 fi
 
