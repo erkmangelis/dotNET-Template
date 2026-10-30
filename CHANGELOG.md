@@ -36,7 +36,7 @@ R05, generator tooling.
   option values (18 combinations, was 32 picked by hand). The release workflow also packs and
   attests the tool.
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-30
 
 R04, background work and the worker.
 
