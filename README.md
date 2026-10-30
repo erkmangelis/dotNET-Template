@@ -1,14 +1,23 @@
 # Erkmangelis .NET templates
 
-`dotnet new` templates for .NET 10. Release 0.4 has one: **`ek-api`**, a hardened ASP.NET Core HTTP
-API that fixes the security, testing and secrets gaps that come up again and again in project reviews.
+`dotnet new` templates for .NET 10, and `ek`, a tool that generates and updates projects from them.
+Release 0.5 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API that fixes the
+security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.4.0.nupkg
+dotnet new install Erkmangelis.Templates.0.5.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
-New here? Follow [docs/getting-started.md](docs/getting-started.md).
+Or with the tool, which asks what you need, offers presets and rejects unsupported combinations:
+
+```bash
+dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.5.0.nupkg>
+ek new RideSense --preset saas-api
+ek update        # later, inside the project: merge a newer template version's changes
+```
+
+New here? Follow [docs/getting-started.md](docs/getting-started.md). The tool: [docs/cli.md](docs/cli.md).
 
 ## Options
 
@@ -23,18 +32,17 @@ New here? Follow [docs/getting-started.md](docs/getting-started.md).
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
 Every `--auth` mode but `none`, and `--jobs hangfire`, need a database, so with `--db none` they
-generate the PostgreSQL output. CI runs every auth and email choice on PostgreSQL, and every auth
-choice on SQL Server and SQLite (the email option does not touch database code), each `--jobs`
-choice on every database with and without sign-in, `--worker` on every database and `--aspire` with
-and without a database and a worker: thirty-two combinations that change code. CI also builds the
-API and worker images for amd64 and arm64.
-`--agents` only adds or removes `AGENTS.md` and `CLAUDE.md`, so CI rotates it across them instead of
-multiplying them by three, and a snapshot test checks that it touches nothing else.
+generate the PostgreSQL output; `--worker` means `--jobs hangfire`. These rules live in
+[catalog/modules.json](catalog/modules.json): `ek` applies them and rejects a combination that
+breaks one, with the reason. Presets (`minimal`, `saas-api`, `api-worker` alias `ek-worker`,
+`sso-api`, `single-box`) live in [catalog/presets.json](catalog/presets.json).
 
 ## Supported means tested
 
-A combination is supported only if CI generates it and it passes the acceptance test
-([scripts/acceptance.sh](scripts/acceptance.sh)). For each combination, CI:
+Every combination the catalog's rules accept is supported, and CI tests a set chosen from the
+catalog by `ek matrix`: every preset, plus combinations that cover every pair of option values that
+can occur together (18 in all, instead of the hundreds of possible combinations). For each, CI runs
+the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
 
 1. generates the project outside the source tree from the packed `.nupkg`,
 2. checks that no template markers and nothing from unselected options are left behind,
@@ -46,8 +54,15 @@ A combination is supported only if CI generates it and it passes the acceptance 
    local accounts, that registering sends a confirmation email to the bundled Mailpit, and with
    `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers.
 
+CI also generates projects with released versions (0.1.0 and 0.3.0), commits a file of the team's
+own, runs `ek update` to the current version and runs the same acceptance test on the result, and
+builds the API and worker images for amd64 and arm64.
+
 Snapshot tests ([tests/Erkmangelis.Templates.Tests](tests/Erkmangelis.Templates.Tests)) pin the
-generated files for each combination, so every change to the output shows up in review.
+generated files for each combination, so every change to the output shows up in review. Tool tests
+([tests/Erkmangelis.Ek.Tests](tests/Erkmangelis.Ek.Tests)) check the catalog against the template's
+symbols, that `ek new` and plain `dotnet new` give identical output for every preset, and the update
+merge. `--agents` only adds or removes `AGENTS.md` and `CLAUDE.md`, which a snapshot test checks.
 
 ## What every generated API has
 
@@ -68,6 +83,8 @@ No default dependency needs a commercial licence: no MediatR, no AutoMapper, no 
 
 ```bash
 dotnet test tests/Erkmangelis.Templates.Tests        # snapshot tests
+dotnet test tests/Erkmangelis.Ek.Tests               # tool tests
+dotnet run --project src/Erkmangelis.Ek -- new       # the tool, from source
 scripts/acceptance.sh --auth identity --db postgres --email smtp --jobs hangfire --worker true --agents claude --compose
 ```
 
@@ -80,8 +97,12 @@ Migrations ship pre-generated in `templates/ek-api/.migrations`, one set per sig
 change to the EF model, run `scripts/add-migration.sh <Name>` to add a migration to every set from
 the current template; running it again with the newest migration's name replaces that migration.
 
-Releases: push a `v*` tag. The release workflow packs the template, attests its build provenance
-and attaches the `.nupkg` to a GitHub release. See [CHANGELOG.md](CHANGELOG.md).
+A new option also needs an entry in [catalog/modules.json](catalog/modules.json), a line in the
+template's `template-origin.json` and a regenerated [spec schema](schemas/ek-spec.schema.json); the
+tool tests say which one is missing. See [docs/cli.md](docs/cli.md#maintainers).
+
+Releases: push a `v*` tag. The release workflow packs the template and the `ek` tool, attests their
+build provenance and attaches both `.nupkg` files to a GitHub release. See [CHANGELOG.md](CHANGELOG.md).
 
 Security baseline: [docs/asvs-l1.md](docs/asvs-l1.md) maps OWASP ASVS Level 1 to what the template
 covers and what each project still owns.

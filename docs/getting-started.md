@@ -12,19 +12,22 @@ Download `Erkmangelis.Templates.<version>.nupkg` from the
 [latest release](https://github.com/erkmangelis/dotNET-Template/releases), then:
 
 ```bash
-dotnet new install ./Erkmangelis.Templates.0.4.0.nupkg
+dotnet new install ./Erkmangelis.Templates.0.5.0.nupkg
 dotnet new ek-api --help
 ```
 
-To check the download first: `gh attestation verify Erkmangelis.Templates.0.4.0.nupkg --repo erkmangelis/dotNET-Template`.
+To check the download first: `gh attestation verify Erkmangelis.Templates.0.5.0.nupkg --repo erkmangelis/dotNET-Template`.
 
 ## 2. Create a project
 
 ```bash
 dotnet new ek-api -n Garage --auth identity --db postgres --agents claude
 cd Garage
-git init && git add -A && git commit -m "Start from ek-api 0.4.0"
+git init && git add -A && git commit -m "Start from ek-api 0.5.0"
 ```
+
+Or let the `ek` tool ask: `ek new Garage` asks for a preset or each option, and only offers
+combinations that are supported ([docs/cli.md](cli.md)).
 
 Pick the options you need:
 
@@ -100,6 +103,14 @@ HTTPS through a Cloudflare Tunnel, nightly backups from `docs/database.md`.
 
 ## Updating later
 
-`template-origin.json` records the template version and options you started from. Read the
-[changelog](../CHANGELOG.md) for what changed between versions. A tool that applies template
-updates to existing projects is planned for a later release.
+`template-origin.json` records the template version, name and options you started from. Read the
+[changelog](../CHANGELOG.md) for what changed between versions, then take a new version's changes
+with `ek update` on a clean working tree:
+
+```bash
+ek update
+git diff        # review; resolve any conflict markers, then build, test and commit
+```
+
+It merges the template's changes into your files and never overwrites what you changed. See
+[docs/cli.md](cli.md#update-a-project).
