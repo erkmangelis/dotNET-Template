@@ -1,4 +1,5 @@
-# Push a tag like v0.1.0 to publish. The tag must match <Version> in Erkmangelis.Templates.csproj.
+# Push a tag like v0.1.0 to publish. The tag must match <Version> in Erkmangelis.Templates.csproj
+# and in src/Erkmangelis.Ek/Erkmangelis.Ek.csproj.
 name: Release
 
 on:
@@ -21,10 +22,14 @@ jobs:
           global-json-file: global.json
       - name: Check the tag matches the package version
         run: |
-          version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Erkmangelis.Templates.csproj)"
-          [[ "v$version" == "$GITHUB_REF_NAME" ]] || { echo "Tag $GITHUB_REF_NAME does not match version $version"; exit 1; }
+          for project in Erkmangelis.Templates.csproj src/Erkmangelis.Ek/Erkmangelis.Ek.csproj; do
+            version="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$project")"
+            [[ "v$version" == "$GITHUB_REF_NAME" ]] || { echo "Tag $GITHUB_REF_NAME does not match version $version in $project"; exit 1; }
+          done
       - name: Pack
-        run: dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts -p:ContinuousIntegrationBuild=true
+        run: |
+          dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts -p:ContinuousIntegrationBuild=true
+          dotnet pack src/Erkmangelis.Ek -c Release -o artifacts -p:ContinuousIntegrationBuild=true
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v3
         with:

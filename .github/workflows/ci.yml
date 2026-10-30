@@ -14,71 +14,59 @@ env:
 
 jobs:
   pack:
-    name: Pack and snapshot tests
+    name: Pack, tool tests and snapshot tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.matrix.outputs.include }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The update tests generate projects from released versions, so they need the tags.
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
-      - name: Pack the template
-        run: dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts
+      - name: Pack the template and the ek tool
+        run: |
+          dotnet pack Erkmangelis.Templates.csproj -c Release -o artifacts
+          dotnet pack src/Erkmangelis.Ek -c Release -o artifacts
+      - name: Tool tests
+        run: dotnet test tests/Erkmangelis.Ek.Tests -c Release
       - name: Snapshot tests
         run: dotnet test tests/Erkmangelis.Templates.Tests -c Release
+      - name: Acceptance matrix from the catalog
+        id: matrix
+        run: dotnet run --project src/Erkmangelis.Ek -c Release --no-build -- matrix --github >> "$GITHUB_OUTPUT"
+      - name: Pack released versions for the update tests
+        run: |
+          for version in 0.1.0 0.3.0; do
+            git worktree add "$RUNNER_TEMP/v$version" "v$version"
+            dotnet pack "$RUNNER_TEMP/v$version/Erkmangelis.Templates.csproj" -c Release -o released
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: package
           path: artifacts/*.nupkg
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: released-packages
+          path: released/*.nupkg
+          if-no-files-found: error
 
   acceptance:
-    # Every combination listed here is supported. Anything not listed is not.
-    name: Acceptance (auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, jobs ${{ matrix.jobs }}, worker ${{ matrix.worker || false }}, aspire ${{ matrix.aspire || false }}, agents ${{ matrix.agents }})
+    # Every preset, plus combinations that cover every pair of option values that can occur
+    # together, computed from catalog/ by `ek matrix`. Anything the catalog's rules accept is
+    # supported; the rules reject the rest with a reason.
+    name: Acceptance (${{ matrix.name }}, auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, jobs ${{ matrix.jobs }}, worker ${{ matrix.worker }}, aspire ${{ matrix.aspire }}, agents ${{ matrix.agents }})
     needs: pack
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        # The combinations that change code. --agents only adds or removes AGENTS.md and
-        # CLAUDE.md (a snapshot test proves it), so each value runs on a share of them. SQL Server
-        # and SQLite run with every --auth mode; --email does not touch the database code. --jobs runs
-        # each choice on every database, with and without sign-in. --worker (which means --jobs
-        # hangfire) runs on every database; --aspire runs with and without a database and a worker.
-        include:
-          - { auth: none, db: none, email: none, jobs: none, agents: none }
-          - { auth: none, db: none, email: smtp, jobs: none, agents: shared }
-          - { auth: none, db: postgres, email: none, jobs: none, agents: claude }
-          - { auth: none, db: postgres, email: smtp, jobs: none, agents: none }
-          - { auth: identity, db: postgres, email: none, jobs: none, agents: shared }
-          - { auth: identity, db: postgres, email: smtp, jobs: none, agents: claude }
-          - { auth: external, db: postgres, email: none, jobs: none, agents: none }
-          - { auth: external, db: postgres, email: smtp, jobs: none, agents: shared }
-          - { auth: oidc, db: postgres, email: none, jobs: none, agents: claude }
-          - { auth: oidc, db: postgres, email: smtp, jobs: none, agents: none }
-          - { auth: none, db: sqlserver, email: none, jobs: none, agents: shared }
-          - { auth: identity, db: sqlserver, email: smtp, jobs: none, agents: claude }
-          - { auth: external, db: sqlserver, email: none, jobs: none, agents: none }
-          - { auth: oidc, db: sqlserver, email: none, jobs: none, agents: shared }
-          - { auth: none, db: sqlite, email: smtp, jobs: none, agents: claude }
-          - { auth: identity, db: sqlite, email: none, jobs: none, agents: none }
-          - { auth: external, db: sqlite, email: smtp, jobs: none, agents: shared }
-          - { auth: oidc, db: sqlite, email: none, jobs: none, agents: claude }
-          - { auth: none, db: none, email: none, jobs: hosted, agents: shared }
-          - { auth: none, db: sqlserver, email: none, jobs: hosted, agents: claude }
-          - { auth: identity, db: postgres, email: smtp, jobs: hosted, agents: none }
-          - { auth: oidc, db: sqlite, email: none, jobs: hosted, agents: shared }
-          - { auth: none, db: postgres, email: none, jobs: hangfire, agents: claude }
-          - { auth: identity, db: postgres, email: none, jobs: hangfire, agents: shared }
-          - { auth: oidc, db: sqlserver, email: none, jobs: hangfire, agents: none }
-          - { auth: none, db: sqlite, email: smtp, jobs: hangfire, agents: shared }
-          - { auth: none, db: postgres, email: none, jobs: none, worker: true, aspire: true, agents: shared }
-          - { auth: identity, db: sqlserver, email: none, jobs: hangfire, worker: true, agents: claude }
-          - { auth: oidc, db: postgres, email: none, jobs: hangfire, worker: true, agents: none }
-          - { auth: none, db: sqlite, email: smtp, jobs: hangfire, worker: true, aspire: true, agents: none }
-          - { auth: none, db: none, email: none, jobs: none, aspire: true, agents: claude }
-          - { auth: identity, db: sqlserver, email: none, jobs: hosted, aspire: true, agents: shared }
+        include: ${{ fromJSON(needs.pack.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -91,9 +79,45 @@ jobs:
       - name: Generate, build, test and run in docker compose
         run: >
           scripts/acceptance.sh
-          --package "$(ls artifacts/*.nupkg)"
+          --package "$(ls artifacts/Erkmangelis.Templates.*.nupkg)"
           --auth ${{ matrix.auth }} --db ${{ matrix.db }} --email ${{ matrix.email }} --jobs ${{ matrix.jobs }}
-          --worker ${{ matrix.worker || false }} --aspire ${{ matrix.aspire || false }} --agents ${{ matrix.agents }}
+          --worker ${{ matrix.worker }} --aspire ${{ matrix.aspire }} --agents ${{ matrix.agents }}
+          --compose
+
+  update:
+    # A project generated by a released version, with a file of its own, updated by `ek update`
+    # to this version, must pass the same acceptance test.
+    name: Update from ${{ matrix.from }} (auth ${{ matrix.auth }}, db ${{ matrix.db }}, email ${{ matrix.email }}, agents ${{ matrix.agents }})
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { from: 0.1.0, auth: none, db: none, email: none, agents: shared }
+          - { from: 0.1.0, auth: identity, db: postgres, email: none, agents: claude }
+          - { from: 0.3.0, auth: external, db: sqlite, email: smtp, agents: none }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v5
+        with:
+          name: package
+          path: artifacts
+      - uses: actions/download-artifact@v5
+        with:
+          name: released-packages
+          path: released
+      - name: Generate with the old version, update, build, test and run in docker compose
+        run: >
+          scripts/acceptance.sh
+          --package "$(ls artifacts/Erkmangelis.Templates.*.nupkg)"
+          --update-from released/Erkmangelis.Templates.${{ matrix.from }}.nupkg
+          --auth ${{ matrix.auth }} --db ${{ matrix.db }} --email ${{ matrix.email }} --jobs none
+          --worker false --aspire false --agents ${{ matrix.agents }}
           --compose
 
   images:
@@ -111,7 +135,7 @@ jobs:
           path: artifacts
       - name: Generate an API with a worker
         run: |
-          dotnet new install "$(ls artifacts/*.nupkg)"
+          dotnet new install "$(ls artifacts/Erkmangelis.Templates.*.nupkg)"
           dotnet new ek-api -n Acme.Notes -o "$RUNNER_TEMP/acme" --worker true
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -125,8 +149,8 @@ jobs:
     # One required check for branch protection.
     name: All supported combinations pass
     if: always()
-    needs: [pack, acceptance, images]
+    needs: [pack, acceptance, update, images]
     runs-on: ubuntu-latest
     steps:
       - run: |
-          [[ "${{ needs.pack.result }}" == success && "${{ needs.acceptance.result }}" == success && "${{ needs.images.result }}" == success ]]
+          [[ "${{ needs.pack.result }}" == success && "${{ needs.acceptance.result }}" == success && "${{ needs.update.result }}" == success && "${{ needs.images.result }}" == success ]]
