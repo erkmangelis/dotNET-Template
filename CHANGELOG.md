@@ -25,8 +25,8 @@ R05, generator tooling.
 - Presets in [catalog/presets.json](catalog/presets.json): `minimal`, `saas-api`, `api-worker`
   (alias `ek-worker`), `sso-api` and `single-box`.
 - Generated projects: a README section on updating with `ek update`.
-- CI: an `update` job that generates projects with 0.1.0 and 0.3.0, adds a file of the team's own,
-  runs `ek update` and the full acceptance test on the result.
+- CI: an `update` job that generates projects with 0.1.0, 0.3.0 and 0.4.0, adds a file of the
+  team's own, runs `ek update` and the full acceptance test on the result.
 
 ### Changed
 

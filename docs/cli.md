@@ -134,8 +134,8 @@ Versions are looked up in the `--source` folders, then `~/.ek/packages`, then do
 repository's GitHub releases into that cache. While the repository is private the download fails;
 pass `--from` with the old `.nupkg` (from the release page) or a `--source` folder holding it.
 
-CI generates projects with released versions (0.1.0 and 0.3.0), adds a file of the team's own,
-runs `ek update` to the current version and runs the full acceptance test on the result.
+CI generates projects with released versions (0.1.0, 0.3.0 and 0.4.0), adds a file of the team's
+own, runs `ek update` to the current version and runs the full acceptance test on the result.
 
 ## Maintainers
 

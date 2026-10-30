@@ -54,9 +54,9 @@ the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
    local accounts, that registering sends a confirmation email to the bundled Mailpit, and with
    `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers.
 
-CI also generates projects with released versions (0.1.0 and 0.3.0), commits a file of the team's
-own, runs `ek update` to the current version and runs the same acceptance test on the result, and
-builds the API and worker images for amd64 and arm64.
+CI also generates projects with released versions (0.1.0, 0.3.0 and 0.4.0), commits a file of
+the team's own, runs `ek update` to the current version and runs the same acceptance test on the
+result, and builds the API and worker images for amd64 and arm64.
 
 Snapshot tests ([tests/Erkmangelis.Templates.Tests](tests/Erkmangelis.Templates.Tests)) pin the
 generated files for each combination, so every change to the output shows up in review. Tool tests
