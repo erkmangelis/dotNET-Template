@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The `ek` dotnet tool: asks questions, writes a project spec, calls `dotnet new`, and updates
+       generated projects to a newer template version. Its option rules come from catalog/. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Erkmangelis.Ek</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ek</ToolCommandName>
+    <PackageId>Erkmangelis.Ek</PackageId>
+    <!-- Always the template package's version: the tool carries that package and its rules. -->
+    <Version>0.5.0</Version>
+    <Title>ek: the Erkmangelis template CLI</Title>
+    <Authors>erkmangelis</Authors>
+    <Description>Generate and update projects from the Erkmangelis .NET templates: presets, interactive questions, a versioned project spec, option rules with clear reasons, and `ek update`, which three-way merges a newer template version into a generated project.</Description>
+    <PackageTags>dotnet-new;templates;cli;scaffolding;aspnetcore</PackageTags>
+    <RepositoryUrl>https://github.com/erkmangelis/dotNET-Template</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/erkmangelis/dotNET-Template</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- NuGet leaves .nupkg files out of a package by default; the bundled template package is one. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../catalog/modules.json" LogicalName="catalog/modules.json" />
+    <EmbeddedResource Include="../../catalog/presets.json" LogicalName="catalog/presets.json" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!-- The tool carries the template package of its own version, so `ek new` and `ek update` work
+       without installing the templates first. Set EkBundleTemplate=false to skip packing it. -->
+  <PropertyGroup>
+    <EkBundleTemplate Condition="'$(EkBundleTemplate)' == ''">true</EkBundleTemplate>
+    <EkTemplatePackageDir>$(MSBuildProjectDirectory)/$(BaseIntermediateOutputPath)template-package/</EkTemplatePackageDir>
+  </PropertyGroup>
+
+  <Target Name="PackTemplatePackage" BeforeTargets="AssignTargetPaths" Condition="'$(EkBundleTemplate)' == 'true'">
+    <!-- A separate dotnet pack, because the template project needs its own restore. -->
+    <Exec Command="&quot;$(DOTNET_HOST_PATH)&quot; pack &quot;$(MSBuildProjectDirectory)/../../Erkmangelis.Templates.csproj&quot; -c Release -o &quot;$(EkTemplatePackageDir)&quot; --nologo -v quiet -p:ContinuousIntegrationBuild=$(ContinuousIntegrationBuild)"
+          StandardOutputImportance="low" />
+    <ItemGroup>
+      <None Include="$(EkTemplatePackageDir)Erkmangelis.Templates.$(Version).nupkg"
+            Link="template-package/Erkmangelis.Templates.$(Version).nupkg"
+            CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,31 @@
+{
+  "catalogVersion": 1,
+  "presets": [
+    {
+      "name": "minimal",
+      "description": "The hardened API on its own: no sign-in, no database, notes kept in memory, no agent files.",
+      "options": { "auth": "none", "db": "none", "email": "none", "jobs": "none", "worker": false, "aspire": false, "agents": "none" }
+    },
+    {
+      "name": "saas-api",
+      "description": "Accounts with Identity on PostgreSQL, confirmation emails over SMTP, durable Hangfire jobs and Claude guidance.",
+      "options": { "auth": "identity", "db": "postgres", "email": "smtp", "jobs": "hangfire", "worker": false, "aspire": false, "agents": "claude" }
+    },
+    {
+      "name": "api-worker",
+      "aliases": [ "ek-worker" ],
+      "description": "An API that queues jobs and a worker that runs them, on PostgreSQL, started together by an Aspire AppHost.",
+      "options": { "auth": "none", "db": "postgres", "email": "none", "jobs": "hangfire", "worker": true, "aspire": true, "agents": "shared" }
+    },
+    {
+      "name": "sso-api",
+      "description": "No local accounts: the API trusts tokens from your OpenID Connect provider, on PostgreSQL, with a dev Keycloak.",
+      "options": { "auth": "oidc", "db": "postgres", "email": "none", "jobs": "none", "worker": false, "aspire": false, "agents": "shared" }
+    },
+    {
+      "name": "single-box",
+      "description": "Everything on one small machine such as a Raspberry Pi: Identity accounts on SQLite and in-process jobs.",
+      "options": { "auth": "identity", "db": "sqlite", "email": "smtp", "jobs": "hosted", "worker": false, "aspire": false, "agents": "shared" }
+    }
+  ]
+}

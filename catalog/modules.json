@@ -1,0 +1,192 @@
+{
+  "catalogVersion": 1,
+  "template": {
+    "identity": "Erkmangelis.Templates.Api",
+    "shortName": "ek-api",
+    "package": "Erkmangelis.Templates"
+  },
+  "options": [
+    {
+      "name": "auth",
+      "type": "choice",
+      "default": "none",
+      "question": "How do people sign in?",
+      "description": "Authentication. Every choice except 'none' needs a database, and turns PostgreSQL on when --db is none.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No authentication."
+        },
+        {
+          "value": "identity",
+          "description": "Accounts in your database with ASP.NET Core Identity: passwords, bearer tokens or cookies, MFA, passkeys."
+        },
+        {
+          "value": "external",
+          "description": "Everything in 'identity', plus sign-in with Google, Apple and Microsoft."
+        },
+        {
+          "value": "oidc",
+          "description": "Accounts in a hosted OpenID Connect provider such as Keycloak or Entra ID; the API validates its access tokens."
+        }
+      ]
+    },
+    {
+      "name": "db",
+      "type": "choice",
+      "default": "none",
+      "question": "Which database?",
+      "description": "Database, through EF Core with migrations, audit history and a compose deployment.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No database; notes are kept in memory."
+        },
+        {
+          "value": "postgres",
+          "description": "PostgreSQL 18 through Npgsql, with Testcontainers."
+        },
+        {
+          "value": "sqlserver",
+          "description": "SQL Server 2022 through Microsoft.Data.SqlClient, with Testcontainers. Runs on amd64 only."
+        },
+        {
+          "value": "sqlite",
+          "description": "SQLite in a file next to the app: one machine, light write load."
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "type": "choice",
+      "default": "none",
+      "question": "Does the API send email?",
+      "description": "Email delivery. 'smtp' adds an email transport (SMTP with MailKit, or the log in development) and templated messages.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No email delivery."
+        },
+        {
+          "value": "smtp",
+          "description": "SMTP through MailKit, with a log transport for development."
+        }
+      ]
+    },
+    {
+      "name": "jobs",
+      "type": "choice",
+      "default": "none",
+      "question": "Background jobs?",
+      "description": "Background jobs. 'hangfire' needs a database, and turns PostgreSQL on when --db is none.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No job framework; only the scoped background loop for housekeeping."
+        },
+        {
+          "value": "hosted",
+          "description": "In-process queue and cron schedules on hosted services. Queued jobs are lost on restart."
+        },
+        {
+          "value": "hangfire",
+          "description": "Hangfire: durable queued and scheduled jobs in your database, retries, a dashboard."
+        }
+      ]
+    },
+    {
+      "name": "worker",
+      "type": "bool",
+      "default": false,
+      "question": "Run the jobs in a separate worker process?",
+      "description": "Add a worker project that runs the API's jobs in its own process and container. Implies --jobs hangfire."
+    },
+    {
+      "name": "aspire",
+      "type": "bool",
+      "default": false,
+      "question": "Add a .NET Aspire AppHost for local development?",
+      "description": "Add a .NET Aspire AppHost that starts the API, the worker and the database for local development."
+    },
+    {
+      "name": "agents",
+      "type": "choice",
+      "default": "shared",
+      "question": "Guidance files for AI coding agents?",
+      "description": "Guidance files for AI coding agents.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No agent guidance files."
+        },
+        {
+          "value": "shared",
+          "description": "AGENTS.md, read by most coding agents."
+        },
+        {
+          "value": "claude",
+          "description": "AGENTS.md plus a CLAUDE.md that imports it."
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "auth-needs-database",
+      "when": {
+        "auth": [
+          "identity",
+          "external",
+          "oidc"
+        ]
+      },
+      "requires": {
+        "db": [
+          "postgres",
+          "sqlserver",
+          "sqlite"
+        ]
+      },
+      "fallback": {
+        "db": "postgres"
+      },
+      "reason": "Every sign-in mode stores users' data in a database."
+    },
+    {
+      "id": "hangfire-needs-database",
+      "when": {
+        "jobs": [
+          "hangfire"
+        ]
+      },
+      "requires": {
+        "db": [
+          "postgres",
+          "sqlserver",
+          "sqlite"
+        ]
+      },
+      "fallback": {
+        "db": "postgres"
+      },
+      "reason": "Hangfire stores its jobs in the database."
+    },
+    {
+      "id": "worker-needs-hangfire",
+      "when": {
+        "worker": [
+          true
+        ]
+      },
+      "requires": {
+        "jobs": [
+          "hangfire"
+        ]
+      },
+      "fallback": {
+        "jobs": "hangfire"
+      },
+      "reason": "The worker runs the API's Hangfire jobs in its own process."
+    }
+  ]
+}
