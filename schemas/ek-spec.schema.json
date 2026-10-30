@@ -86,6 +86,19 @@
           ],
           "default": "none"
         },
+        "storage": {
+          "description": "File storage. \u0027s3\u0027 adds uploads, downloads and signed links on any S3-compatible storage, and needs a database: it turns PostgreSQL on when --db is none.",
+          "enum": [
+            "none",
+            "s3"
+          ],
+          "default": "none"
+        },
+        "documents": {
+          "description": "Add CSV and Excel import and export of notes, and a PDF report.",
+          "type": "boolean",
+          "default": false
+        },
         "worker": {
           "description": "Add a worker project that runs the API\u0027s jobs in its own process and container. Implies --jobs hangfire.",
           "type": "boolean",

@@ -1,0 +1,13 @@
+﻿// The project's own namespaces, kept here so every file's using list stays sorted whatever the project is named.
+global using Acme.Notes.Api.Common;
+global using Acme.Notes.Api.Data;
+global using Acme.Notes.Api.Features.ApiKeys;
+global using Acme.Notes.Api.Features.Audit;
+global using Acme.Notes.Api.Features.Auth;
+global using Acme.Notes.Api.Features.Files;
+global using Acme.Notes.Api.Features.Notes;
+global using Acme.Notes.Api.Features.Profiles;
+global using Acme.Notes.Api.Infrastructure;
+global using Acme.Notes.Api.Infrastructure.Idempotency;
+global using Acme.Notes.Api.Infrastructure.Jobs;
+global using Acme.Notes.Api.Infrastructure.Storage;

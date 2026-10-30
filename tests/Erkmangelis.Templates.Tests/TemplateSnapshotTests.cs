@@ -121,6 +121,33 @@ public sealed partial class TemplateSnapshotTests
             Scenario(auth, db, "none", "claude") + (worker ? ".worker" : "") + (aspire ? ".aspire" : ""),
             auth, db, "none", "claude", "none", worker, aspire);
 
+    /// <summary><c>--storage s3</c> (which needs a database) and <c>--documents</c>, on the code they change.</summary>
+    public static TheoryData<string, string, string, bool> FileCombinations => new()
+    {
+        { "none", "postgres", "s3", false },
+        { "none", "none", "s3", false },
+        { "identity", "sqlite", "s3", true },
+        { "oidc", "sqlserver", "s3", false },
+        { "none", "none", "none", true },
+    };
+
+    [Theory]
+    [MemberData(nameof(FileCombinations))]
+    public Task Storage_and_documents_match_their_snapshots(string auth, string db, string storage, bool documents) =>
+        VerifyAsync(
+            Scenario(auth, db, "none", "claude") + (storage == "none" ? "" : $".storage-{storage}") + (documents ? ".documents" : ""),
+            auth, db, "none", "claude", storage: storage, documents: documents);
+
+    [Fact]
+    public void Storage_without_a_database_generates_the_postgres_output()
+    {
+        // File records live in the database, so --db none must give the same files as --db postgres.
+        AssertSameFiles(
+            SnapshotFiles(Scenario("none", "postgres", "none", "claude") + ".storage-s3"),
+            SnapshotFiles(Scenario("none", "none", "none", "claude") + ".storage-s3"),
+            "--storage s3 --db none");
+    }
+
     /// <summary>The snapshot folder's name. <c>--jobs none</c> leaves the name as it was before the option existed.</summary>
     private static string Scenario(string auth, string db, string email, string agents, string jobs = "none") =>
         jobs == "none" ? $"auth-{auth}.db-{db}.email-{email}.agents-{agents}" : $"auth-{auth}.db-{db}.email-{email}.agents-{agents}.jobs-{jobs}";
@@ -142,11 +169,21 @@ public sealed partial class TemplateSnapshotTests
     }
 
     private static async Task VerifyAsync(
-        string scenario, string auth, string db, string email, string agents, string jobs = "none", bool worker = false, bool aspire = false)
+        string scenario,
+        string auth,
+        string db,
+        string email,
+        string agents,
+        string jobs = "none",
+        bool worker = false,
+        bool aspire = false,
+        string storage = "none",
+        bool documents = false)
     {
         string[] templateArgs =
         [
             "--auth", auth, "--db", db, "--email", email, "--jobs", jobs,
+            "--storage", storage, "--documents", documents ? "true" : "false",
             "--worker", worker ? "true" : "false", "--aspire", aspire ? "true" : "false", "--agents", agents,
         ];
         var options = new TemplateVerifierOptions(templateName: "ek-api")
@@ -161,7 +198,8 @@ public sealed partial class TemplateSnapshotTests
             DisableDiffTool = true,
             VerifyCommandOutput = false,
             // Package versions change with every Dependabot update; the acceptance test covers them.
-            VerificationExcludePatterns = ["**/Directory.Packages.props", "**/.config/dotnet-tools.json"],
+            // The PDF fonts are binary and never change with the options.
+            VerificationExcludePatterns = ["**/Directory.Packages.props", "**/.config/dotnet-tools.json", "**/*.ttf"],
         }.WithCustomScrubbers(ScrubbersDefinition.Empty.AddScrubber(ScrubGuids));
 
         await new VerificationEngine(NullLogger.Instance).Execute(Options.Create(options));

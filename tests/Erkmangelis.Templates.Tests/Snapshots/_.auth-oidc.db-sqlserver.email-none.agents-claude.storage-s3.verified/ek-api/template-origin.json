@@ -1,0 +1,18 @@
+﻿{
+  "specVersion": 1,
+  "template": "Erkmangelis.Templates.Api",
+  "package": "Erkmangelis.Templates",
+  "version": "0.6.0",
+  "name": "Acme.Notes",
+  "options": {
+    "auth": "oidc",
+    "db": "sqlserver",
+    "email": "none",
+    "jobs": "none",
+    "storage": "s3",
+    "documents": false,
+    "worker": false,
+    "aspire": false,
+    "agents": "claude"
+  }
+}

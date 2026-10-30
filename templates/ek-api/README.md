@@ -29,6 +29,13 @@ with every app's logs, traces and metrics: `dotnet run --project src/MyProject.A
 Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
 [docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
 [docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
+<!--#if (UseStorage) -->
+[docs/files.md](docs/files.md) covers uploads, downloads, signed links and file cleanup; run
+`docker compose up -d storage` and set the storage keys in user secrets first.
+<!--#endif -->
+<!--#if (UseDocuments) -->
+[docs/documents.md](docs/documents.md) covers CSV and Excel import and export and PDF reports.
+<!--#endif -->
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -171,11 +178,23 @@ dotnet test
 ```
 
 <!--#if (UsePostgres) -->
+<!--#if (UseStorage) -->
+Integration tests start throwaway PostgreSQL and RustFS containers with Testcontainers, so Docker must be running.
+<!--#else -->
 Integration tests start a throwaway PostgreSQL container with Testcontainers, so Docker must be running.
+<!--#endif -->
 <!--#elif (UseSqlServer) -->
+<!--#if (UseStorage) -->
+Integration tests start throwaway SQL Server and RustFS containers with Testcontainers, so Docker must be running.
+<!--#else -->
 Integration tests start a throwaway SQL Server container with Testcontainers, so Docker must be running.
+<!--#endif -->
 <!--#elif (UseSqlite) -->
+<!--#if (UseStorage) -->
+Integration tests use a throwaway SQLite file and a RustFS container, so Docker must be running.
+<!--#else -->
 Integration tests use a throwaway SQLite file, so they need no Docker.
+<!--#endif -->
 <!--#endif -->
 CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
 
@@ -196,8 +215,17 @@ src/MyProject.Api/
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
 <!--#endif -->
+<!--#if (UseStorage) -->
+  Infrastructure/Storage/ private S3-compatible object storage and signed links
+<!--#endif -->
+<!--#if (UseDocuments) -->
+  Infrastructure/Documents/  CSV and Excel in and out, PDF reports and their fonts
+<!--#endif -->
   Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage
+<!--#if (UseStorage) -->
+  Features/Files/         uploads (API, signed links, tus), checks, thumbnails, downloads, cleanup
+<!--#endif -->
 <!--#if (UseExternal) -->
   Features/Auth/          ASP.NET Core Identity setup, email senders, Google/Apple/Microsoft sign-in
 <!--#elif (UseIdentity) -->

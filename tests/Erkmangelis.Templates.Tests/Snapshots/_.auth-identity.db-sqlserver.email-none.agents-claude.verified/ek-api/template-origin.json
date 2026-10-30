@@ -2,13 +2,15 @@
   "specVersion": 1,
   "template": "Erkmangelis.Templates.Api",
   "package": "Erkmangelis.Templates",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "name": "Acme.Notes",
   "options": {
     "auth": "identity",
     "db": "sqlserver",
     "email": "none",
     "jobs": "none",
+    "storage": "none",
+    "documents": false,
     "worker": false,
     "aspire": false,
     "agents": "claude"

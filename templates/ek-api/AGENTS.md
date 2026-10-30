@@ -94,6 +94,15 @@ Never edit a migration that has been merged.
 - Queries go through EF Core. Hand-written SQL (Dapper) is only for a measured hot read path; follow
   `docs/dapper.md`, which keeps the soft-delete filter and parameters.
 <!--#endif -->
+<!--#if (UseStorage) -->
+- Files go through `FileProcessor`, whatever the route, and live in storage under `ObjectKeys`
+  built from the file id. Never build a storage key from client input, never trust a client's
+  content type (`FileSignatures` decides) and serve files as attachments only. See `docs/files.md`.
+<!--#endif -->
+<!--#if (UseDocuments) -->
+- Exports go through `Spreadsheets` so formula cells are defused; PDFs through `PdfReports`.
+  Check a document library's licence before adding or upgrading it. See `docs/documents.md`.
+<!--#endif -->
 <!--#if (UseSmtp) -->
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.

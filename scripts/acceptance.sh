@@ -6,9 +6,10 @@
 #   restore, build with warnings as errors, format check, all tests, no leftovers from
 #   unselected options, a deliberate style violation fails the build, and (with --compose)
 #   docker compose starts, /health/ready answers 200, with --auth identity|external and
-#   --email smtp a confirmation email reaches the bundled Mailpit, and with --auth none and any
+#   --email smtp a confirmation email reaches the bundled Mailpit, with --auth none and any
 #   --jobs but none (or --worker) a background job imports notes in the container (the worker's,
-#   with --worker).
+#   with --worker), and with --auth none and --storage s3 a file uploads to the bundled storage and
+#   downloads again, through the API and through a signed link.
 #
 # With --update-from, the project is first generated from that older package (with the options it
 # already had), committed with a file of the team's own, and then brought to the package under test
@@ -17,18 +18,21 @@
 #
 # Usage:
 #   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
-#       --email none|smtp --jobs none|hosted|hangfire --worker false|true --aspire false|true \
+#       --email none|smtp --jobs none|hosted|hangfire --storage none|s3 --documents false|true \
+#       --worker false|true --aspire false|true \
 #       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep] \
 #       [--update-from path/to/older/Erkmangelis.Templates.*.nupkg]
 set -euo pipefail
 
-AUTH=none DB=none EMAIL=none JOBS=none WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
+AUTH=none DB=none EMAIL=none JOBS=none STORAGE=none DOCUMENTS=false WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auth) AUTH="$2"; shift 2 ;;
     --db) DB="$2"; shift 2 ;;
     --email) EMAIL="$2"; shift 2 ;;
     --jobs) JOBS="$2"; shift 2 ;;
+    --storage) STORAGE="$2"; shift 2 ;;
+    --documents) DOCUMENTS="$2"; shift 2 ;;
     --worker) WORKER="$2"; shift 2 ;;
     --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
@@ -46,12 +50,12 @@ HIVE="$WORK/hive"
 NAME="Acme.Notes"
 OUT="$WORK/$NAME"
 # The worker runs Hangfire jobs, so --worker means --jobs hangfire.
-OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
+OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --storage $STORAGE --documents $DOCUMENTS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
 if [[ "$WORKER" == true ]]; then JOBS=hangfire; fi
-# Every sign-in mode stores users' data and Hangfire stores jobs, so any --auth but none and
-# --jobs hangfire turn PostgreSQL on when --db is none.
+# Every sign-in mode stores users' data, Hangfire stores jobs and file storage keeps file records,
+# so any --auth but none, --jobs hangfire and --storage s3 turn PostgreSQL on when --db is none.
 EFFECTIVE_DB="$DB"
-if [[ "$DB" == none && ( "$AUTH" != none || "$JOBS" == hangfire ) ]]; then EFFECTIVE_DB=postgres; fi
+if [[ "$DB" == none && ( "$AUTH" != none || "$JOBS" == hangfire || "$STORAGE" == s3 ) ]]; then EFFECTIVE_DB=postgres; fi
 ACCOUNTS=false; [[ "$AUTH" == identity || "$AUTH" == external ]] && ACCOUNTS=true
 
 cleanup() {
@@ -85,7 +89,7 @@ else
   dotnet new install "$UPDATE_FROM" --debug:custom-hive "$HIVE" >/dev/null
   help="$(dotnet new ek-api --help --debug:custom-hive "$HIVE")"
   OLD_OPTIONS=""
-  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
+  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "storage $STORAGE" "documents $DOCUMENTS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
     # An option whose short name is its name shows as -db, not --db.
     if grep -qE -- "(^|[ ,])--?${pair%% *} " <<<"$help"; then OLD_OPTIONS="$OLD_OPTIONS --$pair"; else [[ "${pair#* }" =~ ^(none|false)$ ]] || fail "the old template has no --${pair%% *}"; fi
   done
@@ -153,6 +157,14 @@ case "$JOBS" in
   hosted) leftover 'Hangfire' "Hangfire code or settings left with --jobs hosted" ':!docs/background-work.md' ;;
   hangfire) leftover 'Cronos|InProcessJob|RecurringJobScheduler' "in-process job code left with --jobs hangfire" ;;
 esac
+if [[ "$STORAGE" == none ]]; then
+  leftover 'AWSSDK|RustFS|tusdotnet|SkiaSharp|IObjectStorage|StoredFile|STORAGE_|/v1/files' "file storage code or settings left with --storage none"
+  [[ ! -e src/$NAME.Api/Features/Files && ! -e src/$NAME.Api/Infrastructure/Storage && ! -e docs/files.md ]] || fail "file storage folders left with --storage none"
+fi
+if [[ "$DOCUMENTS" == false ]]; then
+  leftover 'MiniExcel|PdfPig|Liberation|Spreadsheets|PdfReports|export/csv' "document code or settings left with --documents false"
+  [[ ! -e src/$NAME.Api/Infrastructure/Documents && ! -e docs/documents.md ]] || fail "document folders left with --documents false"
+fi
 if [[ "$WORKER" == false ]]; then
   leftover "$NAME\.Worker|worker-build|RunServer\": false" "worker project or settings left with --worker false"
   [[ ! -e src/$NAME.Worker ]] || fail "worker folder left with --worker false"
@@ -168,6 +180,7 @@ case "$AGENTS" in
 esac
 grep -q "\"auth\": \"$AUTH\"" template-origin.json && grep -q "\"db\": \"$EFFECTIVE_DB\"" template-origin.json \
   && grep -q "\"email\": \"$EMAIL\"" template-origin.json && grep -q "\"jobs\": \"$JOBS\"" template-origin.json \
+  && grep -q "\"storage\": \"$STORAGE\"" template-origin.json && grep -q "\"documents\": $DOCUMENTS" template-origin.json \
   && grep -q "\"worker\": $WORKER" template-origin.json && grep -q "\"aspire\": $ASPIRE" template-origin.json \
   || fail "template-origin.json does not record the options"
 
@@ -212,6 +225,9 @@ if [[ "$COMPOSE" == true ]]; then
     # Tokens are only checked on requests, so the provider need not exist for the API to start.
     printf 'OIDC_AUTHORITY=https://auth.example.com/realms/acme\nOIDC_AUDIENCE=acme-notes-api\n' >> .env
   fi
+  if [[ "$STORAGE" == s3 ]]; then
+    printf 'STORAGE_ACCESS_KEY=%s\nSTORAGE_SECRET_KEY=%s\n' "$(openssl rand -hex 10)" "$(openssl rand -hex 20)" >> .env
+  fi
   PROFILES=()
   if [[ "$EMAIL" == smtp ]]; then
     printf 'EMAIL_FROM=noreply@example.com\nSMTP_HOST=mailpit\nSMTP_PORT=1025\nSMTP_SECURITY=None\n' >> .env
@@ -251,6 +267,17 @@ if [[ "$COMPOSE" == true ]]; then
     done
     curl -fsS "http://localhost:8080/v1/notes?$query" | grep -q "$title" \
       || { docker compose logs api worker 2>/dev/null || docker compose logs api; fail "the import job did not create the note"; }
+  fi
+
+  if [[ "$STORAGE" == s3 && "$AUTH" == none ]]; then
+    step "A file uploads to the storage and downloads again"
+    printf 'acceptance %s\n' "$(openssl rand -hex 8)" > "$WORK/upload.txt"
+    response="$(curl -fsS -F "file=@$WORK/upload.txt;type=text/plain" http://localhost:8080/v1/files)" \
+      || { docker compose logs api storage; fail "the upload failed"; }
+    id="$(sed -E 's/.*"id":"([^"]+)".*/\1/' <<<"$response")"
+    curl -fsS "http://localhost:8080/v1/files/$id/content" | cmp -s - "$WORK/upload.txt" || fail "the download through the API differs"
+    link="$(curl -fsS "http://localhost:8080/v1/files/$id/link" | sed -E 's/.*"url":"([^"]+)".*/\1/')"
+    curl -fsS "$link" | cmp -s - "$WORK/upload.txt" || fail "the download through the signed link differs"
   fi
 fi
 

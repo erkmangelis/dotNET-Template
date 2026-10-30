@@ -5,7 +5,7 @@
   "identity": "Erkmangelis.Templates.Api",
   "groupIdentity": "Erkmangelis.Templates.Api",
   "name": "Hardened ASP.NET Core HTTP API (ek)",
-  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional sign-in, PostgreSQL, SQL Server or SQLite, background jobs, a worker, .NET Aspire and AI agent guidance.",
+  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional sign-in, PostgreSQL, SQL Server or SQLite, background jobs, a worker, file storage, CSV, Excel and PDF documents, .NET Aspire and AI agent guidance.",
   "shortName": "ek-api",
   "sourceName": "MyProject",
   "guids": [ "0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30" ],
@@ -61,6 +61,22 @@
       ],
       "defaultValue": "none"
     },
+    "storage": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "File storage. 's3' adds uploads, downloads and signed links on any S3-compatible storage, and needs a database: it turns PostgreSQL on when --db is none.",
+      "choices": [
+        { "choice": "none", "description": "No file storage." },
+        { "choice": "s3", "description": "Private files on S3-compatible storage (RustFS in compose, Cloudflare R2 or S3 in production): type checks, virus scanning, thumbnails, signed links, resumable uploads, cleanup." }
+      ],
+      "defaultValue": "none"
+    },
+    "documents": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "Add CSV and Excel import and export of notes, and a PDF report.",
+      "defaultValue": "false"
+    },
     "worker": {
       "type": "parameter",
       "datatype": "bool",
@@ -102,7 +118,7 @@
     },
     "UsePostgres": {
       "type": "computed",
-      "value": "(db == \"postgres\" || (db == \"none\" && (auth != \"none\" || jobs == \"hangfire\" || worker)))"
+      "value": "(db == \"postgres\" || (db == \"none\" && (auth != \"none\" || jobs == \"hangfire\" || worker || storage == \"s3\")))"
     },
     "UseSqlServer": {
       "type": "computed",
@@ -114,7 +130,7 @@
     },
     "UseDatabase": {
       "type": "computed",
-      "value": "(db != \"none\" || auth != \"none\" || jobs == \"hangfire\" || worker)"
+      "value": "(db != \"none\" || auth != \"none\" || jobs == \"hangfire\" || worker || storage == \"s3\")"
     },
     "UseJobs": {
       "type": "computed",
@@ -135,6 +151,14 @@
     "UseAspire": {
       "type": "computed",
       "value": "(aspire)"
+    },
+    "UseStorage": {
+      "type": "computed",
+      "value": "(storage == \"s3\")"
+    },
+    "UseDocuments": {
+      "type": "computed",
+      "value": "(documents)"
     },
     "UseSmtp": {
       "type": "computed",
@@ -231,6 +255,32 @@
         ]
       }
     },
+    "StorageValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_STORAGE",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseStorage)", "value": "s3" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "DocumentsValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "\"EK_DOCUMENTS\"",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseDocuments)", "value": "true" },
+          { "condition": "(true)", "value": "false" }
+        ]
+      }
+    },
     "AgentsValue": {
       "type": "generated",
       "generator": "switch",
@@ -264,7 +314,7 @@
       "generator": "constant",
       "replaces": "EK_TEMPLATE_VERSION",
       "parameters": {
-        "value": "0.5.0"
+        "value": "0.6.0"
       }
     }
   },
@@ -343,7 +393,8 @@
             "src/MyProject.Api/Features/Audit/AuditAdminEndpoints.cs",
             "tests/MyProject.Api.IntegrationTests/TestUsers.cs",
             "tests/MyProject.Api.UnitTests/Features/Auth/**",
-            "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs"
+            "tests/MyProject.Api.UnitTests/Features/Notes/NoteOwnerHandlerTests.cs",
+            "tests/MyProject.Api.IntegrationTests/Files/FileOwnershipTests.cs"
           ]
         },
         {
@@ -454,6 +505,27 @@
           ]
         },
         {
+          "condition": "(!UseStorage)",
+          "exclude": [
+            "src/MyProject.Api/Features/Files/**",
+            "src/MyProject.Api/Infrastructure/Storage/**",
+            "src/MyProject.Api/Data/StoredFileConfiguration.cs",
+            "tests/MyProject.Api.IntegrationTests/Files/**",
+            "tests/MyProject.Api.UnitTests/Features/Files/**",
+            "docs/files.md"
+          ]
+        },
+        {
+          "condition": "(!UseDocuments)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Documents/**",
+            "src/MyProject.Api/Features/Notes/NoteDocuments.cs",
+            "tests/MyProject.Api.IntegrationTests/NoteDocumentTests.cs",
+            "tests/MyProject.Api.UnitTests/Infrastructure/Documents/**",
+            "docs/documents.md"
+          ]
+        },
+        {
           "condition": "(!UseAgents)",
           "exclude": [ "AGENTS.md" ]
         },
@@ -462,6 +534,7 @@
           "exclude": [ "CLAUDE.md" ]
         },
         {
+          "copyOnly": [ "**/*.ttf" ],
           "exclude": [
             ".template.config/**",
             ".migrations/**",
@@ -475,48 +548,93 @@
       ]
     },
     {
-      "condition": "(UsePostgres && !UseAuth)",
+      "condition": "(UsePostgres && !UseAuth && !UseStorage)",
       "source": ".migrations/postgres/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UsePostgres && UseIdentity)",
+      "condition": "(UsePostgres && !UseAuth && UseStorage)",
+      "source": ".migrations/postgres/notes-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UsePostgres && UseIdentity && !UseStorage)",
       "source": ".migrations/postgres/identity/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UsePostgres && UseOidc)",
+      "condition": "(UsePostgres && UseIdentity && UseStorage)",
+      "source": ".migrations/postgres/identity-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UsePostgres && UseOidc && !UseStorage)",
       "source": ".migrations/postgres/oidc/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlServer && !UseAuth)",
+      "condition": "(UsePostgres && UseOidc && UseStorage)",
+      "source": ".migrations/postgres/oidc-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && !UseAuth && !UseStorage)",
       "source": ".migrations/sqlserver/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlServer && UseIdentity)",
+      "condition": "(UseSqlServer && !UseAuth && UseStorage)",
+      "source": ".migrations/sqlserver/notes-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && UseIdentity && !UseStorage)",
       "source": ".migrations/sqlserver/identity/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlServer && UseOidc)",
+      "condition": "(UseSqlServer && UseIdentity && UseStorage)",
+      "source": ".migrations/sqlserver/identity-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlServer && UseOidc && !UseStorage)",
       "source": ".migrations/sqlserver/oidc/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlite && !UseAuth)",
+      "condition": "(UseSqlServer && UseOidc && UseStorage)",
+      "source": ".migrations/sqlserver/oidc-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && !UseAuth && !UseStorage)",
       "source": ".migrations/sqlite/notes/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlite && UseIdentity)",
+      "condition": "(UseSqlite && !UseAuth && UseStorage)",
+      "source": ".migrations/sqlite/notes-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && UseIdentity && !UseStorage)",
       "source": ".migrations/sqlite/identity/",
       "target": "src/MyProject.Api/Data/Migrations/"
     },
     {
-      "condition": "(UseSqlite && UseOidc)",
+      "condition": "(UseSqlite && UseIdentity && UseStorage)",
+      "source": ".migrations/sqlite/identity-files/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && UseOidc && !UseStorage)",
       "source": ".migrations/sqlite/oidc/",
+      "target": "src/MyProject.Api/Data/Migrations/"
+    },
+    {
+      "condition": "(UseSqlite && UseOidc && UseStorage)",
+      "source": ".migrations/sqlite/oidc-files/",
       "target": "src/MyProject.Api/Data/Migrations/"
     }
   ],

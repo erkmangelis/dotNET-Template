@@ -63,6 +63,23 @@
 <!--#if (UseOidc) -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
 <!--#endif -->
+<!--#if (UseDocuments) -->
+    <PackageReference Include="MiniExcel" />
+    <PackageReference Include="PdfPig" />
+<!--#endif -->
+<!--#if (UseStorage) -->
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="tusdotnet" />
+<!--#endif -->
   </ItemGroup>
+<!--#if (UseDocuments) -->
+
+  <ItemGroup>
+    <!-- The PDF report's fonts, read by name, whatever the project is called. -->
+    <EmbeddedResource Include="Infrastructure/Documents/Fonts/*.ttf" LogicalName="Fonts.%(Filename)%(Extension)" />
+  </ItemGroup>
+<!--#endif -->
 
 </Project>

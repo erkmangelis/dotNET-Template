@@ -5,7 +5,7 @@ with newer template versions. It carries the template package of its own version
 need to install the template first, and it never changes the templates installed in `dotnet new`.
 
 ```bash
-dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.5.0.nupkg>
+dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.6.0.nupkg>
 ek version
 ```
 
@@ -44,10 +44,10 @@ Running that command gives the same files (CI checks this for every preset). Oth
 | Preset | For | Options |
 | --- | --- | --- |
 | `minimal` | The hardened API alone, notes in memory | everything `none`/`false` |
-| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --agents claude` |
+| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --storage s3 --documents --agents claude` |
 | `api-worker` (alias `ek-worker`) | An API plus a worker that runs its jobs | `--db postgres --jobs hangfire --worker --aspire` |
 | `sso-api` | Accounts in your identity provider | `--auth oidc --db postgres` |
-| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted` |
+| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted --storage s3` |
 
 `ek list` prints the options, rules and presets. Presets live in
 [catalog/presets.json](../catalog/presets.json); options given next to a preset win over its values.
@@ -88,6 +88,7 @@ error: This combination is not supported:
 | `auth-needs-database` | `--auth identity`, `external` or `oidc` | a database; PostgreSQL if you chose none |
 | `hangfire-needs-database` | `--jobs hangfire` | a database; PostgreSQL if you chose none |
 | `worker-needs-hangfire` | `--worker` | `--jobs hangfire`, set for you if you chose none |
+| `storage-needs-database` | `--storage s3` | a database; PostgreSQL if you chose none |
 
 Plain `dotnet new` applies the same rules through the template's computed symbols but cannot reject
 anything: `dotnet new ek-api --auth identity --db none` quietly generates PostgreSQL. Tests check
@@ -109,7 +110,7 @@ version (with the same name and options), and applies the difference to your pro
 
 - a file you never changed takes the new version, and a new template file is added;
 - a file you changed and the template changed is merged line by line; where both changed the same
-  lines it gets conflict markers (`<<<<<<< your project` ... `>>>>>>> template 0.5.0`), and
+  lines it gets conflict markers (`<<<<<<< your project` ... `>>>>>>> template 0.6.0`), and
   `ek update` exits with 1 and lists them;
 - a file you changed that the template removed, and a file you deleted that the template changed,
   are left as they are and listed for you to check;
@@ -134,7 +135,7 @@ Versions are looked up in the `--source` folders, then `~/.ek/packages`, then do
 repository's GitHub releases into that cache. While the repository is private the download fails;
 pass `--from` with the old `.nupkg` (from the release page) or a `--source` folder holding it.
 
-CI generates projects with released versions (0.1.0, 0.3.0 and 0.4.0), adds a file of the team's
+CI generates projects with released versions (0.1.0, 0.3.0, 0.4.0 and 0.5.0), adds a file of the team's
 own, runs `ek update` to the current version and runs the full acceptance test on the result.
 
 ## Maintainers

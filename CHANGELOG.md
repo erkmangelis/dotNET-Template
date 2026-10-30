@@ -2,7 +2,51 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.5.0] - Unreleased
+## [0.6.0] - Unreleased
+
+R06, files and documents.
+
+### Added
+
+- `--storage none|s3`: private files on any S3-compatible storage through `IObjectStorage`
+  (AWSSDK.S3, Apache-2.0). Compose runs RustFS (Apache-2.0) as the storage; Cloudflare R2 and
+  Amazon S3 work by configuration. MinIO is not used: it no longer publishes container images.
+  Needs a database, so it turns PostgreSQL on when `--db` is `none`.
+  - Three ways to upload: through the API (`POST /v1/files`, multipart), a signed upload link
+    (`POST /v1/files/uploads`, then `POST /v1/files/{id}/complete`), and resumable tus uploads at
+    `/v1/files/tus` (tusdotnet, MIT).
+  - One check for every route (`FileProcessor`): size limit (`Files:MaxSizeBytes`, the body limit is
+    raised for the upload endpoints only), type by file signature against `Files:AllowedTypes`
+    (never the name or the client's content type), a pixel limit for images, optional ClamAV
+    scanning over clamd's INSTREAM (compose profile `scan`), and a SHA-256.
+  - WebP thumbnails for images (SkiaSharp, MIT), without the original's metadata.
+  - Downloads through the API as attachments, or through short-lived signed links
+    (`GET /v1/files/{id}/link`).
+  - Owner-only files with `--auth`: another user's file answers 404 on every route, tus included;
+    API key scopes `files:read` and `files:write`.
+  - `FileCleanupLoop` removes temporary files, uploads never completed, refused files, objects no
+    record points to and abandoned tus uploads.
+  - `/health/ready` checks the bucket. Integration tests run against a RustFS container.
+  - [docs/files.md](templates/ek-api/docs/files.md) in generated projects.
+- `--documents`: CSV and Excel export of notes (`GET /v1/notes/export/csv`, `/export/xlsx`) with
+  formula cells defused against CSV injection, import from CSV or Excel with per-row errors
+  (`POST /v1/notes/imports/file`), and a PDF report (`GET /v1/notes/report`). MiniExcel and PdfPig
+  (both Apache-2.0), with Liberation Sans (SIL OFL) embedded so Turkish and other non-English text
+  prints correctly. QuestPDF, PDFsharp 6.5+ (now AGPL), ClosedXML (needs SixLabors.Fonts) and
+  EPPlus are left out for their licences. [docs/documents.md](templates/ek-api/docs/documents.md)
+  in generated projects.
+- Migration sets for `--storage s3` (`.migrations/<provider>/<auth>-files`); `add-migration.sh`
+  skips sets whose model did not change.
+
+### Changed
+
+- Presets: `saas-api` adds file storage and documents, `single-box` adds file storage.
+- `template-origin.json` records `storage` and `documents`.
+- CI: the acceptance matrix covers the new options (17 combinations), the compose check uploads
+  and downloads a file with `--storage s3`, the update job also starts from 0.5.0, and the image
+  build includes file storage, so SkiaSharp's native library is built for amd64 and arm64.
+
+## [0.5.0] - 2026-10-30
 
 R05, generator tooling.
 
