@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
     --worker) WORKER="$2"; shift 2 ;;
     --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
-    --package) PACKAGE="$2"; shift 2 ;;
+    --package) PACKAGE="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --compose) COMPOSE=true; shift ;;
     --keep) KEEP=true; shift ;;
     --update-from) UPDATE_FROM="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
