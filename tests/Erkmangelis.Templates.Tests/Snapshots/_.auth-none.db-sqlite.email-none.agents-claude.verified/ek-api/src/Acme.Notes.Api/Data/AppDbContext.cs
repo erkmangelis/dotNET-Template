@@ -20,13 +20,14 @@ internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbC
         configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcTicksConverter>();
     }
 
-    private sealed class UtcTicksConverter() : ValueConverter<DateTimeOffset, long>(
-        value => value.UtcTicks,
-        ticks => new DateTimeOffset(ticks, TimeSpan.Zero));
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }
+
+/// <summary>Stores a <see cref="DateTimeOffset"/> as UTC ticks, which SQLite can compare and sort.</summary>
+internal sealed class UtcTicksConverter() : ValueConverter<DateTimeOffset, long>(
+    value => value.UtcTicks,
+    ticks => new DateTimeOffset(ticks, TimeSpan.Zero));

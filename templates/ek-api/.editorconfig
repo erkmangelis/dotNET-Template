@@ -88,7 +88,7 @@ dotnet_naming_style.underscore_camel_case.required_prefix = _
 dotnet_diagnostic.CA1848.severity = suggestion
 #if (UseDatabase)
 
-[**/Data/Migrations/*.cs]
+[**/Data/Migrations/**.cs]
 generated_code = true
 #endif
 

@@ -11,6 +11,9 @@
     "jobs": "EK_JOBS",
     "storage": "EK_STORAGE",
     "documents": "EK_DOCUMENTS",
+    "realtime": "EK_REALTIME",
+    "notifications": "EK_NOTIFICATIONS",
+    "webhooks": "EK_WEBHOOKS",
     "worker": "EK_WORKER",
     "aspire": "EK_ASPIRE",
     "agents": "EK_AGENTS"

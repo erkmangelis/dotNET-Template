@@ -36,6 +36,16 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 <!--#if (UseDocuments) -->
 [docs/documents.md](docs/documents.md) covers CSV and Excel import and export and PDF reports.
 <!--#endif -->
+<!--#if (UseRealtime) -->
+[docs/realtime.md](docs/realtime.md) covers SignalR, server-sent events and WebSockets.
+<!--#endif -->
+<!--#if (UseNotifications) -->
+[docs/notifications.md](docs/notifications.md) covers the in-app inbox, preferences, push and SMS.
+<!--#endif -->
+<!--#if (UseWebhooks) -->
+[docs/webhooks.md](docs/webhooks.md) covers signed incoming and outgoing webhooks.
+<!--#endif -->
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -205,6 +215,7 @@ src/MyProject.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
 <!--#if (UseHostedJobs) -->
   Infrastructure/Jobs/    background work: the scoped background loop, in-process job queue and cron schedules
 <!--#elif (UseHangfire) -->
@@ -223,6 +234,15 @@ src/MyProject.Api/
 <!--#endif -->
   Common/                 shared types: paging, sorting, record metadata, soft delete
   Features/Notes/         the example feature: contracts, endpoints, storage
+<!--#if (UseRealtime) -->
+  Features/Realtime/      SignalR hub, server-sent events and the WebSocket protocol
+<!--#endif -->
+<!--#if (UseNotifications) -->
+  Features/Notifications/ inbox, preferences, push (FCM, APNs) and SMS (Twilio) delivery
+<!--#endif -->
+<!--#if (UseWebhooks) -->
+  Features/Webhooks/      signed incoming and outgoing webhooks with their logs
+<!--#endif -->
 <!--#if (UseStorage) -->
   Features/Files/         uploads (API, signed links, tus), checks, thumbnails, downloads, cleanup
 <!--#endif -->

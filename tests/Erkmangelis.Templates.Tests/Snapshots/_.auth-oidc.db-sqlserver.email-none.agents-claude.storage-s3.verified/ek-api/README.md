@@ -16,6 +16,7 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 [docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
 [docs/files.md](docs/files.md) covers uploads, downloads, signed links and file cleanup; run
 `docker compose up -d storage` and set the storage keys in user secrets first.
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
 
 ### Sign in
 
@@ -82,6 +83,7 @@ src/Acme.Notes.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
   Infrastructure/Jobs/    background work: the scoped background loop
   Infrastructure/Storage/ private S3-compatible object storage and signed links
   Common/                 shared types: paging, sorting, record metadata, soft delete

@@ -148,6 +148,34 @@ public sealed partial class TemplateSnapshotTests
             "--storage s3 --db none");
     }
 
+    /// <summary><c>--realtime</c>, <c>--notifications</c> (which needs accounts) and <c>--webhooks</c> (which needs a database).</summary>
+    public static TheoryData<string, string, bool, bool, bool> CommunicationCombinations => new()
+    {
+        { "none", "none", true, false, false },
+        { "none", "sqlite", false, false, true },
+        { "identity", "postgres", true, true, true },
+        { "identity", "postgres", false, true, false },
+        { "none", "none", false, true, false },
+        { "oidc", "sqlserver", true, true, false },
+    };
+
+    [Theory]
+    [MemberData(nameof(CommunicationCombinations))]
+    public Task Realtime_notifications_and_webhooks_match_their_snapshots(string auth, string db, bool realtime, bool notifications, bool webhooks) =>
+        VerifyAsync(
+            Scenario(auth, db, "none", "claude") + (realtime ? ".realtime" : "") + (notifications ? ".notifications" : "") + (webhooks ? ".webhooks" : ""),
+            auth, db, "none", "claude", realtime: realtime, notifications: notifications, webhooks: webhooks);
+
+    [Fact]
+    public void Notifications_without_accounts_generate_the_identity_output()
+    {
+        // Notifications belong to users, so --auth none --db none must give local accounts on PostgreSQL.
+        AssertSameFiles(
+            SnapshotFiles(Scenario("identity", "postgres", "none", "claude") + ".notifications"),
+            SnapshotFiles(Scenario("none", "none", "none", "claude") + ".notifications"),
+            "--notifications true --auth none --db none");
+    }
+
     /// <summary>The snapshot folder's name. <c>--jobs none</c> leaves the name as it was before the option existed.</summary>
     private static string Scenario(string auth, string db, string email, string agents, string jobs = "none") =>
         jobs == "none" ? $"auth-{auth}.db-{db}.email-{email}.agents-{agents}" : $"auth-{auth}.db-{db}.email-{email}.agents-{agents}.jobs-{jobs}";
@@ -178,12 +206,16 @@ public sealed partial class TemplateSnapshotTests
         bool worker = false,
         bool aspire = false,
         string storage = "none",
-        bool documents = false)
+        bool documents = false,
+        bool realtime = false,
+        bool notifications = false,
+        bool webhooks = false)
     {
         string[] templateArgs =
         [
             "--auth", auth, "--db", db, "--email", email, "--jobs", jobs,
             "--storage", storage, "--documents", documents ? "true" : "false",
+            "--realtime", realtime ? "true" : "false", "--notifications", notifications ? "true" : "false", "--webhooks", webhooks ? "true" : "false",
             "--worker", worker ? "true" : "false", "--aspire", aspire ? "true" : "false", "--agents", agents,
         ];
         var options = new TemplateVerifierOptions(templateName: "ek-api")

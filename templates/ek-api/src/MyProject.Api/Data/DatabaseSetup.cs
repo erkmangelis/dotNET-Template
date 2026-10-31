@@ -27,6 +27,23 @@ internal static class DatabaseSetup
     }
 
     /// <summary>The database provider, in one place for the app and <see cref="AppDbContextFactory"/>.</summary>
+#if (UseNotifications || UseWebhooks)
+    /// <param name="options">The context's options.</param>
+    /// <param name="connectionString">The app's database.</param>
+    /// <param name="migrationsHistoryTable">A feature context's own history table; null for the app's.</param>
+    public static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string? connectionString, string? migrationsHistoryTable = null)
+        where TBuilder : DbContextOptionsBuilder
+    {
+#if (UsePostgres)
+        options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable(migrationsHistoryTable ?? "__EFMigrationsHistory"));
+#elif (UseSqlServer)
+        options.UseSqlServer(connectionString, sqlServer => sqlServer.MigrationsHistoryTable(migrationsHistoryTable ?? "__EFMigrationsHistory"));
+#else
+        options.UseSqlite(connectionString, sqlite => sqlite.MigrationsHistoryTable(migrationsHistoryTable ?? "__EFMigrationsHistory"));
+#endif
+        return options;
+    }
+#else
     public static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string? connectionString)
         where TBuilder : DbContextOptionsBuilder
     {
@@ -39,6 +56,7 @@ internal static class DatabaseSetup
 #endif
         return options;
     }
+#endif
 
     /// <summary>Applies migrations and development seed data when the settings ask for it.</summary>
     public static async Task PrepareDatabaseAsync(this WebApplication app)
@@ -53,6 +71,12 @@ internal static class DatabaseSetup
         if (options.MigrateOnStartup)
         {
             await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+#if (UseNotifications || UseWebhooks)
+            foreach (var module in scope.ServiceProvider.GetServices<ModuleDatabase>())
+            {
+                await ((DbContext)scope.ServiceProvider.GetRequiredService(module.ContextType)).Database.MigrateAsync();
+            }
+#endif
         }
 
         if (options.SeedDevelopmentData && app.Environment.IsDevelopment())

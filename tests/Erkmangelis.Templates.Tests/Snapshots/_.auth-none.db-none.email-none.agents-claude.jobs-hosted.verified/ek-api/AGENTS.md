@@ -40,6 +40,8 @@ dotnet test
   entities or services. Every job must be safe to run twice: wrap effects that must happen once
   in `JobIdempotency.RunOnceAsync` with a key for that piece of work.
 - Work that only one instance may do at a time takes an `IDistributedLock` and skips when it is held.
+- Call other services only through a client registered with `AddOutboundClient`, naming the hosts
+  it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

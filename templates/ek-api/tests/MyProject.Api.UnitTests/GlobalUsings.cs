@@ -13,6 +13,12 @@ global using MyProject.Api.Features.Files;
 #if (!UseDatabase || UseAuth)
 global using MyProject.Api.Features.Notes;
 #endif
+#if (UseNotifications)
+global using MyProject.Api.Features.Notifications;
+#endif
+#if (UseWebhooks)
+global using MyProject.Api.Features.Webhooks;
+#endif
 global using MyProject.Api.Infrastructure;
 #if (UseDocuments)
 global using MyProject.Api.Infrastructure.Documents;
@@ -20,4 +26,5 @@ global using MyProject.Api.Infrastructure.Documents;
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif
+global using MyProject.Api.Infrastructure.Http;
 global using MyProject.Api.Infrastructure.Jobs;

@@ -27,7 +27,7 @@ dotnet test
 Integration tests need Docker (Testcontainers starts PostgreSQL).
 
 After changing an entity or its configuration, add a migration:
-`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations`.
+`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations`.
 Never edit a migration that has been merged.
 
 ## Layout and conventions
@@ -53,6 +53,8 @@ Never edit a migration that has been merged.
   a soft-deletable entity: `AuditableEntityInterceptor` does both on save. See `docs/database.md`.
 - Queries go through EF Core. Hand-written SQL (Dapper) is only for a measured hot read path; follow
   `docs/dapper.md`, which keeps the soft-delete filter and parameters.
+- Call other services only through a client registered with `AddOutboundClient`, naming the hosts
+  it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

@@ -45,6 +45,10 @@ Pick the options you need:
 - `--storage s3` for user files: uploads, downloads, signed links and resumable uploads on private
   S3-compatible storage, RustFS in compose or Cloudflare R2 in production.
 - `--documents` for CSV and Excel import and export and PDF reports.
+- `--realtime` to push changes to connected clients (SignalR, server-sent events or WebSockets).
+- `--notifications` for an in-app inbox with email, mobile push and SMS delivery and per-user
+  preferences.
+- `--webhooks` to receive signed webhooks from other services and send them to your customers.
 - `--aspire` to start the API, the worker and the database with one `dotnet run` during development,
   with a dashboard for their logs and traces.
 - `--agents claude` if you use Claude Code, `shared` for other coding agents, `none` for neither.

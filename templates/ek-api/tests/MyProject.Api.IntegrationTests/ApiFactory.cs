@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 #endif
 using Microsoft.AspNetCore.Mvc.Testing;
-#if (UseAuth || UseJobs)
+#if (UseAuth || UseJobs || UseWebhooks)
 using Microsoft.AspNetCore.TestHost;
 #endif
 #if (UseSqlite)
@@ -92,6 +92,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
 #if (UseIdentity)
     public CapturedEmails Emails { get; } = new();
+
+#endif
+#if (UseWebhooks)
+    /// <summary>Plays every webhook subscriber: outgoing deliveries land here instead of on the network.</summary>
+    public WebhookReceiver Subscribers { get; } = new();
+
+    /// <summary>What the test handler of incoming webhooks was given.</summary>
+    public HandledWebhooks HandledWebhooks { get; } = new();
 
 #endif
 #if (UseHangfire)
@@ -225,8 +233,31 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Email:Transport", "Log");
         builder.UseSetting("Email:FromAddress", "noreply@example.com");
 #endif
+#if (UseWebhooks)
+        builder.UseSetting($"Webhooks:Incoming:Sources:{IncomingWebhookTests.Source}:Secrets:0", IncomingWebhookTests.Secret);
+        builder.UseSetting($"Webhooks:Incoming:Sources:{IncomingWebhookTests.UnhandledSource}:Secrets:0", IncomingWebhookTests.Secret);
+        builder.UseSetting("Webhooks:Incoming:ProcessIntervalSeconds", "1");
+        builder.UseSetting("Webhooks:Outgoing:DispatchIntervalSeconds", "1");
+        // Every retry after a second, so tests that fail on purpose finish quickly.
+        for (var index = 0; index < 6; index++)
+        {
+            builder.UseSetting($"Webhooks:Incoming:RetryDelaysSeconds:{index}", "1");
+            builder.UseSetting($"Webhooks:Outgoing:RetryDelaysSeconds:{index}", "1");
+        }
+
+#endif
+#if (UseNotifications)
+        builder.UseSetting("Notifications:DispatchIntervalSeconds", "1");
+        builder.UseSetting("Notifications:Push:Transport", "Log");
+        builder.UseSetting("Notifications:Sms:Transport", "Log");
+        for (var index = 0; index < 4; index++)
+        {
+            builder.UseSetting($"Notifications:RetryDelaysSeconds:{index}", "1");
+        }
+
+#endif
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
-#if (UseAuth || UseJobs)
+#if (UseAuth || UseJobs || UseWebhooks)
         builder.ConfigureTestServices(services =>
         {
 #if (UseJobs)
@@ -245,6 +276,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
 #if (UseExternal)
             services.AddSingleton<IExternalProviderMetadata, TestProviderMetadata>();
+#endif
+#if (UseWebhooks)
+            services.AddHttpClient(WebhookDispatcher.ClientName).ConfigurePrimaryHttpMessageHandler(() => new WebhookReceiver.Handler(Subscribers));
+            services.AddSingleton(HandledWebhooks);
+            services.AddIncomingWebhookHandler<RecordingWebhookHandler>(IncomingWebhookTests.Source);
 #endif
 #if (UseOidc)
             // Trust the test signing key instead of fetching the provider's metadata.

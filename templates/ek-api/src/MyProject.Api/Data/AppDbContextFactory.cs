@@ -13,6 +13,21 @@ namespace MyProject.Api.Data;
 /// </summary>
 internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
+#if (UseNotifications || UseWebhooks)
+    /// <summary>The connection string design-time contexts use; feature contexts share it.</summary>
+    public static string ConnectionString => Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+#if (UsePostgres)
+        ?? "Host=localhost;Database=design_time";
+#elif (UseSqlServer)
+        ?? "Server=localhost;Database=design_time;TrustServerCertificate=True";
+#else
+        ?? "Data Source=design_time.db";
+#endif
+
+    public AppDbContext CreateDbContext(string[] args)
+    {
+        var connectionString = ConnectionString;
+#else
     public AppDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
@@ -22,6 +37,7 @@ internal sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbCon
             ?? "Server=localhost;Database=design_time;TrustServerCertificate=True";
 #else
             ?? "Data Source=design_time.db";
+#endif
 #endif
 
 #if (UseIdentity)

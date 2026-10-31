@@ -2,7 +2,7 @@
   "specVersion": 1,
   "template": "Erkmangelis.Templates.Api",
   "package": "Erkmangelis.Templates",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "name": "Acme.Notes",
   "options": {
     "auth": "oidc",
@@ -11,6 +11,9 @@
     "jobs": "none",
     "storage": "none",
     "documents": false,
+    "realtime": false,
+    "notifications": false,
+    "webhooks": false,
     "worker": false,
     "aspire": false,
     "agents": "claude"

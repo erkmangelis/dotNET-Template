@@ -20,7 +20,7 @@ ARG TARGETARCH
 COPY .config/dotnet-tools.json .config/
 RUN dotnet tool restore
 RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")" \
-    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release \
+    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release --context AppDbContext \
        --target-runtime "$RID" --self-contained --output /app/efbundle
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS migrator

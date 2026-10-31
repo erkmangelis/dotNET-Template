@@ -29,6 +29,15 @@ internal sealed class EmailTemplates(IOptions<EmailOptions> options)
         paragraphs: [$"Your password reset code is {code}.", "If you did not ask for it, ignore this email; your password stays the same."],
         action: null);
 
+#if (UseNotifications && UseIdentity)
+    /// <summary>A notification sent by email: its title as the subject, and a link when it has one.</summary>
+    public EmailMessage Notification(string to, string title, string body, string? link) => Render(
+        to,
+        subject: title,
+        paragraphs: [body, $"You get this email because of your {AppName} notification settings."],
+        action: link is null ? null : ("Open", link));
+
+#endif
     private static EmailMessage Render(string to, string subject, string[] paragraphs, (string Label, string Url)? action)
     {
         var html = HtmlEncoder.Default;

@@ -22,6 +22,18 @@ builder.AddOidcAuth();
 #if (UseAuth)
 builder.Services.AddApiKeys();
 #endif
+#if (UseAppEvents)
+builder.Services.AddScoped<AppEvents>();
+#endif
+#if (UseRealtime)
+builder.AddRealtime();
+#endif
+#if (UseWebhooks)
+builder.AddWebhooks();
+#endif
+#if (UseNotifications)
+builder.AddNotifications();
+#endif
 builder.Services.AddNotes();
 #if (UseStorage)
 builder.Services.AddFiles();
@@ -30,17 +42,29 @@ builder.Services.AddFiles();
 var app = builder.Build();
 
 app.UseApiDefaults();
+#if (UseRealtime)
+app.UseRealtime();
+#endif
 app.MapHealthEndpoints();
 
 var api = app.NewVersionedApi();
 // Notes is the first feature with a second version.
 api.MapVersionedGroup(ApiVersions.V1, ApiVersions.V2).MapNoteEndpoints();
-#if (UseAuth || UseStorage)
+#if (UseAuth || UseStorage || UseRealtime || UseWebhooks)
 
 var v1 = api.MapVersionedGroup(ApiVersions.V1);
 #endif
 #if (UseStorage)
 v1.MapFileEndpoints();
+#endif
+#if (UseRealtime)
+v1.MapRealtimeEndpoints();
+#endif
+#if (UseWebhooks)
+v1.MapWebhookEndpoints();
+#endif
+#if (UseNotifications)
+v1.MapNotificationEndpoints();
 #endif
 #if (UseAuth)
 #if (UseIdentity)
@@ -58,6 +82,13 @@ admin.MapJobAdminEndpoints();
 #if (UseIdentity)
 admin.MapUserAdminEndpoints();
 #endif
+#if (UseNotifications)
+admin.MapNotificationAdminEndpoints();
+#endif
+#endif
+#if (UseRealtime)
+
+app.MapRealtimeHub();
 #endif
 
 #if (UseHangfire)

@@ -29,7 +29,13 @@ internal static class Permissions
 
     public static readonly IReadOnlyDictionary<string, string[]> ByRole = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-        [Roles.Admin] = [NotesReadAll, AuditRead, UsersRead, UsersManageRoles],
+        [Roles.Admin] =
+        [
+            NotesReadAll,
+            AuditRead,
+            UsersRead,
+            UsersManageRoles,
+        ],
         [Roles.Auditor] = [NotesReadAll, AuditRead, UsersRead],
     };
 

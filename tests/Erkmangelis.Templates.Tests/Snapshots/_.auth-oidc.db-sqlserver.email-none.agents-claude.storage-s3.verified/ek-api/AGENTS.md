@@ -23,7 +23,7 @@ dotnet test
 Integration tests need Docker (Testcontainers starts SQL Server).
 
 After changing an entity or its configuration, add a migration:
-`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations`.
+`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations`.
 Never edit a migration that has been merged.
 
 ## Layout and conventions
@@ -47,6 +47,8 @@ Never edit a migration that has been merged.
 - Files go through `FileProcessor`, whatever the route, and live in storage under `ObjectKeys`
   built from the file id. Never build a storage key from client input, never trust a client's
   content type (`FileSignatures` decides) and serve files as attachments only. See `docs/files.md`.
+- Call other services only through a client registered with `AddOutboundClient`, naming the hosts
+  it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.
