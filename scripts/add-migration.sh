@@ -3,6 +3,7 @@
 # the current template. Run it after changing the EF model, then review the diff.
 #
 # Usage: scripts/add-migration.sh <Name>
+#        ONLY='webhooks$' scripts/add-migration.sh <Name>   (only the sets whose folder matches the regex)
 #
 # Running it again with the name of the newest migration replaces that migration, so a release in
 # progress keeps one migration for all its model changes. A set that does not exist yet (a new
@@ -16,12 +17,17 @@ TEMPLATE="$REPO/templates/ek-api"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/ek-migrations.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
-# Migration set (folder under .migrations) and the options that generate its model.
+# Migration set (folder under .migrations), the options that generate its model, and for a feature
+# with a context of its own, that context and its migrations folder.
+APP="AppDbContext|Data/Migrations"
 SETS=()
 for db in postgres sqlserver sqlite; do
-  SETS+=("$db/notes|--auth none --db $db" "$db/identity|--auth identity --db $db" "$db/oidc|--auth oidc --db $db")
+  SETS+=("$db/notes|--auth none --db $db|$APP" "$db/identity|--auth identity --db $db|$APP" "$db/oidc|--auth oidc --db $db|$APP")
   # --storage s3 adds the file records.
-  SETS+=("$db/notes-files|--auth none --db $db --storage s3" "$db/identity-files|--auth identity --db $db --storage s3" "$db/oidc-files|--auth oidc --db $db --storage s3")
+  SETS+=("$db/notes-files|--auth none --db $db --storage s3|$APP" "$db/identity-files|--auth identity --db $db --storage s3|$APP" "$db/oidc-files|--auth oidc --db $db --storage s3|$APP")
+  # Notifications and webhooks have contexts of their own, whatever the other options are.
+  SETS+=("$db/notifications|--auth identity --db $db --notifications true|NotificationsDbContext|Data/Migrations/Notifications")
+  SETS+=("$db/webhooks|--auth none --db $db --webhooks true|WebhooksDbContext|Data/Migrations/Webhooks")
 done
 
 # Every source folder must exist, or the template does not load.
@@ -29,9 +35,9 @@ for entry in "${SETS[@]}"; do mkdir -p "$TEMPLATE/.migrations/${entry%%|*}"; don
 dotnet new install "$TEMPLATE" --debug:custom-hive "$WORK/hive" >/dev/null
 
 for entry in "${SETS[@]}"; do
-  set="${entry%%|*}"
-  options="${entry#*|}"
-  echo "==> $set ($options)"
+  IFS='|' read -r set options context folder <<<"$entry"
+  if [[ -n "${ONLY:-}" && ! "$set" =~ $ONLY ]]; then continue; fi
+  echo "==> $set ($options, $context)"
   out="$WORK/$set"
   migration="$NAME"
   compgen -G "$TEMPLATE/.migrations/$set/*.cs" >/dev/null || migration=InitialCreate
@@ -41,20 +47,20 @@ for entry in "${SETS[@]}"; do
   (
     cd "$out"
     dotnet tool restore >/dev/null && dotnet restore >/dev/null
-    ef=(dotnet ef --project src/MyProject.Api)
-    if compgen -G "src/MyProject.Api/Data/Migrations/*_$migration.cs" >/dev/null; then
+    ef() { dotnet ef "$@" --project src/MyProject.Api --context "$context"; }
+    if compgen -G "src/MyProject.Api/$folder/*_$migration.cs" >/dev/null; then
       # Rolls the model snapshot back too; --force skips the check against a database.
-      "${ef[@]}" migrations remove --force >/dev/null
+      ef migrations remove --force >/dev/null
     fi
-    if [[ "$migration" == "$NAME" ]] && "${ef[@]}" migrations has-pending-model-changes >/dev/null 2>&1; then
+    if [[ "$migration" == "$NAME" ]] && ef migrations has-pending-model-changes >/dev/null 2>&1; then
       echo "    no model changes"
       exit 0
     fi
-    "${ef[@]}" migrations add "$migration" --output-dir Data/Migrations >/dev/null
+    ef migrations add "$migration" --output-dir "$folder" >/dev/null
   )
   rm -rf "${TEMPLATE:?}/.migrations/$set"
   mkdir -p "$(dirname "$TEMPLATE/.migrations/$set")"
-  cp -r "$out/src/MyProject.Api/Data/Migrations" "$TEMPLATE/.migrations/$set"
+  cp -r "$out/src/MyProject.Api/$folder" "$TEMPLATE/.migrations/$set"
 done
 
 echo "Done. Review: git diff --stat -- templates/ek-api/.migrations"

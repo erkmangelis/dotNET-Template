@@ -41,7 +41,8 @@
         "api-worker",
         "ek-worker",
         "sso-api",
-        "single-box"
+        "single-box",
+        "realtime"
       ]
     },
     "options": {
@@ -96,6 +97,21 @@
         },
         "documents": {
           "description": "Add CSV and Excel import and export of notes, and a PDF report.",
+          "type": "boolean",
+          "default": false
+        },
+        "realtime": {
+          "description": "Add real-time channels: a SignalR hub, server-sent events and raw WebSockets, carrying note changes to connected clients.",
+          "type": "boolean",
+          "default": false
+        },
+        "notifications": {
+          "description": "Add stored in-app notifications with read status and per-user preferences, delivered by email, mobile push (FCM, APNs) and SMS (Twilio). Needs sign-in: turns Identity on when --auth is none.",
+          "type": "boolean",
+          "default": false
+        },
+        "webhooks": {
+          "description": "Add incoming webhooks (signature checks, duplicate detection, queued processing) and outgoing webhooks (signed deliveries, retries, a delivery log). Needs a database: turns PostgreSQL on when --db is none.",
           "type": "boolean",
           "default": false
         },

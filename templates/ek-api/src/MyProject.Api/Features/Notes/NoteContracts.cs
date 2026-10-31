@@ -138,3 +138,8 @@ public sealed record AdminNoteResponse(
         new(note.Id, note.OwnerId, note.Title, note.Content, note.CreatedAt, note.UpdatedAt, note.UpdatedBy);
 }
 #endif
+#if (UseAppEvents)
+
+/// <summary>The payload of a <c>note.deleted</c> event.</summary>
+public sealed record NoteDeletedEvent(Guid Id);
+#endif

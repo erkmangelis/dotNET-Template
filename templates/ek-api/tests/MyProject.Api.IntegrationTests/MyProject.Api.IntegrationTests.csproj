@@ -11,6 +11,9 @@
 <!--#if (UseIdentity) -->
     <PackageReference Include="System.Formats.Cbor" />
 <!--#endif -->
+<!--#if (UseRealtime) -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+<!--#endif -->
 <!--#if (UseSmtp || UseStorage) -->
     <PackageReference Include="Testcontainers" />
 <!--#endif -->

@@ -19,12 +19,13 @@
 # Usage:
 #   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
 #       --email none|smtp --jobs none|hosted|hangfire --storage none|s3 --documents false|true \
+#       --realtime false|true --notifications false|true --webhooks false|true \
 #       --worker false|true --aspire false|true \
 #       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep] \
 #       [--update-from path/to/older/Erkmangelis.Templates.*.nupkg]
 set -euo pipefail
 
-AUTH=none DB=none EMAIL=none JOBS=none STORAGE=none DOCUMENTS=false WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
+AUTH=none DB=none EMAIL=none JOBS=none STORAGE=none DOCUMENTS=false REALTIME=false NOTIFICATIONS=false WEBHOOKS=false WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auth) AUTH="$2"; shift 2 ;;
@@ -33,6 +34,9 @@ while [[ $# -gt 0 ]]; do
     --jobs) JOBS="$2"; shift 2 ;;
     --storage) STORAGE="$2"; shift 2 ;;
     --documents) DOCUMENTS="$2"; shift 2 ;;
+    --realtime) REALTIME="$2"; shift 2 ;;
+    --notifications) NOTIFICATIONS="$2"; shift 2 ;;
+    --webhooks) WEBHOOKS="$2"; shift 2 ;;
     --worker) WORKER="$2"; shift 2 ;;
     --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
@@ -50,12 +54,14 @@ HIVE="$WORK/hive"
 NAME="Acme.Notes"
 OUT="$WORK/$NAME"
 # The worker runs Hangfire jobs, so --worker means --jobs hangfire.
-OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --storage $STORAGE --documents $DOCUMENTS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
+OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --storage $STORAGE --documents $DOCUMENTS --realtime $REALTIME --notifications $NOTIFICATIONS --webhooks $WEBHOOKS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
 if [[ "$WORKER" == true ]]; then JOBS=hangfire; fi
-# Every sign-in mode stores users' data, Hangfire stores jobs and file storage keeps file records,
-# so any --auth but none, --jobs hangfire and --storage s3 turn PostgreSQL on when --db is none.
+# Notifications belong to users, so --notifications true means local accounts when --auth is none.
+if [[ "$NOTIFICATIONS" == true && "$AUTH" == none ]]; then AUTH=identity; fi
+# Every sign-in mode stores users' data, Hangfire stores jobs, file storage keeps file records and
+# notifications and webhooks keep their own tables, so each of them turns PostgreSQL on when --db is none.
 EFFECTIVE_DB="$DB"
-if [[ "$DB" == none && ( "$AUTH" != none || "$JOBS" == hangfire || "$STORAGE" == s3 ) ]]; then EFFECTIVE_DB=postgres; fi
+if [[ "$DB" == none && ( "$AUTH" != none || "$JOBS" == hangfire || "$STORAGE" == s3 || "$NOTIFICATIONS" == true || "$WEBHOOKS" == true ) ]]; then EFFECTIVE_DB=postgres; fi
 ACCOUNTS=false; [[ "$AUTH" == identity || "$AUTH" == external ]] && ACCOUNTS=true
 
 cleanup() {
@@ -89,7 +95,7 @@ else
   dotnet new install "$UPDATE_FROM" --debug:custom-hive "$HIVE" >/dev/null
   help="$(dotnet new ek-api --help --debug:custom-hive "$HIVE")"
   OLD_OPTIONS=""
-  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "storage $STORAGE" "documents $DOCUMENTS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
+  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "storage $STORAGE" "documents $DOCUMENTS" "realtime $REALTIME" "notifications $NOTIFICATIONS" "webhooks $WEBHOOKS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
     # An option whose short name is its name shows as -db, not --db.
     if grep -qE -- "(^|[ ,])--?${pair%% *} " <<<"$help"; then OLD_OPTIONS="$OLD_OPTIONS --$pair"; else [[ "${pair#* }" =~ ^(none|false)$ ]] || fail "the old template has no --${pair%% *}"; fi
   done
@@ -165,6 +171,24 @@ if [[ "$DOCUMENTS" == false ]]; then
   leftover 'MiniExcel|PdfPig|Liberation|Spreadsheets|PdfReports|export/csv' "document code or settings left with --documents false"
   [[ ! -e src/$NAME.Api/Infrastructure/Documents && ! -e docs/documents.md ]] || fail "document folders left with --documents false"
 fi
+if [[ "$REALTIME" == false ]]; then
+  leftover 'SignalR|ServerSentEvents|IRealtimePublisher|/v1/realtime' "real-time code or settings left with --realtime false"
+  [[ ! -e src/$NAME.Api/Features/Realtime && ! -e docs/realtime.md ]] || fail "real-time folders left with --realtime false"
+fi
+if [[ "$NOTIFICATIONS" == false ]]; then
+  leftover 'INotifier|NotificationsDbContext|PushDevice|Twilio|fcm\.googleapis|/v1/notifications' "notification code or settings left with --notifications false"
+  [[ ! -e src/$NAME.Api/Features/Notifications && ! -e docs/notifications.md ]] || fail "notification folders left with --notifications false"
+fi
+if [[ "$WEBHOOKS" == false ]]; then
+  leftover 'WebhooksDbContext|StandardWebhooks|webhook-signature|whsec_|/v1/webhooks' "webhook code or settings left with --webhooks false"
+  [[ ! -e src/$NAME.Api/Features/Webhooks && ! -e docs/webhooks.md ]] || fail "webhook folders left with --webhooks false"
+fi
+if [[ "$REALTIME" == false && "$WEBHOOKS" == false ]]; then
+  leftover 'IAppEventSink|AppEvents' "app event code left without real-time or webhooks"
+fi
+if [[ "$NOTIFICATIONS" == false && "$WEBHOOKS" == false ]]; then
+  leftover 'ModuleDatabase|IOutboxItem' "module database code left without notifications or webhooks"
+fi
 if [[ "$WORKER" == false ]]; then
   leftover "$NAME\.Worker|worker-build|RunServer\": false" "worker project or settings left with --worker false"
   [[ ! -e src/$NAME.Worker ]] || fail "worker folder left with --worker false"
@@ -181,6 +205,8 @@ esac
 grep -q "\"auth\": \"$AUTH\"" template-origin.json && grep -q "\"db\": \"$EFFECTIVE_DB\"" template-origin.json \
   && grep -q "\"email\": \"$EMAIL\"" template-origin.json && grep -q "\"jobs\": \"$JOBS\"" template-origin.json \
   && grep -q "\"storage\": \"$STORAGE\"" template-origin.json && grep -q "\"documents\": $DOCUMENTS" template-origin.json \
+  && grep -q "\"realtime\": $REALTIME" template-origin.json && grep -q "\"notifications\": $NOTIFICATIONS" template-origin.json \
+  && grep -q "\"webhooks\": $WEBHOOKS" template-origin.json \
   && grep -q "\"worker\": $WORKER" template-origin.json && grep -q "\"aspire\": $ASPIRE" template-origin.json \
   || fail "template-origin.json does not record the options"
 

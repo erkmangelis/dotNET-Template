@@ -97,6 +97,9 @@ internal static class NoteEndpoints
 #if (UseAuth)
         ClaimsPrincipal user,
 #endif
+#if (UseAppEvents)
+        AppEvents events,
+#endif
         CancellationToken cancellationToken)
     {
         // The store fills in the record metadata when it saves.
@@ -116,6 +119,9 @@ internal static class NoteEndpoints
         }
 
         http.Response.Headers.ETag = ETags.For(note.Version);
+#if (UseAppEvents)
+        await events.PublishAsync(NoteEvent(AppEventTypes.NoteCreated, note), cancellationToken);
+#endif
         return TypedResults.Created(ApiVersions.PathFor(http, $"notes/{note.Id}"), NoteResponse.From(note));
     }
 
@@ -174,6 +180,9 @@ internal static class NoteEndpoints
         ClaimsPrincipal user,
         IAuthorizationService authorization,
 #endif
+#if (UseAppEvents)
+        AppEvents events,
+#endif
         CancellationToken cancellationToken)
     {
 #if (UseAuth)
@@ -204,6 +213,9 @@ internal static class NoteEndpoints
         if (result == NoteSaveResult.Saved)
         {
             http.Response.Headers.ETag = ETags.For(note.Version);
+#if (UseAppEvents)
+            await events.PublishAsync(NoteEvent(AppEventTypes.NoteUpdated, note), cancellationToken);
+#endif
         }
 
         return result switch
@@ -223,6 +235,9 @@ internal static class NoteEndpoints
         ClaimsPrincipal user,
         IAuthorizationService authorization,
 #endif
+#if (UseAppEvents)
+        AppEvents events,
+#endif
         CancellationToken cancellationToken)
     {
 #if (UseAuth)
@@ -241,13 +256,35 @@ internal static class NoteEndpoints
             return PreconditionFailed();
         }
 
+#if (UseAppEvents)
+        var result = await store.TryDeleteAsync(note, cancellationToken);
+        if (result == NoteSaveResult.Saved)
+        {
+#if (UseAuth)
+            await events.PublishAsync(new AppEvent(AppEventTypes.NoteDeleted, note.OwnerId, new NoteDeletedEvent(note.Id)), cancellationToken);
+#else
+            await events.PublishAsync(new AppEvent(AppEventTypes.NoteDeleted, UserId: null, new NoteDeletedEvent(note.Id)), cancellationToken);
+#endif
+        }
+
+        return result switch
+#else
         return await store.TryDeleteAsync(note, cancellationToken) switch
+#endif
         {
             NoteSaveResult.Saved => TypedResults.NoContent(),
             _ when ifMatch == IfMatch.Matches => PreconditionFailed(),
             _ => EditConflict(),
         };
     }
+#if (UseAppEvents)
+
+#if (UseAuth)
+    private static AppEvent NoteEvent(string type, Note note) => new(type, note.OwnerId, NoteResponse.From(note));
+#else
+    private static AppEvent NoteEvent(string type, Note note) => new(type, UserId: null, NoteResponse.From(note));
+#endif
+#endif
 #if (UseDatabase)
 
     private static async Task<Results<Ok<PagedResult<AuditEntryResponse>>, NotFound>> HistoryAsync(

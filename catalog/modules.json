@@ -119,6 +119,27 @@
       "description": "Add CSV and Excel import and export of notes, and a PDF report."
     },
     {
+      "name": "realtime",
+      "type": "bool",
+      "default": false,
+      "question": "Add real-time channels (SignalR, server-sent events, WebSockets)?",
+      "description": "Add real-time channels: a SignalR hub, server-sent events and raw WebSockets, carrying note changes to connected clients."
+    },
+    {
+      "name": "notifications",
+      "type": "bool",
+      "default": false,
+      "question": "Add notifications (in-app, email, push, SMS)?",
+      "description": "Add stored in-app notifications with read status and per-user preferences, delivered by email, mobile push (FCM, APNs) and SMS (Twilio). Needs sign-in: turns Identity on when --auth is none."
+    },
+    {
+      "name": "webhooks",
+      "type": "bool",
+      "default": false,
+      "question": "Add incoming and outgoing webhooks?",
+      "description": "Add incoming webhooks (signature checks, duplicate detection, queued processing) and outgoing webhooks (signed deliveries, retries, a delivery log). Needs a database: turns PostgreSQL on when --db is none."
+    },
+    {
       "name": "worker",
       "type": "bool",
       "default": false,
@@ -213,6 +234,44 @@
         "db": "postgres"
       },
       "reason": "File records (owner, type, size, status) live in the database."
+    },
+    {
+      "id": "notifications-need-accounts",
+      "when": {
+        "notifications": [
+          true
+        ]
+      },
+      "requires": {
+        "auth": [
+          "identity",
+          "external",
+          "oidc"
+        ]
+      },
+      "fallback": {
+        "auth": "identity"
+      },
+      "reason": "Notifications belong to a signed-in user."
+    },
+    {
+      "id": "webhooks-need-database",
+      "when": {
+        "webhooks": [
+          true
+        ]
+      },
+      "requires": {
+        "db": [
+          "postgres",
+          "sqlserver",
+          "sqlite"
+        ]
+      },
+      "fallback": {
+        "db": "postgres"
+      },
+      "reason": "Subscriptions, the delivery log and received webhooks live in the database."
     },
     {
       "id": "worker-needs-hangfire",

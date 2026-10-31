@@ -34,20 +34,36 @@ internal static class Permissions
 #if (UseJobs)
     public const string JobsManage = "jobs.manage";
 #endif
+#if (UseWebhooks)
+    public const string WebhooksManage = "webhooks.manage";
+#endif
+#if (UseNotifications)
+    public const string NotificationsSend = "notifications.send";
+#endif
 
     public static readonly IReadOnlyDictionary<string, string[]> ByRole = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-#if (UseIdentity && UseJobs)
-        [Roles.Admin] = [NotesReadAll, AuditRead, UsersRead, UsersManageRoles, JobsManage],
+        [Roles.Admin] =
+        [
+            NotesReadAll,
+            AuditRead,
+#if (UseIdentity)
+            UsersRead,
+            UsersManageRoles,
+#endif
+#if (UseJobs)
+            JobsManage,
+#endif
+#if (UseWebhooks)
+            WebhooksManage,
+#endif
+#if (UseNotifications)
+            NotificationsSend,
+#endif
+        ],
+#if (UseIdentity)
         [Roles.Auditor] = [NotesReadAll, AuditRead, UsersRead],
-#elif (UseIdentity)
-        [Roles.Admin] = [NotesReadAll, AuditRead, UsersRead, UsersManageRoles],
-        [Roles.Auditor] = [NotesReadAll, AuditRead, UsersRead],
-#elif (UseJobs)
-        [Roles.Admin] = [NotesReadAll, AuditRead, JobsManage],
-        [Roles.Auditor] = [NotesReadAll, AuditRead],
 #else
-        [Roles.Admin] = [NotesReadAll, AuditRead],
         [Roles.Auditor] = [NotesReadAll, AuditRead],
 #endif
     };

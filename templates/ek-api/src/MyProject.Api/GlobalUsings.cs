@@ -19,8 +19,17 @@ global using MyProject.Api.Features.Files;
 global using MyProject.Api.Features.Jobs;
 #endif
 global using MyProject.Api.Features.Notes;
+#if (UseNotifications)
+global using MyProject.Api.Features.Notifications;
+#endif
 #if (UseAuth)
 global using MyProject.Api.Features.Profiles;
+#endif
+#if (UseRealtime)
+global using MyProject.Api.Features.Realtime;
+#endif
+#if (UseWebhooks)
+global using MyProject.Api.Features.Webhooks;
 #endif
 global using MyProject.Api.Infrastructure;
 #if (UseDocuments)
@@ -28,6 +37,9 @@ global using MyProject.Api.Infrastructure.Documents;
 #endif
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
+#endif
+#if (UseNotifications || UseWebhooks)
+global using MyProject.Api.Infrastructure.Http;
 #endif
 global using MyProject.Api.Infrastructure.Idempotency;
 global using MyProject.Api.Infrastructure.Jobs;

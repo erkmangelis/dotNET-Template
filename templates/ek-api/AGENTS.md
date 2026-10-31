@@ -103,6 +103,20 @@ Never edit a migration that has been merged.
 - Exports go through `Spreadsheets` so formula cells are defused; PDFs through `PdfReports`.
   Check a document library's licence before adding or upgrading it. See `docs/documents.md`.
 <!--#endif -->
+- Call other services only through a client registered with `AddOutboundClient`, naming the hosts
+  it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
+<!--#if (UseRealtime || UseWebhooks) -->
+- Publish changes with `AppEvents.PublishAsync` after saving, with a type from `AppEventTypes`;
+  real-time clients and webhook subscribers both get it from there.
+<!--#endif -->
+<!--#if (UseNotifications) -->
+- Notify users through `INotifier` with a type from `NotificationTypes`. Never call a push or SMS
+  provider directly. See `docs/notifications.md`.
+<!--#endif -->
+<!--#if (UseWebhooks) -->
+- Incoming webhooks are handled by an `IIncomingWebhookHandler` registered for their source, in the
+  background, and must be safe to run twice. Never skip the signature check. See `docs/webhooks.md`.
+<!--#endif -->
 <!--#if (UseSmtp) -->
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.
