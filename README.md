@@ -18,6 +18,7 @@ ek update        # later, inside the project: merge a newer template version's c
 ```
 
 New here? Follow [docs/getting-started.md](docs/getting-started.md). The tool: [docs/cli.md](docs/cli.md).
+Why it is built this way, release by release: [docs/learning](docs/learning/README.md).
 
 ## Options
 
