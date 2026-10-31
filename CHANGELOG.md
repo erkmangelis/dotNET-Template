@@ -2,7 +2,44 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
-## [0.6.0] - Unreleased
+## [0.7.0] - Unreleased
+
+R07, communication and real-time.
+
+### Added
+
+- Outbound HTTP in every project: `AddOutboundClient` registers typed or named clients with
+  Microsoft.Extensions.Http.Resilience (MIT): total and per-attempt timeouts, retries with backoff
+  for safe methods only, a circuit breaker, and a host allowlist (`AllowedHostsHandler`) that refuses
+  any other host before connecting. Redirects are never followed. `PublicNetwork.ConnectAsync`
+  refuses private and reserved addresses after DNS, for URLs that users choose.
+  [docs/outbound-http.md](templates/ek-api/docs/outbound-http.md) in generated projects.
+- `--realtime`: a SignalR hub (`/v1/realtime/hub`), server-sent events (`/v1/realtime/events`, with
+  heartbeats) and a raw WebSocket (`/v1/realtime/ws`) with JSON frames, a hello/welcome version
+  handshake and close codes for each failure. Events come from `AppEvents`, which the notes endpoints
+  publish to; with `--auth` each user hears only their own. WebSockets from another site's page are
+  refused (cross-site WebSocket hijacking); slow clients are disconnected instead of buffered.
+  [docs/realtime.md](templates/ek-api/docs/realtime.md).
+- `--notifications`: an in-app inbox with read status and unread count, per-user preferences per
+  type and channel, push devices and an SMS number, and an admin announcement endpoint. Deliveries
+  go out in the background by email (with `--email smtp`), Firebase Cloud Messaging (HTTP v1,
+  service-account sign-in), Apple Push Notification service (HTTP/2, ES256 provider token) and Twilio
+  SMS, all over plain HTTP with no vendor SDK, with retries and dead-token cleanup. Development uses
+  log transports. Needs accounts, so it means `--auth identity` when `--auth` is `none`.
+  [docs/notifications.md](templates/ek-api/docs/notifications.md).
+- `--webhooks`: Standard Webhooks signatures (`webhook-id`, `webhook-timestamp`,
+  `webhook-signature`). Incoming: per-source secrets with rotation, a timestamp tolerance against
+  replays, duplicate detection by `webhook-id`, and queued handlers (`IIncomingWebhookHandler`) with
+  retries. Outgoing: subscriptions to event types with a secret shown once, signed deliveries with a
+  retry schedule, a delivery log with manual retry, 410 Gone turning a subscription off, and SSRF
+  checks on the URL and the connection. [docs/webhooks.md](templates/ek-api/docs/webhooks.md).
+- A `realtime` preset (`--auth identity --db postgres --jobs hosted --realtime --notifications`);
+  `saas-api` now has notifications and webhooks.
+- Notifications and webhooks keep their tables in contexts of their own (`NotificationsDbContext`,
+  `WebhooksDbContext`) with their own migrations and history table, so turning them on adds a
+  migration set per database instead of one per option combination.
+
+## [0.6.0] - 2026-10-30
 
 R06, files and documents.
 

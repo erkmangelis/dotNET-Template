@@ -30,15 +30,20 @@ Why it is built this way, release by release: [docs/learning](docs/learning/READ
 | `--jobs` | `none`, `hosted`, `hangfire` | `none` | Background jobs: queued jobs (`IJob<TArgs>` through `IJobQueue`) and cron-scheduled recurring jobs, bounded retries with backoff, failed-job listing and requeue for admins, idempotent job effects (`JobIdempotency`) and distributed locks (PostgreSQL advisory locks, SQL Server app locks, lock files with SQLite). `hosted`: an in-process queue and cron schedules on hosted services; queued jobs are lost on restart. `hangfire`: Hangfire (LGPL-3.0) storing jobs in the database, so they survive restarts, with a dashboard behind the `jobs.manage` permission; turns PostgreSQL on when `--db` is `none`. Every choice has the scoped background loop for housekeeping. |
 | `--storage` | `none`, `s3` | `none` | Private files on any S3-compatible storage (RustFS in compose, Cloudflare R2 or Amazon S3 in production): uploads through the API, signed upload and download links, and resumable tus uploads; size limits, type checks by file signature, optional ClamAV scanning, SHA-256, WebP thumbnails (SkiaSharp), owner-only access and a cleanup loop for temporary, unfinished, refused and orphaned files. Turns PostgreSQL on when `--db` is `none`. |
 | `--documents` | `false`, `true` | `false` | CSV and Excel export and import of notes (MiniExcel, Apache-2.0) with formula cells defused, and a PDF report (PdfPig, Apache-2.0, with an embedded Liberation Sans font). |
+| `--realtime` | `false`, `true` | `false` | Changes pushed to connected clients over SignalR (`/v1/realtime/hub`), server-sent events (`/v1/realtime/events`) and raw WebSockets (`/v1/realtime/ws`, JSON frames with a version handshake), per user with `--auth`, with an origin check against cross-site WebSocket hijacking and a bounded queue per connection. |
+| `--notifications` | `false`, `true` | `false` | An in-app inbox with read status, per-user channel preferences, and delivery in the background by email (with `--email smtp`), mobile push (Firebase Cloud Messaging and Apple Push Notification service, called over HTTP) and SMS (Twilio), with retries and dead-device cleanup. Means local accounts when `--auth` is `none`. |
+| `--webhooks` | `false`, `true` | `false` | Standard Webhooks in both directions: incoming with signature and timestamp checks, duplicate detection and queued handlers; outgoing subscriptions to API events with signed deliveries, retries, a delivery log and SSRF-safe sending. Turns PostgreSQL on when `--db` is `none`. |
 | `--worker` | `false`, `true` | `false` | A worker project and image that runs the jobs while the API only queues them. Means `--jobs hangfire`. |
 | `--aspire` | `false`, `true` | `false` | A .NET Aspire AppHost (MIT) that starts the database, the API and the worker for local development, with the Aspire dashboard. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
 
-Every `--auth` mode but `none`, `--jobs hangfire` and `--storage s3` need a database, so with `--db none` they
-generate the PostgreSQL output; `--worker` means `--jobs hangfire`. These rules live in
+Every `--auth` mode but `none`, `--jobs hangfire`, `--storage s3`, `--notifications` and `--webhooks` need a
+database, so with `--db none` they generate the PostgreSQL output; `--notifications` means `--auth identity`
+when `--auth` is `none`; `--worker` means `--jobs hangfire`. Every project gets outbound HTTP clients with
+timeouts, retries, a circuit breaker and a host allowlist (Microsoft.Extensions.Http.Resilience). These rules live in
 [catalog/modules.json](catalog/modules.json): `ek` applies them and rejects a combination that
 breaks one, with the reason. Presets (`minimal`, `saas-api`, `api-worker` alias `ek-worker`,
-`sso-api`, `single-box`) live in [catalog/presets.json](catalog/presets.json).
+`sso-api`, `single-box`, `realtime`) live in [catalog/presets.json](catalog/presets.json).
 
 ## Supported means tested
 
