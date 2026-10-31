@@ -21,7 +21,7 @@ in any other environment unless you turn it on. Delete `app.db` to start over.
 
 ```bash
 dotnet tool restore
-dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations
+dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations
 ```
 
 A unit test fails when the model changes without a migration.

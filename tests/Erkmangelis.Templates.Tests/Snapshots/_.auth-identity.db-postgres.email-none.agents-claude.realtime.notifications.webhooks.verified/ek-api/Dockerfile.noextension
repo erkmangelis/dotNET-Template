@@ -17,14 +17,21 @@ FROM build AS bundle
 ARG TARGETARCH
 COPY .config/dotnet-tools.json .config/
 RUN dotnet tool restore
+# One bundle per context: the app's tables, then each feature's (see Data/ModuleDatabase.cs).
 RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")" \
-    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release \
+    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release --context AppDbContext \
        --target-runtime "$RID" --self-contained --output /app/efbundle
+RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")" \
+    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release --context NotificationsDbContext \
+       --target-runtime "$RID" --self-contained --output /app/efbundle-notifications
+RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")" \
+    && dotnet ef migrations bundle --project src/Acme.Notes.Api --configuration Release --context WebhooksDbContext \
+       --target-runtime "$RID" --self-contained --output /app/efbundle-webhooks
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS migrator
-COPY --from=bundle /app/efbundle /app/efbundle
+COPY --from=bundle /app/efbundle* /app/
 USER $APP_UID
-ENTRYPOINT ["/app/efbundle"]
+ENTRYPOINT ["/bin/sh", "-c", "/app/efbundle && /app/efbundle-notifications && /app/efbundle-webhooks"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

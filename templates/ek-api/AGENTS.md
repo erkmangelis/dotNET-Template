@@ -63,7 +63,7 @@ Integration tests run against a temporary SQLite file.
 <!--#endif -->
 
 After changing an entity or its configuration, add a migration:
-`dotnet tool restore && dotnet ef migrations add <Name> --project src/MyProject.Api --output-dir Data/Migrations`.
+`dotnet tool restore && dotnet ef migrations add <Name> --project src/MyProject.Api --context AppDbContext --output-dir Data/Migrations`.
 Never edit a migration that has been merged.
 <!--#endif -->
 

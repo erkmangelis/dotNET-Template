@@ -22,7 +22,7 @@ dotnet test
 Integration tests need Docker (Testcontainers starts SQL Server).
 
 After changing an entity or its configuration, add a migration:
-`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations`.
+`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations`.
 Never edit a migration that has been merged.
 
 ## Layout and conventions

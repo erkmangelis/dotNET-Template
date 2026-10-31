@@ -31,7 +31,7 @@ notes (`Database:SeedDevelopmentData`). Neither runs in any other environment un
 
 ```bash
 dotnet tool restore
-dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations
+dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations
 ```
 
 A unit test fails when the model changes without a migration.
@@ -65,6 +65,8 @@ The app does not migrate itself in production. The `migrator` stage of the `Dock
 [migration bundle](https://learn.microsoft.com/ef/core/managing-schemas/migrations/applying#bundles),
 a single executable that applies pending migrations and exits. In `compose.yaml` the `migrate`
 service runs it after the database is healthy, and the API starts only when it succeeds.
+Feature tables with their own context (notifications, webhooks) get a bundle each, run after the
+app's own; add `--context` with the feature's context when you add a migration to one of them.
 
 1. Back up first: `./scripts/backup.sh`.
 2. `docker compose up -d --build` builds both images, runs `migrate`, then restarts `api`.

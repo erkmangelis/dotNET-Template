@@ -26,7 +26,7 @@ dotnet test
 Integration tests run against a temporary SQLite file.
 
 After changing an entity or its configuration, add a migration:
-`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --output-dir Data/Migrations`.
+`dotnet tool restore && dotnet ef migrations add <Name> --project src/Acme.Notes.Api --context AppDbContext --output-dir Data/Migrations`.
 Never edit a migration that has been merged.
 
 ## Layout and conventions
