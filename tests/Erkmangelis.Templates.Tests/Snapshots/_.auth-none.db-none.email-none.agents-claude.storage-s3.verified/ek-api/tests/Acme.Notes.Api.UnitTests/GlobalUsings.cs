@@ -3,4 +3,5 @@ global using Acme.Notes.Api.Common;
 global using Acme.Notes.Api.Data;
 global using Acme.Notes.Api.Features.Files;
 global using Acme.Notes.Api.Infrastructure;
+global using Acme.Notes.Api.Infrastructure.Http;
 global using Acme.Notes.Api.Infrastructure.Jobs;

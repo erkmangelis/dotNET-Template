@@ -87,7 +87,7 @@ dotnet_naming_style.underscore_camel_case.required_prefix = _
 # The Async suffix is not enforced. LoggerMessage is preferred but not required everywhere.
 dotnet_diagnostic.CA1848.severity = suggestion
 
-[**/Data/Migrations/*.cs]
+[**/Data/Migrations/**.cs]
 generated_code = true
 
 [tests/**.cs]

@@ -5,4 +5,5 @@ global using Acme.Notes.Api.Features.ApiKeys;
 global using Acme.Notes.Api.Features.Auth;
 global using Acme.Notes.Api.Features.Notes;
 global using Acme.Notes.Api.Infrastructure;
+global using Acme.Notes.Api.Infrastructure.Http;
 global using Acme.Notes.Api.Infrastructure.Jobs;

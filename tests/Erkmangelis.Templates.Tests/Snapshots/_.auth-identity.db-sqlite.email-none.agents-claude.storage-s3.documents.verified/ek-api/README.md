@@ -14,6 +14,7 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 [docs/files.md](docs/files.md) covers uploads, downloads, signed links and file cleanup; run
 `docker compose up -d storage` and set the storage keys in user secrets first.
 [docs/documents.md](docs/documents.md) covers CSV and Excel import and export and PDF reports.
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
 
 ### Sign in
 
@@ -108,6 +109,7 @@ src/Acme.Notes.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
   Infrastructure/Jobs/    background work: the scoped background loop
   Infrastructure/Storage/ private S3-compatible object storage and signed links
   Infrastructure/Documents/  CSV and Excel in and out, PDF reports and their fonts

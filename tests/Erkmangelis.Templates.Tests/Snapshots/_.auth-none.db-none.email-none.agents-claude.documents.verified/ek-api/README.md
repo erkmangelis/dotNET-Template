@@ -12,6 +12,7 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 [docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
 [docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
 [docs/documents.md](docs/documents.md) covers CSV and Excel import and export and PDF reports.
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
 
 ## Test it
 
@@ -30,6 +31,7 @@ src/Acme.Notes.Api/
   Program.cs              composition root
   Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
   Infrastructure/Jobs/    background work: the scoped background loop
   Infrastructure/Documents/  CSV and Excel in and out, PDF reports and their fonts
   Common/                 shared types: paging, sorting, record metadata, soft delete

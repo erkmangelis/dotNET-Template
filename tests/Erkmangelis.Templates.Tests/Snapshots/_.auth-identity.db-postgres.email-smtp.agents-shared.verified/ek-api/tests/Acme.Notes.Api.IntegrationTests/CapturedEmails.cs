@@ -11,6 +11,9 @@ public sealed partial class CapturedEmails : IEmailTransport
     internal EmailMessage LastMessageTo(string email) =>
         _messages.Last(message => string.Equals(message.To, email, StringComparison.OrdinalIgnoreCase));
 
+    internal bool Received(string email, string subject) =>
+        _messages.Any(message => string.Equals(message.To, email, StringComparison.OrdinalIgnoreCase) && message.Subject == subject);
+
     internal string ConfirmationLinkFor(string email) =>
         new Uri(LinkPattern().Match(LastMessageTo(email).TextBody).Value).PathAndQuery;
 

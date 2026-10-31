@@ -48,6 +48,8 @@ Never edit a migration that has been merged.
   content type (`FileSignatures` decides) and serve files as attachments only. See `docs/files.md`.
 - Exports go through `Spreadsheets` so formula cells are defused; PDFs through `PdfReports`.
   Check a document library's licence before adding or upgrading it. See `docs/documents.md`.
+- Call other services only through a client registered with `AddOutboundClient`, naming the hosts
+  it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.
