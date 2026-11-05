@@ -233,7 +233,7 @@ services:
   # Catches mail for local testing: docker compose --profile mail up -d, with SMTP_HOST=mailpit,
   # SMTP_PORT=1025 and SMTP_SECURITY=None. Read the mail at http://localhost:8025.
   mailpit:
-    image: axllent/mailpit:v1.32
+    image: axllent/mailpit:v1.33
     profiles: ["mail"]
     restart: unless-stopped
     ports:
