@@ -82,7 +82,7 @@
 <!--#if (UseStorage) -->
   <ItemGroup Label="Files">
     <!-- All Apache-2.0 or MIT. Not ImageSharp: its licence needs a paid licence above a revenue limit. -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.8" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.10" />
     <PackageVersion Include="SkiaSharp" Version="4.154.0" />
     <!-- Skia's native library without fontconfig, so it runs in the chiseled container image. -->
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.154.0" />
