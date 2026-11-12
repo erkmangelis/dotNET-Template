@@ -72,7 +72,7 @@ ARG TARGETARCH
 RUN dotnet publish src/MyProject.Worker/MyProject.Worker.csproj -c Release -a $TARGETARCH --no-restore -o /app/worker -p:UseAppHost=false
 
 # The worker image: runs the jobs the API queues. Build it with --target worker.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS worker
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS worker
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 COPY --from=worker-build /app/worker .
@@ -83,7 +83,7 @@ USER $APP_UID
 ENTRYPOINT ["dotnet", "MyProject.Worker.dll"]
 
 #endif
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
