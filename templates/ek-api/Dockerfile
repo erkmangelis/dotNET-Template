@@ -2,7 +2,7 @@
 # Multi-arch build: docker buildx build --platform linux/amd64,linux/arm64 .
 # The SDK stage runs on the build machine's own architecture and cross-publishes for the target.
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 ARG TARGETARCH
 WORKDIR /src
 COPY global.json Directory.Build.props Directory.Packages.props ./
