@@ -41,7 +41,7 @@ RUN RID="linux-$([ "$TARGETARCH" = "amd64" ] && echo x64 || echo "$TARGETARCH")"
        --target-runtime "$RID" --self-contained --output /app/efbundle-webhooks
 #endif
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0 AS migrator
+FROM mcr.microsoft.com/dotnet/runtime-deps:11.0 AS migrator
 #if (UseNotifications || UseWebhooks)
 COPY --from=bundle /app/efbundle* /app/
 #else
