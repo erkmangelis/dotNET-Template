@@ -44,6 +44,11 @@ jobs:
 #else
           touch .env
 #endif
+#if (UseRedis)
+          echo "CACHE_PASSWORD=$(openssl rand -hex 24)" >> .env
+#endif
+          # One machine sends all the load, so the rate limit would answer most of it with 429.
+          echo "RATE_LIMITING_ENABLED=false" >> .env
           docker compose up -d --build
       - name: Wait for /health/ready
         run: |
@@ -53,6 +58,28 @@ jobs:
           done
           docker compose logs
           exit 1
+#if (UseAuth)
+      # Without a TOKEN or API_KEY the script measures the health check only; see docs/load-testing.md.
+#endif
+      - name: Load test with k6 (fails when its thresholds are missed)
+        run: docker run --rm -i --network host -e VUS=10 -e DURATION=20s grafana/k6:2.4.0 run - < loadtest/notes.js
+      - name: Logs
+        if: failure()
+        run: docker compose logs
       - name: Stop
         if: always()
         run: docker compose down -v
+#if (UseMonitoring)
+
+  monitoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prometheus configuration and alert rule tests
+        run: |
+          docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 test rules /etc/prometheus/alerts.test.yml
+      - name: Alertmanager configuration
+        run: docker run --rm -v ./monitoring/alertmanager:/etc/alertmanager:ro --entrypoint amtool prom/alertmanager:v0.35.0 check-config /etc/alertmanager/alertmanager.yml
+#endif
