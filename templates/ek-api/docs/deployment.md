@@ -87,8 +87,14 @@ reachable only through it.
 <!--#if (UseDatabase) -->
 - Backups: schedule `scripts/backup.sh` as described in [database.md](database.md).
 <!--#endif -->
+<!--#if (UseMonitoring) -->
+- Monitoring: `docker compose --profile monitoring up -d` runs Prometheus, Grafana, Tempo, Loki and
+  alerts on the same machine (about 1 GB of memory); see [monitoring.md](monitoring.md). To use a
+  hosted backend instead, set `OTEL_EXPORTER_OTLP_ENDPOINT` in `.env`.
+<!--#else -->
 - Telemetry: set `OTEL_EXPORTER_OTLP_ENDPOINT` in `.env` to send traces, metrics and logs to an
   OpenTelemetry collector.
+<!--#endif -->
 - Stops are graceful: requests in flight get up to 30 seconds (`Api__ShutdownTimeoutSeconds`).
 
 ## Settings reference
@@ -104,6 +110,18 @@ All settings can be set as environment variables with `__` between sections.
 | `RateLimiting__PermitLimit` | `100` | Requests per caller per window |
 | `RateLimiting__WindowSeconds` | `60` | Rate limit window |
 | `ForwardedHeaders__KnownNetworks__0` | none | Proxy networks trusted for `X-Forwarded-*` |
+| `RateLimiting__Enabled` | `true` | Rate limiting; `RATE_LIMITING_ENABLED=false` in `.env` turns it off for a load test |
+| `Localization__Languages__0` | `en`, `tr` | Languages the API answers in; see [localization.md](localization.md) |
+| `FeatureManagement__NoteExport` | `true` | Feature flags; see [feature-flags.md](feature-flags.md) |
+<!--#if (UseRedis) -->
+| `ConnectionStrings__Cache` | the `cache` service in compose | Redis for the shared cache; see [caching.md](caching.md) |
+<!--#endif -->
+<!--#if (UseCache) -->
+| `Caching__LocalExpirationSeconds` | `30` | How long an instance keeps a cached value in memory |
+<!--#endif -->
+<!--#if (UseMonitoring) -->
+| `Monitoring__Prometheus__Enabled` | `true` in compose | Serves `/metrics` on port 9464 and sends only traces and logs over OTLP |
+<!--#endif -->
 <!--#if (UseDatabase) -->
 <!--#if (UsePostgres) -->
 | `ConnectionStrings__Default` | none, required | PostgreSQL connection string |

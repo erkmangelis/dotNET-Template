@@ -39,6 +39,16 @@ template with these options:
   The worker references the API project and registers the same services, so a job's dependencies
   must be registered in both `Program.cs` files.
 <!--#endif -->
+<!--#if (UseRedis) -->
+- Cache: HybridCache with Redis (Valkey in compose) as the shared second level, plus output caching
+  (`src/MyProject.Api/Infrastructure/Caching`).
+<!--#elif (UseCache) -->
+- Cache: HybridCache and output caching, in memory (`src/MyProject.Api/Infrastructure/Caching`).
+<!--#endif -->
+<!--#if (UseMonitoring) -->
+- Monitoring: Prometheus scrapes `/metrics` on port 9464; the `monitoring` compose profile adds
+  Grafana, Tempo, Loki and alert rules (`monitoring/`).
+<!--#endif -->
 <!--#if (UseAspire) -->
 - Local orchestration: .NET Aspire AppHost in `src/MyProject.AppHost` (development only, never deployed).
 <!--#endif -->
@@ -120,6 +130,22 @@ Never edit a migration that has been merged.
 <!--#if (UseSmtp) -->
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.
+<!--#endif -->
+<!--#if (UseCache) -->
+- Read through `HybridCache` only where a slightly old value is fine, never before a write or a
+  decision. Build keys from ids, remove the entry after every save that changes it, and check access
+  on the cached value. Output caching is for same-for-everyone responses only. See `docs/caching.md`.
+<!--#endif -->
+- Client-facing text in problem responses is English in code with a matching entry in
+  `Resources/Messages.resx` and every `Messages.<language>.resx`; `MessagesTests` checks the keys.
+  Never change the formatting culture per request, and compare identifiers ordinally. See
+  `docs/localization.md`.
+- Feature flags are named in `Infrastructure/FeatureFlags.cs` and read from `FeatureManagement`
+  configuration; gate endpoints with `WithFeatureGate`. Remove a release flag once it is fully on.
+  See `docs/feature-flags.md`.
+<!--#if (UseMonitoring) -->
+- Never map `/metrics` on the main port or publish port 9464. Change an alert in
+  `monitoring/prometheus/alerts.yml` together with its test in `alerts.test.yml`.
 <!--#endif -->
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.

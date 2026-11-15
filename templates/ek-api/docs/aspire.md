@@ -22,6 +22,9 @@ What it starts:
 <!--#elif (UseSqlite) -->
 - No database container: the API uses its SQLite file (`appsettings.Development.json`).
 <!--#endif -->
+<!--#if (UseRedis) -->
+- `Cache`: a Valkey container. The apps get its connection string as `ConnectionStrings:Cache`.
+<!--#endif -->
 <!--#if (UseDatabase) -->
 - `api`: the API, in Development, which applies migrations when it starts. Aspire waits for
   `/health/ready` before it marks it healthy.
