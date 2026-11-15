@@ -98,7 +98,8 @@ public sealed class NotificationTests(ApiFactory api) : IAsyncLifetime
         }
 
         var pushed = await SendAsync(userId, "Pushed");
-        var delivery = await Eventually.HoldsAsync(() => DeliveriesAsync(pushed), deliveries => deliveries.Any(item => item.Status == OutboxStatus.Succeeded));
+        // Wait for the push itself: with email on, the email delivery can succeed first.
+        var delivery = await Eventually.HoldsAsync(() => DeliveriesAsync(pushed), deliveries => deliveries.Any(item => item is { Channel: NotificationChannel.Push, Status: OutboxStatus.Succeeded }));
         Assert.Contains(delivery, item => item is { Channel: NotificationChannel.Push, Status: OutboxStatus.Succeeded });
 
         using var off = await user.Client.PutAsJsonAsync($"/v1/notifications/preferences/{NotificationTypes.Announcement}", new { channels = new Dictionary<string, bool> { ["push"] = false } }, Cancel);
