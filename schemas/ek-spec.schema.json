@@ -115,6 +115,20 @@
           "type": "boolean",
           "default": false
         },
+        "cache": {
+          "description": "Caching. \u0027memory\u0027 adds HybridCache in the process and output caching; \u0027redis\u0027 adds Redis (Valkey in compose) behind HybridCache as a cache shared by every instance.",
+          "enum": [
+            "none",
+            "memory",
+            "redis"
+          ],
+          "default": "none"
+        },
+        "monitoring": {
+          "description": "Add a monitoring stack as a compose profile (OpenTelemetry Collector, Prometheus, Alertmanager, Tempo, Loki and Grafana with starter dashboards and alerts) and an optional Prometheus scrape endpoint.",
+          "type": "boolean",
+          "default": false
+        },
         "worker": {
           "description": "Add a worker project that runs the API\u0027s jobs in its own process and container. Implies --jobs hangfire.",
           "type": "boolean",

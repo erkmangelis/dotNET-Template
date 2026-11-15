@@ -140,6 +140,34 @@
       "description": "Add incoming webhooks (signature checks, duplicate detection, queued processing) and outgoing webhooks (signed deliveries, retries, a delivery log). Needs a database: turns PostgreSQL on when --db is none."
     },
     {
+      "name": "cache",
+      "type": "choice",
+      "default": "none",
+      "question": "Cache data and responses?",
+      "description": "Caching. 'memory' adds HybridCache in the process and output caching; 'redis' adds Redis (Valkey in compose) behind HybridCache as a cache shared by every instance.",
+      "choices": [
+        {
+          "value": "none",
+          "description": "No caching."
+        },
+        {
+          "value": "memory",
+          "description": "HybridCache in each process's memory, and output caching for responses that are the same for everyone."
+        },
+        {
+          "value": "redis",
+          "description": "Everything in 'memory', with Redis behind it as a shared second level (Valkey in compose and tests)."
+        }
+      ]
+    },
+    {
+      "name": "monitoring",
+      "type": "bool",
+      "default": false,
+      "question": "Add a monitoring stack (Prometheus, Grafana, Tempo, Loki)?",
+      "description": "Add a monitoring stack as a compose profile (OpenTelemetry Collector, Prometheus, Alertmanager, Tempo, Loki and Grafana with starter dashboards and alerts) and an optional Prometheus scrape endpoint."
+    },
+    {
       "name": "worker",
       "type": "bool",
       "default": false,
