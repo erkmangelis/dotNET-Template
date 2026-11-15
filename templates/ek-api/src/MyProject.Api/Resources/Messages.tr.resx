@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Turkish. Keep the same keys as Messages.resx and the same {0} placeholders.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ProblemBadRequest" xml:space="preserve">
+    <value>Geçersiz istek</value>
+  </data>
+  <data name="ProblemUnauthorized" xml:space="preserve">
+    <value>Kimlik doğrulaması gerekli</value>
+  </data>
+  <data name="ProblemForbidden" xml:space="preserve">
+    <value>Erişim engellendi</value>
+  </data>
+  <data name="ProblemNotFound" xml:space="preserve">
+    <value>Bulunamadı</value>
+  </data>
+  <data name="ProblemMethodNotAllowed" xml:space="preserve">
+    <value>Bu yönteme izin verilmiyor</value>
+  </data>
+  <data name="ProblemNotAcceptable" xml:space="preserve">
+    <value>Kabul edilemez</value>
+  </data>
+  <data name="ProblemConflict" xml:space="preserve">
+    <value>Çakışma</value>
+  </data>
+  <data name="ProblemPreconditionFailed" xml:space="preserve">
+    <value>Ön koşul sağlanmadı</value>
+  </data>
+  <data name="ProblemPayloadTooLarge" xml:space="preserve">
+    <value>İstek gövdesi çok büyük</value>
+  </data>
+  <data name="ProblemUnsupportedMediaType" xml:space="preserve">
+    <value>Desteklenmeyen içerik türü</value>
+  </data>
+  <data name="ProblemUnprocessableEntity" xml:space="preserve">
+    <value>İşlenemeyen içerik</value>
+  </data>
+  <data name="ProblemValidation" xml:space="preserve">
+    <value>Bir veya daha fazla doğrulama hatası oluştu.</value>
+  </data>
+  <data name="ProblemServerError" xml:space="preserve">
+    <value>İsteğiniz işlenirken bir hata oluştu.</value>
+  </data>
+  <data name="ValidationRequired" xml:space="preserve">
+    <value>{0} alanı zorunludur.</value>
+  </data>
+  <data name="ValidationStringLength" xml:space="preserve">
+    <value>{0} alanı en fazla {1} karakter olabilir.</value>
+  </data>
+  <data name="ValidationStringLengthRange" xml:space="preserve">
+    <value>{0} alanı en az {2}, en fazla {1} karakter olmalıdır.</value>
+  </data>
+  <data name="ValidationRange" xml:space="preserve">
+    <value>{0} alanı {1} ile {2} arasında olmalıdır.</value>
+  </data>
+  <data name="ValidationEmailAddress" xml:space="preserve">
+    <value>{0} alanı geçerli bir e-posta adresi değil.</value>
+  </data>
+  <data name="ValidationUrl" xml:space="preserve">
+    <value>{0} alanı geçerli bir http, https veya ftp adresi değil.</value>
+  </data>
+  <data name="ValidationNoteSort" xml:space="preserve">
+    <value>En fazla {0} alana göre sıralayın ({1}); azalan sıra için alanın önüne '-' koyun.</value>
+  </data>
+  <data name="RateLimitTitle" xml:space="preserve">
+    <value>Çok fazla istek</value>
+  </data>
+  <data name="RateLimitDetail" xml:space="preserve">
+    <value>Bu istemci için istek sınırına ulaşıldı. Daha sonra tekrar deneyin.</value>
+  </data>
+  <data name="NotePreconditionFailedTitle" xml:space="preserve">
+    <value>Ön koşul sağlanmadı</value>
+  </data>
+  <data name="NotePreconditionFailedDetail" xml:space="preserve">
+    <value>If-Match notun güncel sürümünü göstermiyor. Notu yeniden okuyup değişikliğinizi tekrar uygulayın.</value>
+  </data>
+  <data name="NoteEditConflictTitle" xml:space="preserve">
+    <value>Düzenleme çakışması</value>
+  </data>
+  <data name="NoteEditConflictDetail" xml:space="preserve">
+    <value>Not, siz okuduktan sonra değişti. Yeniden okuyup değişikliğinizi tekrar uygulayın.</value>
+  </data>
+  <data name="NoteDuplicateTitleTitle" xml:space="preserve">
+    <value>Başlık zaten kullanılıyor</value>
+  </data>
+  <data name="NoteDuplicateTitleDetail" xml:space="preserve">
+    <value>Bu başlıkla bir not zaten var.</value>
+  </data>
+</root>

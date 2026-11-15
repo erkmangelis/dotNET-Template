@@ -28,6 +28,7 @@ global using MyProject.Api.Features.Realtime;
 #if (UseWebhooks)
 global using MyProject.Api.Features.Webhooks;
 #endif
+global using MyProject.Api.Infrastructure;
 #if (UseSmtp)
 global using MyProject.Api.Infrastructure.Email;
 #endif

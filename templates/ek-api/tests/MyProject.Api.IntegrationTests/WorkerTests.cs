@@ -28,7 +28,11 @@ public sealed class WorkerTests(ApiFactory api)
         await queuing.Services.GetRequiredService<IJobQueue>()
             .EnqueueAsync<ImportNotesJob, NoteImport>(import, TestContext.Current.CancellationToken);
 
+#if (UseRedis)
+        await using var workerApp = new WorkerFactory(api.ConnectionString, queue, api.CacheConnectionString);
+#else
         await using var workerApp = new WorkerFactory(api.ConnectionString, queue);
+#endif
         using var client = workerApp.CreateClient();
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready", TestContext.Current.CancellationToken)).StatusCode);
 
@@ -46,13 +50,20 @@ public sealed class WorkerTests(ApiFactory api)
             notes => notes.Count == 1);
     }
 
+#if (UseRedis)
+    private sealed class WorkerFactory(string connectionString, string queue, string cacheConnectionString) : WebApplicationFactory<worker::Program>
+#else
     private sealed class WorkerFactory(string connectionString, string queue) : WebApplicationFactory<worker::Program>
+#endif
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:Default", connectionString);
             builder.UseSetting("Jobs:Queue", queue);
+#if (UseRedis)
+            builder.UseSetting("ConnectionStrings:Cache", cacheConnectionString);
+#endif
             builder.UseSetting("Jobs:PollIntervalSeconds", "1");
             // Hangfire keeps the retry filter in a static, so the worker's settings would replace the
             // test API's for every job in this process; keep them the same.

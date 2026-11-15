@@ -9,6 +9,9 @@ builder.AddDatabase();
 #if (UseSmtp)
 builder.AddEmail();
 #endif
+#if (UseCache)
+builder.AddCaching();
+#endif
 builder.AddJobs();
 // Lets a running job finish before the container is stopped (compose waits 35 seconds).
 builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(30));

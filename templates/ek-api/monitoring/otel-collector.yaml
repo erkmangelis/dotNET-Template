@@ -1,0 +1,37 @@
+# OpenTelemetry Collector: receives the API's traces and logs over OTLP and passes them on, traces
+# to Tempo and logs to Loki. Metrics do not come through here: Prometheus scrapes them from the API.
+# To send to a hosted backend instead (Grafana Cloud, Honeycomb, ...), add an exporter below.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Refuses data before it runs out of memory, instead of being killed.
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  batch: {}
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]

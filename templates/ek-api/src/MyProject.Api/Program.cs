@@ -8,6 +8,9 @@ builder.AddDatabase();
 #if (UseSmtp)
 builder.AddEmail();
 #endif
+#if (UseCache)
+builder.AddCaching();
+#endif
 #if (UseJobs)
 builder.AddJobs();
 #endif

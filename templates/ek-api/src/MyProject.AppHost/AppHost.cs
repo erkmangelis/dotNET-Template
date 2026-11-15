@@ -15,6 +15,11 @@ var database = builder.AddSqlServer("sqlserver")
     .AddDatabase("Default", databaseName: "app");
 
 #endif
+#if (UseRedis)
+// Valkey, as in compose; named after the connection string the apps read (ConnectionStrings:Cache).
+var cache = builder.AddValkey("Cache");
+
+#endif
 #if (UseDatabase)
 // In Development the API applies migrations when it starts.
 #endif
@@ -27,12 +32,19 @@ builder.AddProject<Projects.MyProject_Api>("api")
     .WithReference(database)
     .WaitFor(database)
 #endif
+#if (UseRedis)
+    .WithReference(cache)
+    .WaitFor(cache)
+#endif
     .WithHttpHealthCheck("/health/ready");
 #if (UseWorker)
 
 builder.AddProject<Projects.MyProject_Worker>("worker")
 #if (UsePostgres || UseSqlServer)
     .WithReference(database)
+#endif
+#if (UseRedis)
+    .WithReference(cache)
 #endif
     .WaitFor(api);
 #endif

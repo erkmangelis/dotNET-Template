@@ -14,6 +14,8 @@
     "realtime": "EK_REALTIME",
     "notifications": "EK_NOTIFICATIONS",
     "webhooks": "EK_WEBHOOKS",
+    "cache": "EK_CACHE",
+    "monitoring": "EK_MONITORING",
     "worker": "EK_WORKER",
     "aspire": "EK_ASPIRE",
     "agents": "EK_AGENTS"

@@ -17,6 +17,9 @@
 <!--#if (UseSmtp || UseStorage) -->
     <PackageReference Include="Testcontainers" />
 <!--#endif -->
+<!--#if (UseRedis) -->
+    <PackageReference Include="Testcontainers.Redis" />
+<!--#endif -->
 <!--#if (UsePostgres) -->
     <PackageReference Include="Testcontainers.PostgreSql" />
 <!--#elif (UseSqlServer) -->

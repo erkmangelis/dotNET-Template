@@ -1,0 +1,11 @@
+# Loads the dashboards in monitoring/grafana/dashboards. Edits made in Grafana are kept until the
+# next restart; export a changed dashboard to its JSON file to keep it.
+apiVersion: 1
+
+providers:
+  - name: ek-app-slug
+    folder: ek-app-slug
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

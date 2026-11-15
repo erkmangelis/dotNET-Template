@@ -37,6 +37,9 @@ using Testcontainers.PostgreSql;
 #elif (UseSqlServer)
 using Testcontainers.MsSql;
 #endif
+#if (UseRedis)
+using Testcontainers.Redis;
+#endif
 
 [assembly: AssemblyFixture(typeof(MyProject.Api.IntegrationTests.ApiFactory))]
 
@@ -62,6 +65,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
 #elif (UseSqlite)
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"MyProject-tests-{Guid.NewGuid():N}.db");
+
+#endif
+#if (UseRedis)
+    // Valkey, the same Redis-compatible cache compose runs.
+    private readonly RedisContainer _cache = new RedisBuilder("valkey/valkey:9.1.3-alpine").Build();
+
+    internal string CacheConnectionString => _cache.GetConnectionString();
 
 #endif
 #if (UseStorage)
@@ -117,6 +127,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #if (UseStorage)
         await _storage.StartAsync();
 #endif
+#if (UseRedis)
+        await _cache.StartAsync();
+#endif
 
         // Starts the host, which applies the migrations.
         _ = Server;
@@ -129,6 +142,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await _database.DisposeAsync();
+#if (UseRedis)
+        await _cache.DisposeAsync();
+#endif
 #if (UseStorage)
         await _storage.DisposeAsync();
         if (Directory.Exists(_uploadDirectory))
@@ -138,10 +154,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
     }
 #elif (UseSqlite)
-#if (UseStorage)
+#if (UseStorage || UseRedis)
     public async ValueTask InitializeAsync()
     {
+#if (UseStorage)
         await _storage.StartAsync();
+#endif
+#if (UseRedis)
+        await _cache.StartAsync();
+#endif
 
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
@@ -164,6 +185,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
+#if (UseRedis)
+        await _cache.DisposeAsync();
+#endif
 #if (UseStorage)
         await _storage.DisposeAsync();
         if (Directory.Exists(_uploadDirectory))
@@ -185,6 +209,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 #endif
     }
+#elif (UseRedis)
+    public async ValueTask InitializeAsync()
+    {
+        await _cache.StartAsync();
+        _ = Server;
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _cache.DisposeAsync();
+    }
 #else
     public ValueTask InitializeAsync()
     {
@@ -205,6 +241,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
 #endif
         builder.UseSetting("Database:MigrateOnStartup", "true");
+#endif
+#if (UseRedis)
+        builder.UseSetting("ConnectionStrings:Cache", _cache.GetConnectionString());
 #endif
 #if (UseStorage)
         builder.UseSetting("Storage:ServiceUrl", StorageUrl);

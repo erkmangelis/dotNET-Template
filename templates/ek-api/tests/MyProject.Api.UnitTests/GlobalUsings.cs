@@ -28,3 +28,4 @@ global using MyProject.Api.Infrastructure.Email;
 #endif
 global using MyProject.Api.Infrastructure.Http;
 global using MyProject.Api.Infrastructure.Jobs;
+global using MyProject.Api.Resources;
