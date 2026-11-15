@@ -3,7 +3,7 @@
   <ItemGroup Label="API">
     <PackageVersion Include="Asp.Versioning.Http" Version="10.2.3" />
     <PackageVersion Include="Asp.Versioning.OpenApi" Version="10.2.3" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.5" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
@@ -12,7 +12,24 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
     <!-- Retries, circuit breakers and timeouts for outbound HTTP (Polly underneath). -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
+    <!-- Feature flags from configuration (MIT). -->
+    <PackageVersion Include="Microsoft.FeatureManagement.AspNetCore" Version="4.8.0" />
   </ItemGroup>
+<!--#if (UseMonitoring) -->
+  <ItemGroup Label="Monitoring">
+    <!-- Still a beta after years of wide use: OpenTelemetry keeps it there until the Prometheus spec settles. -->
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.20.1-beta.1" />
+  </ItemGroup>
+<!--#endif -->
+<!--#if (UseCache) -->
+  <ItemGroup Label="Caching">
+    <PackageVersion Include="Microsoft.Extensions.Caching.Hybrid" Version="10.11.0" />
+<!--#if (UseRedis) -->
+    <!-- StackExchange.Redis underneath (MIT); it speaks to Redis and Valkey alike. -->
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.15" />
+<!--#endif -->
+  </ItemGroup>
+<!--#endif -->
 <!--#if (UseSmtp) -->
   <ItemGroup Label="Email">
     <PackageVersion Include="MailKit" Version="4.18.2" />
@@ -20,16 +37,16 @@
 <!--#endif -->
 <!--#if (UseDatabase) -->
   <ItemGroup Label="Data">
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.15" />
 <!--#if (UsePostgres) -->
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
 <!--#elif (UseSqlServer) -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
     <!-- Microsoft.Data.SqlClient brings 9.0.11, which has known vulnerabilities. -->
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
 <!--#elif (UseSqlite) -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
 <!--#endif -->
   </ItemGroup>
 <!--#endif -->
@@ -53,20 +70,23 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
 <!--#endif -->
-<!--#if (UseAspire && (UsePostgres || UseSqlServer)) -->
+<!--#if ((UseAspire && UsePostgres) || (UseAspire && UseSqlServer) || (UseAspire && UseRedis)) -->
   <ItemGroup Label="Aspire">
     <!-- The AppHost's SDK version is in src/MyProject.AppHost/MyProject.AppHost.csproj; keep them equal. -->
 <!--#if (UsePostgres) -->
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
-<!--#else -->
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.5" />
+<!--#elif (UseSqlServer) -->
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
+<!--#endif -->
+<!--#if (UseRedis) -->
+    <PackageVersion Include="Aspire.Hosting.Valkey" Version="13.6.5" />
 <!--#endif -->
   </ItemGroup>
 <!--#endif -->
 <!--#if (UseIdentity) -->
   <ItemGroup Label="Identity">
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
 <!--#if (UseExternal) -->
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
 <!--#endif -->
@@ -91,21 +111,24 @@
 <!--#endif -->
 <!--#if (UseOidc) -->
   <ItemGroup Label="OpenID Connect">
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
   </ItemGroup>
 <!--#endif -->
   <ItemGroup Label="Tests">
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="10.11.0" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
 <!--#if (UseIdentity) -->
-    <PackageVersion Include="System.Formats.Cbor" Version="10.0.14" />
+    <PackageVersion Include="System.Formats.Cbor" Version="10.0.15" />
 <!--#endif -->
 <!--#if (UseRealtime) -->
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.15" />
 <!--#endif -->
 <!--#if (UseSmtp || UseStorage) -->
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
+<!--#endif -->
+<!--#if (UseRedis) -->
+    <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
 <!--#endif -->
 <!--#if (UsePostgres) -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
