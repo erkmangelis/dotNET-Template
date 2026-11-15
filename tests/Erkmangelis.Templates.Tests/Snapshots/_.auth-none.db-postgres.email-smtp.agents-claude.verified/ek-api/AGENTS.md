@@ -48,6 +48,13 @@ Never edit a migration that has been merged.
   it may call. Never `new HttpClient()`, and never follow redirects. See `docs/outbound-http.md`.
 - Send email by rendering a message with `EmailTemplates` (add a method for a new message) and
   passing it to `IEmailTransport`. Never build HTML by hand from user input.
+- Client-facing text in problem responses is English in code with a matching entry in
+  `Resources/Messages.resx` and every `Messages.<language>.resx`; `MessagesTests` checks the keys.
+  Never change the formatting culture per request, and compare identifiers ordinally. See
+  `docs/localization.md`.
+- Feature flags are named in `Infrastructure/FeatureFlags.cs` and read from `FeatureManagement`
+  configuration; gate endpoints with `WithFeatureGate`. Remove a release flag once it is fully on.
+  See `docs/feature-flags.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

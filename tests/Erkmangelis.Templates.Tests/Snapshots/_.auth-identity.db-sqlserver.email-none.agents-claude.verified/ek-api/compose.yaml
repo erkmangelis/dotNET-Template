@@ -18,6 +18,8 @@ services:
       Api__UseHttpsRedirection: "false"
       ConnectionStrings__Default: Server=db;Database=app;User Id=sa;Password=${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env};TrustServerCertificate=True
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Load tests from one address turn it off (see docs/load-testing.md); keep it on in production.
+      RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
     ports:
       - "${API_PORT:-8080}:8080"
     stop_grace_period: 35s

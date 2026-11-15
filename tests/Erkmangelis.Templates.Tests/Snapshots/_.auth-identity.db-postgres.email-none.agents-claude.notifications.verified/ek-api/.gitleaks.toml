@@ -1,0 +1,10 @@
+# gitleaks settings for the Security workflow: the default rules, minus values that only look like
+# secrets. Add a path or a value here only after checking it is not a real secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Development and test values that are not secrets"
+paths = [
+  '''(^|/)\.env\.example$''',
+]

@@ -51,6 +51,13 @@ Never edit a migration that has been merged.
   provider directly. See `docs/notifications.md`.
 - Incoming webhooks are handled by an `IIncomingWebhookHandler` registered for their source, in the
   background, and must be safe to run twice. Never skip the signature check. See `docs/webhooks.md`.
+- Client-facing text in problem responses is English in code with a matching entry in
+  `Resources/Messages.resx` and every `Messages.<language>.resx`; `MessagesTests` checks the keys.
+  Never change the formatting culture per request, and compare identifiers ordinally. See
+  `docs/localization.md`.
+- Feature flags are named in `Infrastructure/FeatureFlags.cs` and read from `FeatureManagement`
+  configuration; gate endpoints with `WithFeatureGate`. Remove a release flag once it is fully on.
+  See `docs/feature-flags.md`.
 - Log with `[LoggerMessage]` source-generated methods. Never log passwords, tokens, links with
   codes, connection strings or request bodies.
 - The project's own namespaces are imported in `GlobalUsings.cs`, not in each file.

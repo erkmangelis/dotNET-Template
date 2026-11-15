@@ -2,7 +2,7 @@
   "specVersion": 1,
   "template": "Erkmangelis.Templates.Api",
   "package": "Erkmangelis.Templates",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "name": "Acme.Notes",
   "options": {
     "auth": "none",
@@ -14,6 +14,8 @@
     "realtime": false,
     "notifications": false,
     "webhooks": false,
+    "cache": "none",
+    "monitoring": false,
     "worker": false,
     "aspire": true,
     "agents": "claude"

@@ -75,6 +75,9 @@ All settings can be set as environment variables with `__` between sections.
 | `RateLimiting__PermitLimit` | `100` | Requests per caller per window |
 | `RateLimiting__WindowSeconds` | `60` | Rate limit window |
 | `ForwardedHeaders__KnownNetworks__0` | none | Proxy networks trusted for `X-Forwarded-*` |
+| `RateLimiting__Enabled` | `true` | Rate limiting; `RATE_LIMITING_ENABLED=false` in `.env` turns it off for a load test |
+| `Localization__Languages__0` | `en`, `tr` | Languages the API answers in; see [localization.md](localization.md) |
+| `FeatureManagement__NoteExport` | `true` | Feature flags; see [feature-flags.md](feature-flags.md) |
 | `Email__FromAddress` | none, required | Sender address |
 | `Email__Smtp__Host` | none, required | SMTP server |
 | `Email__Smtp__Port` | `587` | SMTP port |

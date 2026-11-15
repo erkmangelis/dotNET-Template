@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.FeatureManagement.AspNetCore;
 
 namespace Acme.Notes.Api.Features.Notes;
 
@@ -22,7 +23,7 @@ internal static class NoteEndpoints
         notes.MapGet("/{id:guid}/history", HistoryAsync).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
         notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
-        notes.MapGet("/export", Export).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+        notes.MapGet("/export", Export).WithFeatureGate(FeatureFlags.NoteExport).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 
         return notes;
     }
@@ -47,6 +48,7 @@ internal static class NoteEndpoints
         {
             return DuplicateTitle();
         }
+
 
         http.Response.Headers.ETag = ETags.For(note.Version);
         await events.PublishAsync(NoteEvent(AppEventTypes.NoteCreated, note), cancellationToken);

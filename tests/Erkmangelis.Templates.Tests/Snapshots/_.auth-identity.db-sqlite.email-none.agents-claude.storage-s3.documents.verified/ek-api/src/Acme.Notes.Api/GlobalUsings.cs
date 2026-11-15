@@ -12,3 +12,4 @@ global using Acme.Notes.Api.Infrastructure.Documents;
 global using Acme.Notes.Api.Infrastructure.Idempotency;
 global using Acme.Notes.Api.Infrastructure.Jobs;
 global using Acme.Notes.Api.Infrastructure.Storage;
+global using Acme.Notes.Api.Resources;

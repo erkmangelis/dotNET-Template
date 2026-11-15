@@ -82,6 +82,9 @@ All settings can be set as environment variables with `__` between sections.
 | `RateLimiting__PermitLimit` | `100` | Requests per caller per window |
 | `RateLimiting__WindowSeconds` | `60` | Rate limit window |
 | `ForwardedHeaders__KnownNetworks__0` | none | Proxy networks trusted for `X-Forwarded-*` |
+| `RateLimiting__Enabled` | `true` | Rate limiting; `RATE_LIMITING_ENABLED=false` in `.env` turns it off for a load test |
+| `Localization__Languages__0` | `en`, `tr` | Languages the API answers in; see [localization.md](localization.md) |
+| `FeatureManagement__NoteExport` | `true` | Feature flags; see [feature-flags.md](feature-flags.md) |
 | `ConnectionStrings__Default` | none, required | SQL Server connection string |
 | `Oidc__Authority` | none, required | The OpenID Connect issuer that owns the accounts |
 | `Oidc__Audience` | none, required | The `aud` value in access tokens for this API |

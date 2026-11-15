@@ -15,6 +15,8 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 `docker compose up -d storage` and set the storage keys in user secrets first.
 [docs/documents.md](docs/documents.md) covers CSV and Excel import and export and PDF reports.
 [docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
+[docs/localization.md](docs/localization.md) covers answering in English, Turkish or another language,
+and [docs/feature-flags.md](docs/feature-flags.md) turning features on and off without a deploy.
 
 ### Sign in
 
@@ -100,20 +102,25 @@ dotnet test
 ```
 
 Integration tests use a throwaway SQLite file and a RustFS container, so Docker must be running.
-CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
+CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors, then starts the
+container and runs the k6 load test in `loadtest/` against it ([docs/load-testing.md](docs/load-testing.md)).
+`.github/workflows/security.yml` and `codeql.yml` check for vulnerable packages, leaked secrets
+and code flaws ([docs/security-scanning.md](docs/security-scanning.md)).
 
 ## Layout
 
 ```text
 src/Acme.Notes.Api/
   Program.cs              composition root
-  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
+  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry,
+                          health, languages, feature flags
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
   Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
   Infrastructure/Jobs/    background work: the scoped background loop
   Infrastructure/Storage/ private S3-compatible object storage and signed links
   Infrastructure/Documents/  CSV and Excel in and out, PDF reports and their fonts
   Common/                 shared types: paging, sorting, record metadata, soft delete
+  Resources/              messages in English (Messages.resx) and Turkish (Messages.tr.resx)
   Features/Notes/         the example feature: contracts, endpoints, storage
   Features/Files/         uploads (API, signed links, tus), checks, thumbnails, downloads, cleanup
   Features/Auth/          ASP.NET Core Identity setup and email senders
@@ -121,6 +128,7 @@ src/Acme.Notes.Api/
   Features/Audit/         audit history endpoints
 tests/Acme.Notes.Api.UnitTests/
 tests/Acme.Notes.Api.IntegrationTests/
+loadtest/                 k6 load test
 ```
 
 Add a feature as a new folder under `Features/` with its own endpoints, contracts and storage, and
