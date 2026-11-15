@@ -24,6 +24,9 @@ using Microsoft.Extensions.DependencyInjection;
 #if (UseHangfire)
 using Microsoft.Extensions.DependencyInjection.Extensions;
 #endif
+#if (UseWebhooks || UseNotifications)
+using Microsoft.Extensions.Hosting;
+#endif
 using Microsoft.Extensions.Logging;
 #if (UseHangfire)
 using Microsoft.Extensions.Logging.Abstractions;
@@ -112,9 +115,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public HandledWebhooks HandledWebhooks { get; } = new();
 
 #endif
-#if (UseHangfire)
-    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no Hangfire
-    // server, so they never take this app's jobs and stop in the middle of one.
+#if (UseHangfire || UseWebhooks || UseNotifications)
+    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no
+    // background workers of their own (see WithoutDeliveryLoops and Jobs:RunServer), so they never
+    // claim this app's work and stop in the middle of it, leaving it leased until the claim expires.
     private bool _started;
 
 #endif
@@ -133,7 +137,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         // Starts the host, which applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
     }
@@ -166,7 +170,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
     }
@@ -175,7 +179,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
         return ValueTask.CompletedTask;
@@ -308,6 +312,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #if (UseHangfire)
             WithoutHangfireLogs(services);
 #endif
+#if (UseWebhooks || UseNotifications)
+            if (_started)
+            {
+                WithoutDeliveryLoops(services);
+            }
+#endif
 #if (UseIdentity && UseSmtp)
             services.AddSingleton<IEmailTransport>(Emails);
 #elif (UseIdentity)
@@ -332,6 +342,27 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
 #endif
     }
+#if (UseWebhooks || UseNotifications)
+
+    /// <summary>Removes the loops that claim outbox rows, for apps a test starts next to the shared one.</summary>
+    private static void WithoutDeliveryLoops(IServiceCollection services)
+    {
+        Type[] loops =
+        [
+#if (UseWebhooks)
+            typeof(WebhookDispatchLoop),
+            typeof(IncomingWebhookLoop),
+#endif
+#if (UseNotifications)
+            typeof(NotificationDispatchLoop),
+#endif
+        ];
+        foreach (var loop in services.Where(service => service.ServiceType == typeof(IHostedService) && loops.Contains(service.ImplementationType)).ToList())
+        {
+            services.Remove(loop);
+        }
+    }
+#endif
 #if (UseHangfire)
 
     /// <summary>
