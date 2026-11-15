@@ -8,3 +8,7 @@ description = "Development and test values that are not secrets"
 paths = [
   '''(^|/)\.env\.example$''',
 ]
+regexes = [
+  # The fixed ids of the seeded roles (Data/RoleConfiguration.cs), which migrations repeat.
+  '''7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e0[0-9]''',
+]
