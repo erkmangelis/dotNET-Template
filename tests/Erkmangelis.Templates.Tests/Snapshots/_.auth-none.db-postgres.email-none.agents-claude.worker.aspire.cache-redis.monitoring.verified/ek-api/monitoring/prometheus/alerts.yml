@@ -1,0 +1,43 @@
+﻿# Starter alerts. Thresholds suit a small API; change them to your own service levels.
+# Test them with: docker run --rm -v ./monitoring/prometheus:/rules --entrypoint promtool prom/prometheus:v3.9.1 test rules /rules/alerts.test.yml
+groups:
+  - name: api
+    rules:
+      - alert: ApiDown
+        expr: up{job=~"api|worker"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} does not answer Prometheus"
+          description: "{{ $labels.instance }} has failed every scrape for 2 minutes: the process is down or unreachable."
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (job) (rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
+            / sum by (job) (rate(http_server_request_duration_seconds_count[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "More than 5% of {{ $labels.job }} requests fail"
+          description: "{{ $value | humanizePercentage }} of requests answered 5xx over the last 5 minutes."
+
+      - alert: SlowResponses
+        expr: |
+          histogram_quantile(0.95, sum by (job, le) (rate(http_server_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} is slow"
+          description: "The 95th percentile response time is {{ $value | humanizeDuration }} over the last 5 minutes."
+
+      - alert: ThreadPoolStarved
+        expr: max by (job) (dotnet_thread_pool_queue_length_total) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} has work queued for threads"
+          description: "{{ $value }} work items wait for a thread-pool thread, usually blocking calls (.Result, .Wait()) or too little CPU."

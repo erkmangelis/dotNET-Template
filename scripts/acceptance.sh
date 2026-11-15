@@ -9,7 +9,11 @@
 #   --email smtp a confirmation email reaches the bundled Mailpit, with --auth none and any
 #   --jobs but none (or --worker) a background job imports notes in the container (the worker's,
 #   with --worker), and with --auth none and --storage s3 a file uploads to the bundled storage and
-#   downloads again, through the API and through a signed link.
+#   downloads again, through the API and through a signed link. With --compose it also runs the
+#   k6 load test against the container (its thresholds must hold), scans the project for secrets
+#   with gitleaks, and with --monitoring true starts the monitoring profile and finds the API's
+#   metrics, traces and logs through the bundled Grafana. Every combination is checked for
+#   packages with known vulnerabilities.
 #
 # With --update-from, the project is first generated from that older package (with the options it
 # already had), committed with a file of the team's own, and then brought to the package under test
@@ -20,12 +24,12 @@
 #   scripts/acceptance.sh --auth none|identity|external|oidc --db none|postgres|sqlserver|sqlite \
 #       --email none|smtp --jobs none|hosted|hangfire --storage none|s3 --documents false|true \
 #       --realtime false|true --notifications false|true --webhooks false|true \
-#       --worker false|true --aspire false|true \
+#       --cache none|memory|redis --monitoring false|true --worker false|true --aspire false|true \
 #       --agents none|shared|claude [--package path/to/Erkmangelis.Templates.*.nupkg] [--compose] [--keep] \
 #       [--update-from path/to/older/Erkmangelis.Templates.*.nupkg]
 set -euo pipefail
 
-AUTH=none DB=none EMAIL=none JOBS=none STORAGE=none DOCUMENTS=false REALTIME=false NOTIFICATIONS=false WEBHOOKS=false WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
+AUTH=none DB=none EMAIL=none JOBS=none STORAGE=none DOCUMENTS=false REALTIME=false NOTIFICATIONS=false WEBHOOKS=false CACHE=none MONITORING=false WORKER=false ASPIRE=false AGENTS=shared PACKAGE="" COMPOSE=false KEEP=false UPDATE_FROM=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --auth) AUTH="$2"; shift 2 ;;
@@ -37,6 +41,8 @@ while [[ $# -gt 0 ]]; do
     --realtime) REALTIME="$2"; shift 2 ;;
     --notifications) NOTIFICATIONS="$2"; shift 2 ;;
     --webhooks) WEBHOOKS="$2"; shift 2 ;;
+    --cache) CACHE="$2"; shift 2 ;;
+    --monitoring) MONITORING="$2"; shift 2 ;;
     --worker) WORKER="$2"; shift 2 ;;
     --aspire) ASPIRE="$2"; shift 2 ;;
     --agents) AGENTS="$2"; shift 2 ;;
@@ -54,7 +60,7 @@ HIVE="$WORK/hive"
 NAME="Acme.Notes"
 OUT="$WORK/$NAME"
 # The worker runs Hangfire jobs, so --worker means --jobs hangfire.
-OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --storage $STORAGE --documents $DOCUMENTS --realtime $REALTIME --notifications $NOTIFICATIONS --webhooks $WEBHOOKS --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
+OPTIONS="--auth $AUTH --db $DB --email $EMAIL --jobs $JOBS --storage $STORAGE --documents $DOCUMENTS --realtime $REALTIME --notifications $NOTIFICATIONS --webhooks $WEBHOOKS --cache $CACHE --monitoring $MONITORING --worker $WORKER --aspire $ASPIRE --agents $AGENTS"
 if [[ "$WORKER" == true ]]; then JOBS=hangfire; fi
 # Notifications belong to users, so --notifications true means local accounts when --auth is none.
 if [[ "$NOTIFICATIONS" == true && "$AUTH" == none ]]; then AUTH=identity; fi
@@ -95,7 +101,7 @@ else
   dotnet new install "$UPDATE_FROM" --debug:custom-hive "$HIVE" >/dev/null
   help="$(dotnet new ek-api --help --debug:custom-hive "$HIVE")"
   OLD_OPTIONS=""
-  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "storage $STORAGE" "documents $DOCUMENTS" "realtime $REALTIME" "notifications $NOTIFICATIONS" "webhooks $WEBHOOKS" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
+  for pair in "auth $AUTH" "db $DB" "email $EMAIL" "jobs $JOBS" "storage $STORAGE" "documents $DOCUMENTS" "realtime $REALTIME" "notifications $NOTIFICATIONS" "webhooks $WEBHOOKS" "cache $CACHE" "monitoring $MONITORING" "worker $WORKER" "aspire $ASPIRE" "agents $AGENTS"; do
     # An option whose short name is its name shows as -db, not --db.
     if grep -qE -- "(^|[ ,])--?${pair%% *} " <<<"$help"; then OLD_OPTIONS="$OLD_OPTIONS --$pair"; else [[ "${pair#* }" =~ ^(none|false)$ ]] || fail "the old template has no --${pair%% *}"; fi
   done
@@ -126,12 +132,14 @@ step "No leftovers from unselected options"
 # leftover <pattern> <message> [extra pathspecs to skip]
 leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**' "${@:3}"; then fail "$2"; fi; }
 if [[ "$EFFECTIVE_DB" == none ]]; then
-  leftover 'Npgsql|EntityFramework|ConnectionStrings|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none"
+  # load-testing.md names the database its measured number was taken with, whatever the API uses.
+  leftover 'Npgsql|EntityFramework|ConnectionStrings(:|__)Default|GetConnectionString\("Default|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none" ':!docs/load-testing.md'
   [[ ! -e src/$NAME.Api/Data && ! -e .config && ! -e docs/database.md && ! -e scripts ]] || fail "database folders left with --db none"
 fi
 if [[ "$EFFECTIVE_DB" != postgres ]]; then
-  # The SSO guide's Keycloak runs on its own PostgreSQL, whatever the API uses.
-  leftover 'Npgsql|PostgreSql|POSTGRES_|pg_dump|xmin' "PostgreSQL code or settings left with --db $EFFECTIVE_DB" ':!docs/enterprise-sso.md'
+  # The SSO guide's Keycloak runs on its own PostgreSQL, and load-testing.md names the database its
+  # measured number was taken with, whatever the API uses.
+  leftover 'Npgsql|PostgreSql|POSTGRES_|pg_dump|xmin' "PostgreSQL code or settings left with --db $EFFECTIVE_DB" ':!docs/enterprise-sso.md' ':!docs/load-testing.md'
 fi
 if [[ "$EFFECTIVE_DB" != sqlserver ]]; then
   leftover 'SqlServer|SqlClient|MsSql|MSSQL_|sqlcmd' "SQL Server code or settings left with --db $EFFECTIVE_DB"
@@ -189,6 +197,18 @@ fi
 if [[ "$NOTIFICATIONS" == false && "$WEBHOOKS" == false ]]; then
   leftover 'ModuleDatabase|IOutboxItem' "module database code left without notifications or webhooks"
 fi
+if [[ "$CACHE" == none ]]; then
+  leftover 'HybridCache|NoteCache|OutputCach|CacheOutput|Caching:|Valkey|CACHE_PASSWORD' "caching code or settings left with --cache none"
+  [[ ! -e src/$NAME.Api/Infrastructure/Caching && ! -e docs/caching.md ]] || fail "caching folders left with --cache none"
+fi
+if [[ "$CACHE" != redis ]]; then
+  # The real-time guide names Redis as one SignalR backplane, whatever the cache is.
+  leftover 'StackExchange|Valkey|CACHE_PASSWORD|ConnectionStrings__Cache|Testcontainers\.Redis' "Redis code or settings left with --cache $CACHE"
+fi
+if [[ "$MONITORING" == false ]]; then
+  leftover 'Prometheus|Alertmanager|(^|[^a-z])tempo([^a-z]|$)|(^|[^a-z])loki([^a-z]|$)|monitoring/|GRAFANA_' "monitoring stack or settings left with --monitoring false"
+  [[ ! -e monitoring && ! -e docs/monitoring.md ]] || fail "monitoring folder left with --monitoring false"
+fi
 if [[ "$WORKER" == false ]]; then
   leftover "$NAME\.Worker|worker-build|RunServer\": false" "worker project or settings left with --worker false"
   [[ ! -e src/$NAME.Worker ]] || fail "worker folder left with --worker false"
@@ -207,6 +227,7 @@ grep -q "\"auth\": \"$AUTH\"" template-origin.json && grep -q "\"db\": \"$EFFECT
   && grep -q "\"storage\": \"$STORAGE\"" template-origin.json && grep -q "\"documents\": $DOCUMENTS" template-origin.json \
   && grep -q "\"realtime\": $REALTIME" template-origin.json && grep -q "\"notifications\": $NOTIFICATIONS" template-origin.json \
   && grep -q "\"webhooks\": $WEBHOOKS" template-origin.json \
+  && grep -q "\"cache\": \"$CACHE\"" template-origin.json && grep -q "\"monitoring\": $MONITORING" template-origin.json \
   && grep -q "\"worker\": $WORKER" template-origin.json && grep -q "\"aspire\": $ASPIRE" template-origin.json \
   || fail "template-origin.json does not record the options"
 
@@ -221,6 +242,13 @@ dotnet format --verify-no-changes --no-restore
 
 step "Tests"
 dotnet test --no-build -c Release
+
+step "No package with a known vulnerability"
+dotnet package list --vulnerable --include-transitive --format json > "$WORK/vulnerable.json"
+if jq -e '[.projects[].frameworks[]? | (.topLevelPackages // [])[], (.transitivePackages // [])[]] | length > 0' "$WORK/vulnerable.json" > /dev/null; then
+  dotnet package list --vulnerable --include-transitive
+  fail "packages with known vulnerabilities"
+fi
 
 step "A style violation fails the build"
 cat > "src/$NAME.Api/StyleViolation.cs" <<'CS'
@@ -240,8 +268,15 @@ grep -q "error IDE1006" <<<"$violation" || { echo "$violation"; fail "the build 
 rm "src/$NAME.Api/StyleViolation.cs"
 
 if [[ "$COMPOSE" == true ]]; then
+  step "No secrets in the project (gitleaks, as its Security workflow runs it)"
+  git -c user.name=acceptance -c user.email=acceptance@example.com commit -qm "Acceptance" --allow-empty
+  docker run --rm -v "$PWD:/repo" --entrypoint sh zricethezav/gitleaks:v8.30.1 \
+    -c 'git config --global --add safe.directory /repo && gitleaks git /repo --config /repo/.gitleaks.toml --redact --no-banner' \
+    || fail "gitleaks found secrets"
+
   step "docker compose up and /health/ready"
-  : > .env
+  # The load test below comes from one address, which the rate limit would mostly answer with 429.
+  echo "RATE_LIMITING_ENABLED=false" > .env
   case "$EFFECTIVE_DB" in
     postgres) echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env ;;
     # Upper and lower case, digits and a symbol, as SQL Server's password policy needs.
@@ -254,10 +289,16 @@ if [[ "$COMPOSE" == true ]]; then
   if [[ "$STORAGE" == s3 ]]; then
     printf 'STORAGE_ACCESS_KEY=%s\nSTORAGE_SECRET_KEY=%s\n' "$(openssl rand -hex 10)" "$(openssl rand -hex 20)" >> .env
   fi
+  if [[ "$CACHE" == redis ]]; then
+    echo "CACHE_PASSWORD=$(openssl rand -hex 24)" >> .env
+  fi
   PROFILES=()
   if [[ "$EMAIL" == smtp ]]; then
     printf 'EMAIL_FROM=noreply@example.com\nSMTP_HOST=mailpit\nSMTP_PORT=1025\nSMTP_SECURITY=None\n' >> .env
-    PROFILES=(--profile mail)
+    PROFILES+=(--profile mail)
+  fi
+  if [[ "$MONITORING" == true ]]; then
+    PROFILES+=(--profile monitoring)
   fi
   docker compose "${PROFILES[@]}" up -d --build
   for _ in $(seq 1 60); do
@@ -304,6 +345,32 @@ if [[ "$COMPOSE" == true ]]; then
     curl -fsS "http://localhost:8080/v1/files/$id/content" | cmp -s - "$WORK/upload.txt" || fail "the download through the API differs"
     link="$(curl -fsS "http://localhost:8080/v1/files/$id/link" | sed -E 's/.*"url":"([^"]+)".*/\1/')"
     curl -fsS "$link" | cmp -s - "$WORK/upload.txt" || fail "the download through the signed link differs"
+  fi
+
+  step "k6 load test against the container"
+  docker run --rm -i --network host -e VUS=10 -e DURATION=15s grafana/k6:2.4.0 run --quiet - < loadtest/notes.js \
+    || { docker compose logs api; fail "the load test missed its thresholds"; }
+
+  if [[ "$MONITORING" == true ]]; then
+    step "Grafana shows the API's metrics, traces and logs"
+    grafana() { curl -fsS -u admin:admin "http://localhost:3000/api/datasources/proxy/uid/$1" "${@:2}"; }
+    # Health checks are not traced, and with sign-in k6 calls only those, so make a few traced
+    # requests of our own (an anonymous call to a protected endpoint answers 401, and is traced).
+    for _ in $(seq 1 20); do curl -s -o /dev/null http://localhost:8080/v1/notes || true; done
+    metrics=false; traces=false; logs=false
+    for _ in $(seq 1 30); do
+      [[ "$(grafana prometheus/api/v1/query --get --data-urlencode 'query=sum(http_server_request_duration_seconds_count{job="api"})' || true)" == *'"value"'* ]] && metrics=true
+      [[ "$(grafana tempo/api/search --get --data-urlencode 'q={}' --data-urlencode "start=$(( $(date +%s) - 3600 ))" --data-urlencode "end=$(date +%s)" || true)" == *'"traceID"'* ]] && traces=true
+      [[ "$(grafana loki/loki/api/v1/query_range --get --data-urlencode 'query={service_name=~".+"}' --data-urlencode 'limit=1' || true)" == *'"values"'* ]] && logs=true
+      [[ "$metrics" == true && "$traces" == true && "$logs" == true ]] && break
+      sleep 5
+    done
+    if [[ "$metrics" != true || "$traces" != true || "$logs" != true ]]; then
+      for service in otel-collector prometheus tempo loki; do docker compose --profile monitoring logs "$service" | tail -30; done
+      fail "Grafana does not show the API's telemetry (metrics: $metrics, traces: $traces, logs: $logs)"
+    fi
+    docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 test rules /etc/prometheus/alerts.test.yml \
+      || fail "the alert rule tests failed"
   fi
 fi
 

@@ -22,4 +22,12 @@ public sealed class OptionsValidationTests
             KnownNetworks = [network],
             KnownProxies = [proxy],
         }));
+
+    [Theory]
+    [InlineData(new[] { "en", "tr" }, "en", true)]
+    [InlineData(new[] { "en", "tr" }, "tr", true)]
+    [InlineData(new[] { "en" }, "tr", false)]
+    [InlineData(new[] { "en", "not-a-language" }, "en", false)]
+    public void Localization_needs_real_languages_including_the_default(string[] languages, string defaultLanguage, bool valid) =>
+        Assert.Equal(valid, LocalizationSettings.AreValid(new LocalizationSettings { Languages = languages, DefaultLanguage = defaultLanguage }));
 }

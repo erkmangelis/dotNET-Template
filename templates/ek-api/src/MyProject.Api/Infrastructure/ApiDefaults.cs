@@ -54,6 +54,8 @@ internal static class ApiDefaults
             context.ProblemDetails.Extensions.TryAdd(
                 "traceId",
                 Activity.Current?.TraceId.ToString() ?? context.HttpContext.TraceIdentifier);
+            // In the caller's language (Accept-Language), when Resources/Messages has the text.
+            Localization.Translate(context);
         });
         services.AddValidation();
         // Versions live in the URL (/v1, /v2). Responses list the versions an endpoint supports in
@@ -114,6 +116,8 @@ internal static class ApiDefaults
         });
 
         services.AddIdempotency();
+        builder.AddLocalization();
+        builder.AddFeatureFlags();
 
         return builder;
     }
@@ -124,6 +128,8 @@ internal static class ApiDefaults
         var api = app.Services.GetRequiredService<IOptions<ApiOptions>>().Value;
 
         app.UseForwardedHeaders();
+        // First, so error responses written further out are in the caller's language too.
+        app.UseRequestLocalization();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         if (!app.Environment.IsDevelopment())
@@ -147,12 +153,21 @@ internal static class ApiDefaults
         app.UseAuthorization();
 #endif
         app.UseRateLimiter();
+#if (UseCache)
+        // After authentication: the default rules never serve a cached response to a request with credentials.
+        app.UseOutputCache();
+#endif
         // After authentication and rate limiting, so keys belong to a caller and rejected requests store nothing.
         app.UseMiddleware<IdempotencyMiddleware>();
 
         if (api.ExposeOpenApi)
         {
+#if (UseCache)
+            // Building the document reflects over every endpoint, and it only changes on deploy.
+            app.MapOpenApi().WithDocumentPerVersion().DisableRateLimiting().CacheOutput(CachePolicies.Shared);
+#else
             app.MapOpenApi().WithDocumentPerVersion().DisableRateLimiting();
+#endif
             app.MapScalarApiReference(options => options.AddDocuments(ApiVersions.Documents)).DisableRateLimiting();
         }
 

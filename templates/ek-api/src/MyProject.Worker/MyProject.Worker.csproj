@@ -25,6 +25,9 @@
     <Using Include="MyProject.Api.Data" />
     <Using Include="MyProject.Api.Features.Notes" />
     <Using Include="MyProject.Api.Infrastructure" />
+<!--#if (UseCache) -->
+    <Using Include="MyProject.Api.Infrastructure.Caching" />
+<!--#endif -->
 <!--#if (UseSmtp) -->
     <Using Include="MyProject.Api.Infrastructure.Email" />
 <!--#endif -->

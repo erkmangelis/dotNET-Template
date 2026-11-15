@@ -1,0 +1,91 @@
+﻿# Acme.Notes
+
+An HTTP API on .NET 10, generated from the `ek-api` template (see `template-origin.json`).
+
+## Run it
+
+```bash
+cp .env.example .env                 # set POSTGRES_PASSWORD
+docker compose up -d db
+dotnet user-secrets set ConnectionStrings:Default "Host=localhost;Database=app;Username=app;Password=<the same password>" --project src/Acme.Notes.Api
+docker compose up -d cache           # set CACHE_PASSWORD in .env first
+dotnet user-secrets set ConnectionStrings:Cache "localhost:6379,password=<the same password>" --project src/Acme.Notes.Api
+dotnet run --project src/Acme.Notes.Api
+dotnet run --project src/Acme.Notes.Worker    # in a second terminal: runs the jobs the API queues
+```
+
+Or start everything at once with .NET Aspire (Docker must be running), which also opens a dashboard
+with every app's logs, traces and metrics: `dotnet run --project src/Acme.Notes.AppHost`. See
+[docs/aspire.md](docs/aspire.md).
+
+Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
+[docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
+[docs/caching.md](docs/caching.md) covers HybridCache, output caching and how fresh cached data is.
+[docs/localization.md](docs/localization.md) covers answering in English, Turkish or another language,
+and [docs/feature-flags.md](docs/feature-flags.md) turning features on and off without a deploy.
+
+## Test it
+
+```bash
+dotnet build
+dotnet format --verify-no-changes
+dotnet test
+```
+
+Integration tests start a throwaway PostgreSQL container with Testcontainers, so Docker must be running.
+They also start a Valkey container for the cache.
+CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors, then starts the
+container and runs the k6 load test in `loadtest/` against it ([docs/load-testing.md](docs/load-testing.md)).
+`.github/workflows/security.yml` and `codeql.yml` check for vulnerable packages, leaked secrets
+and code flaws ([docs/security-scanning.md](docs/security-scanning.md)).
+
+## Layout
+
+```text
+src/Acme.Notes.Api/
+  Program.cs              composition root
+  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry,
+                          health, languages, feature flags
+  Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
+  Infrastructure/Jobs/    background work: the scoped background loop and Hangfire jobs
+  Infrastructure/Caching/ HybridCache and output caching setup
+  Common/                 shared types: paging, sorting, record metadata, soft delete
+  Resources/              messages in English (Messages.resx) and Turkish (Messages.tr.resx)
+  Features/Notes/         the example feature: contracts, endpoints, storage
+  Data/                   AppDbContext, entity configuration, audit interceptor, migrations, development seed
+  Features/Audit/         audit history endpoints
+src/Acme.Notes.Worker/     runs the API's jobs in its own process and container
+src/Acme.Notes.AppHost/    .NET Aspire: starts the apps and the database for local development
+tests/Acme.Notes.Api.UnitTests/
+tests/Acme.Notes.Api.IntegrationTests/
+loadtest/                 k6 load test
+monitoring/               collector, Prometheus, alert rules, Alertmanager, Tempo, Loki, Grafana dashboards
+```
+
+Add a feature as a new folder under `Features/` with its own endpoints, contracts and storage, and
+register it in `Program.cs` the way Notes is.
+
+## Ship it
+
+`docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
+covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
+`docker compose --profile monitoring up -d` adds Prometheus, Grafana, Tempo, Loki and alerts; see
+[docs/monitoring.md](docs/monitoring.md).
+[docs/database.md](docs/database.md) covers migrations, the migration bundle and backups, and
+[docs/dapper.md](docs/dapper.md) hand-written SQL for a hot read path.
+
+## Secrets
+
+Nothing secret lives in the repository. Development uses user secrets; containers read environment
+variables from `.env`, which git ignores. The app refuses to start when a required setting is
+missing or invalid.
+
+## Update from the template
+
+`template-origin.json` records the template version and options this project was generated with.
+With the [`ek` tool](https://github.com/erkmangelis/dotNET-Template/blob/main/docs/cli.md), run
+`ek update` on a clean git working tree to take a newer template version's changes: it merges them
+into your files, marks conflicts for review and never overwrites what you changed.

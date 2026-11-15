@@ -14,6 +14,10 @@ cp .env.example .env                 # set MSSQL_ACCEPT_EULA=Y and MSSQL_SA_PASS
 docker compose up -d db
 dotnet user-secrets set ConnectionStrings:Default "Server=localhost;Database=app;User Id=sa;Password=<the same password>;TrustServerCertificate=True" --project src/MyProject.Api
 <!--#endif -->
+<!--#if (UseRedis) -->
+docker compose up -d cache           # set CACHE_PASSWORD in .env first
+dotnet user-secrets set ConnectionStrings:Cache "localhost:6379,password=<the same password>" --project src/MyProject.Api
+<!--#endif -->
 dotnet run --project src/MyProject.Api
 <!--#if (UseWorker) -->
 dotnet run --project src/MyProject.Worker    # in a second terminal: runs the jobs the API queues
@@ -46,6 +50,11 @@ Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live
 [docs/webhooks.md](docs/webhooks.md) covers signed incoming and outgoing webhooks.
 <!--#endif -->
 [docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
+<!--#if (UseCache) -->
+[docs/caching.md](docs/caching.md) covers HybridCache, output caching and how fresh cached data is.
+<!--#endif -->
+[docs/localization.md](docs/localization.md) covers answering in English, Turkish or another language,
+and [docs/feature-flags.md](docs/feature-flags.md) turning features on and off without a deploy.
 <!--#if (UseOidc) -->
 
 ### Sign in
@@ -202,18 +211,29 @@ Integration tests start a throwaway SQL Server container with Testcontainers, so
 <!--#elif (UseSqlite) -->
 <!--#if (UseStorage) -->
 Integration tests use a throwaway SQLite file and a RustFS container, so Docker must be running.
+<!--#elif (UseRedis) -->
+Integration tests use a throwaway SQLite file and a Valkey container, so Docker must be running.
 <!--#else -->
 Integration tests use a throwaway SQLite file, so they need no Docker.
 <!--#endif -->
 <!--#endif -->
-CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors.
+<!--#if ((UseRedis && UsePostgres) || (UseRedis && UseSqlServer) || (UseRedis && UseStorage)) -->
+They also start a Valkey container for the cache.
+<!--#elif (UseRedis && !UseDatabase) -->
+Integration tests start a throwaway Valkey container for the cache, so Docker must be running.
+<!--#endif -->
+CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors, then starts the
+container and runs the k6 load test in `loadtest/` against it ([docs/load-testing.md](docs/load-testing.md)).
+`.github/workflows/security.yml` and `codeql.yml` check for vulnerable packages, leaked secrets
+and code flaws ([docs/security-scanning.md](docs/security-scanning.md)).
 
 ## Layout
 
 ```text
 src/MyProject.Api/
   Program.cs              composition root
-  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry, health
+  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry,
+                          health, languages, feature flags
   Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
   Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
 <!--#if (UseHostedJobs) -->
@@ -222,6 +242,9 @@ src/MyProject.Api/
   Infrastructure/Jobs/    background work: the scoped background loop and Hangfire jobs
 <!--#else -->
   Infrastructure/Jobs/    background work: the scoped background loop
+<!--#endif -->
+<!--#if (UseCache) -->
+  Infrastructure/Caching/ HybridCache and output caching setup
 <!--#endif -->
 <!--#if (UseSmtp) -->
   Infrastructure/Email/   email transports (SMTP, development log) and message templates
@@ -233,6 +256,7 @@ src/MyProject.Api/
   Infrastructure/Documents/  CSV and Excel in and out, PDF reports and their fonts
 <!--#endif -->
   Common/                 shared types: paging, sorting, record metadata, soft delete
+  Resources/              messages in English (Messages.resx) and Turkish (Messages.tr.resx)
   Features/Notes/         the example feature: contracts, endpoints, storage
 <!--#if (UseRealtime) -->
   Features/Realtime/      SignalR hub, server-sent events and the WebSocket protocol
@@ -265,6 +289,10 @@ src/MyProject.AppHost/    .NET Aspire: starts the apps and the database for loca
 <!--#endif -->
 tests/MyProject.Api.UnitTests/
 tests/MyProject.Api.IntegrationTests/
+loadtest/                 k6 load test
+<!--#if (UseMonitoring) -->
+monitoring/               collector, Prometheus, alert rules, Alertmanager, Tempo, Loki, Grafana dashboards
+<!--#endif -->
 ```
 
 Add a feature as a new folder under `Features/` with its own endpoints, contracts and storage, and
@@ -274,6 +302,10 @@ register it in `Program.cs` the way Notes is.
 
 `docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
 covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
+<!--#if (UseMonitoring) -->
+`docker compose --profile monitoring up -d` adds Prometheus, Grafana, Tempo, Loki and alerts; see
+[docs/monitoring.md](docs/monitoring.md).
+<!--#endif -->
 <!--#if (UseDatabase) -->
 [docs/database.md](docs/database.md) covers migrations, the migration bundle and backups, and
 [docs/dapper.md](docs/dapper.md) hand-written SQL for a hot read path.

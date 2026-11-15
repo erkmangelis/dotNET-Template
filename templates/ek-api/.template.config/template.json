@@ -5,7 +5,7 @@
   "identity": "Erkmangelis.Templates.Api",
   "groupIdentity": "Erkmangelis.Templates.Api",
   "name": "Hardened ASP.NET Core HTTP API (ek)",
-  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional sign-in, PostgreSQL, SQL Server or SQLite, background jobs, a worker, file storage, CSV, Excel and PDF documents, real-time channels, notifications, webhooks, .NET Aspire and AI agent guidance.",
+  "description": "A hardened HTTP API on .NET 10: validation, ProblemDetails, OpenAPI, paging, rate limits, security headers, OpenTelemetry, health checks, tests, containers, and optional sign-in, PostgreSQL, SQL Server or SQLite, background jobs, a worker, file storage, CSV, Excel and PDF documents, real-time channels, notifications, webhooks, caching, a monitoring stack, .NET Aspire and AI agent guidance.",
   "shortName": "ek-api",
   "sourceName": "MyProject",
   "guids": [ "0f6a3c1e-7d4b-4a52-9c1e-5b8d2f7a9e30" ],
@@ -93,6 +93,23 @@
       "type": "parameter",
       "datatype": "bool",
       "description": "Add incoming webhooks (signature checks, duplicate detection, queued processing) and outgoing webhooks (signed deliveries, retries, a delivery log). Needs a database: turns PostgreSQL on when --db is none.",
+      "defaultValue": "false"
+    },
+    "cache": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Caching. 'memory' adds HybridCache in the process and output caching; 'redis' adds Redis (Valkey in compose) behind HybridCache as a cache shared by every instance.",
+      "choices": [
+        { "choice": "none", "description": "No caching." },
+        { "choice": "memory", "description": "HybridCache in each process's memory, and output caching for responses that are the same for everyone." },
+        { "choice": "redis", "description": "Everything in 'memory', with Redis behind it as a shared second level (Valkey in compose and tests)." }
+      ],
+      "defaultValue": "none"
+    },
+    "monitoring": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "Add a monitoring stack as a compose profile (OpenTelemetry Collector, Prometheus, Alertmanager, Tempo, Loki and Grafana with starter dashboards and alerts) and an optional Prometheus scrape endpoint.",
       "defaultValue": "false"
     },
     "worker": {
@@ -193,6 +210,18 @@
     "UseAppEvents": {
       "type": "computed",
       "value": "(realtime || webhooks)"
+    },
+    "UseCache": {
+      "type": "computed",
+      "value": "(cache != \"none\")"
+    },
+    "UseRedis": {
+      "type": "computed",
+      "value": "(cache == \"redis\")"
+    },
+    "UseMonitoring": {
+      "type": "computed",
+      "value": "(monitoring)"
     },
     "UseSmtp": {
       "type": "computed",
@@ -354,6 +383,33 @@
         ]
       }
     },
+    "CacheValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "EK_CACHE",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseRedis)", "value": "redis" },
+          { "condition": "(UseCache)", "value": "memory" },
+          { "condition": "(true)", "value": "none" }
+        ]
+      }
+    },
+    "MonitoringValue": {
+      "type": "generated",
+      "generator": "switch",
+      "replaces": "\"EK_MONITORING\"",
+      "parameters": {
+        "evaluator": "C++",
+        "datatype": "string",
+        "cases": [
+          { "condition": "(UseMonitoring)", "value": "true" },
+          { "condition": "(true)", "value": "false" }
+        ]
+      }
+    },
     "AgentsValue": {
       "type": "generated",
       "generator": "switch",
@@ -387,7 +443,7 @@
       "generator": "constant",
       "replaces": "EK_TEMPLATE_VERSION",
       "parameters": {
-        "value": "0.7.0"
+        "value": "0.8.0"
       }
     }
   },
@@ -643,6 +699,29 @@
           ]
         },
         {
+          "condition": "(!UseCache)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Caching/**",
+            "src/MyProject.Api/Features/Notes/NoteCache.cs",
+            "tests/MyProject.Api.IntegrationTests/Caching/**",
+            "docs/caching.md"
+          ]
+        },
+        {
+          "condition": "(!UseRedis)",
+          "exclude": [
+            "src/MyProject.Api/Infrastructure/Caching/RedisHealthCheck.cs"
+          ]
+        },
+        {
+          "condition": "(!UseMonitoring)",
+          "exclude": [
+            "monitoring/**",
+            "tests/MyProject.Api.IntegrationTests/MonitoringTests.cs",
+            "docs/monitoring.md"
+          ]
+        },
+        {
           "condition": "(!UseAgents)",
           "exclude": [ "AGENTS.md" ]
         },
@@ -839,6 +918,21 @@
             "if": [ "#if" ],
             "else": [ "#else" ],
             "elseif": [ "#elseif" ],
+            "endif": [ "#endif" ],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    },
+    "**/.gitleaks.toml": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": [ "#if" ],
+            "else": [ "#else" ],
+            "elseif": [ "#elseif", "#elif" ],
             "endif": [ "#endif" ],
             "trim": true,
             "wholeLine": true

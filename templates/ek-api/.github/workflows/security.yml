@@ -1,0 +1,53 @@
+# Security checks that need no paid GitHub plan: packages with known vulnerabilities and secrets in
+# the history. They also run every Monday, because new advisories appear without any change here.
+# CodeQL is in codeql.yml. See docs/security-scanning.md.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  vulnerable-packages:
+    name: Packages with known vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore
+      - name: Fail on any vulnerable package, direct or transitive
+        run: |
+          dotnet package list --vulnerable --include-transitive --format json > vulnerable.json
+          if jq -e '[.projects[].frameworks[]? | (.topLevelPackages // [])[], (.transitivePackages // [])[]] | length > 0' vulnerable.json > /dev/null; then
+            dotnet package list --vulnerable --include-transitive
+            echo "::error::Update the packages above in Directory.Packages.props (a transitive one: add it there with a fixed version)."
+            exit 1
+          fi
+          echo "No known vulnerabilities."
+
+  secrets:
+    name: Secrets in the history
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Every commit, so a secret that was added and later removed is still found.
+          fetch-depth: 0
+      - name: Scan with gitleaks
+        run: >
+          docker run --rm -v "$PWD:/repo" --entrypoint sh zricethezav/gitleaks:v8.30.1
+          -c 'git config --global --add safe.directory /repo && gitleaks git /repo --config /repo/.gitleaks.toml --redact --verbose --no-banner'

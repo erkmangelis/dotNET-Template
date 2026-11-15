@@ -1,0 +1,23 @@
+# Alertmanager: groups the alerts Prometheus sends and notifies a receiver. Out of the box nobody is
+# notified (the alerts still show in Grafana and at http://localhost:9093). Uncomment one receiver,
+# fill it in and restart: docker compose --profile monitoring restart alertmanager.
+# Every receiver type: https://prometheus.io/docs/alerting/latest/configuration/#receiver-integration-settings
+route:
+  receiver: default
+  group_by: [alertname, job]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: default
+    # A webhook, for example ntfy (https://ntfy.sh), a Slack or Discord bridge, or your own endpoint:
+    # webhook_configs:
+    #   - url: https://ntfy.sh/your-private-topic-name
+    # Email through your SMTP provider:
+    # email_configs:
+    #   - to: ops@example.com
+    #     from: alerts@example.com
+    #     smarthost: smtp.example.com:587
+    #     auth_username: alerts@example.com
+    #     auth_password_file: /etc/alertmanager/smtp-password

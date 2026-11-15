@@ -28,6 +28,8 @@ services:
       Files__Scanning__Enabled: ${FILES_SCANNING:-false}
       Files__Scanning__Host: clamav
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Load tests from one address turn it off (see docs/load-testing.md); keep it on in production.
+      RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
     ports:
       - "${API_PORT:-8080}:8080"
     stop_grace_period: 35s

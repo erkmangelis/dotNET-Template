@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 
@@ -24,12 +25,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>What the test handler of incoming webhooks was given.</summary>
     public HandledWebhooks HandledWebhooks { get; } = new();
 
+    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no
+    // background workers of their own (see WithoutDeliveryLoops and Jobs:RunServer), so they never
+    // claim this app's work and stop in the middle of it, leaving it leased until the claim expires.
+    private bool _started;
+
     public FakeLogCollector Logs => Services.GetFakeLogCollector();
 
     public ValueTask InitializeAsync()
     {
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
+        _started = true;
         return ValueTask.CompletedTask;
     }
 
@@ -64,9 +71,27 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services =>
         {
+            if (_started)
+            {
+                WithoutDeliveryLoops(services);
+            }
             services.AddHttpClient(WebhookDispatcher.ClientName).ConfigurePrimaryHttpMessageHandler(() => new WebhookReceiver.Handler(Subscribers));
             services.AddSingleton(HandledWebhooks);
             services.AddIncomingWebhookHandler<RecordingWebhookHandler>(IncomingWebhookTests.Source);
         });
+    }
+
+    /// <summary>Removes the loops that claim outbox rows, for apps a test starts next to the shared one.</summary>
+    private static void WithoutDeliveryLoops(IServiceCollection services)
+    {
+        Type[] loops =
+        [
+            typeof(WebhookDispatchLoop),
+            typeof(IncomingWebhookLoop),
+        ];
+        foreach (var loop in services.Where(service => service.ServiceType == typeof(IHostedService) && loops.Contains(service.ImplementationType)).ToList())
+        {
+            services.Remove(loop);
+        }
     }
 }

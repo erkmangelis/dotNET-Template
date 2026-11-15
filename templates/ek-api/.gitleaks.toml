@@ -1,0 +1,28 @@
+# gitleaks settings for the Security workflow: the default rules, minus values that only look like
+# secrets. Add a path or a value here only after checking it is not a real secret.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Development and test values that are not secrets"
+paths = [
+  '''(^|/)\.env\.example$''',
+]
+#if (UseAuth && UseWebhooks)
+regexes = [
+  # The fixed ids of the seeded roles (Data/RoleConfiguration.cs), which migrations repeat.
+  '''7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e0[0-9]''',
+  # The example secret published with the Standard Webhooks specification, used by the webhook tests.
+  '''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''',
+]
+#elif (UseAuth)
+regexes = [
+  # The fixed ids of the seeded roles (Data/RoleConfiguration.cs), which migrations repeat.
+  '''7c1d2f4e-0a6b-4c3d-9e8f-1a2b3c4d5e0[0-9]''',
+]
+#elif (UseWebhooks)
+regexes = [
+  # The example secret published with the Standard Webhooks specification, used by the webhook tests.
+  '''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''',
+]
+#endif

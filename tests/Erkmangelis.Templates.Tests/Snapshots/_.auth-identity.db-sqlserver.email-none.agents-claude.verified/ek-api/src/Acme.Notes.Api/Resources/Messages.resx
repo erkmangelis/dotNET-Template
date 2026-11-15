@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    English, the neutral language. Each value is the exact English text the API writes (or the
+    framework's default message, with {0} where it puts a value). Messages.Translate finds a
+    response's English text here and swaps in the caller's language. Add a key to every Messages.*.resx.
+  -->
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ProblemBadRequest" xml:space="preserve">
+    <value>Bad Request</value>
+  </data>
+  <data name="ProblemUnauthorized" xml:space="preserve">
+    <value>Unauthorized</value>
+  </data>
+  <data name="ProblemForbidden" xml:space="preserve">
+    <value>Forbidden</value>
+  </data>
+  <data name="ProblemNotFound" xml:space="preserve">
+    <value>Not Found</value>
+  </data>
+  <data name="ProblemMethodNotAllowed" xml:space="preserve">
+    <value>Method Not Allowed</value>
+  </data>
+  <data name="ProblemNotAcceptable" xml:space="preserve">
+    <value>Not Acceptable</value>
+  </data>
+  <data name="ProblemConflict" xml:space="preserve">
+    <value>Conflict</value>
+  </data>
+  <data name="ProblemPreconditionFailed" xml:space="preserve">
+    <value>Precondition Failed</value>
+  </data>
+  <data name="ProblemPayloadTooLarge" xml:space="preserve">
+    <value>Payload Too Large</value>
+  </data>
+  <data name="ProblemUnsupportedMediaType" xml:space="preserve">
+    <value>Unsupported Media Type</value>
+  </data>
+  <data name="ProblemUnprocessableEntity" xml:space="preserve">
+    <value>Unprocessable Entity</value>
+  </data>
+  <data name="ProblemValidation" xml:space="preserve">
+    <value>One or more validation errors occurred.</value>
+  </data>
+  <data name="ProblemServerError" xml:space="preserve">
+    <value>An error occurred while processing your request.</value>
+  </data>
+  <data name="ValidationRequired" xml:space="preserve">
+    <value>The {0} field is required.</value>
+    <comment>RequiredAttribute's default message.</comment>
+  </data>
+  <data name="ValidationStringLength" xml:space="preserve">
+    <value>The field {0} must be a string with a maximum length of {1}.</value>
+    <comment>StringLengthAttribute's default message.</comment>
+  </data>
+  <data name="ValidationStringLengthRange" xml:space="preserve">
+    <value>The field {0} must be a string with a minimum length of {2} and a maximum length of {1}.</value>
+    <comment>StringLengthAttribute's default message with MinimumLength.</comment>
+  </data>
+  <data name="ValidationRange" xml:space="preserve">
+    <value>The field {0} must be between {1} and {2}.</value>
+    <comment>RangeAttribute's default message.</comment>
+  </data>
+  <data name="ValidationEmailAddress" xml:space="preserve">
+    <value>The {0} field is not a valid e-mail address.</value>
+    <comment>EmailAddressAttribute's default message.</comment>
+  </data>
+  <data name="ValidationUrl" xml:space="preserve">
+    <value>The {0} field is not a valid fully-qualified http, https, or ftp URL.</value>
+    <comment>UrlAttribute's default message.</comment>
+  </data>
+  <data name="ValidationNoteSort" xml:space="preserve">
+    <value>Sort by up to {0} of {1}, each optionally prefixed with '-' for descending.</value>
+    <comment>NoteFilter's sort check.</comment>
+  </data>
+  <data name="RateLimitTitle" xml:space="preserve">
+    <value>Too many requests</value>
+  </data>
+  <data name="RateLimitDetail" xml:space="preserve">
+    <value>The rate limit for this caller was reached. Try again later.</value>
+  </data>
+  <data name="NotePreconditionFailedTitle" xml:space="preserve">
+    <value>Precondition failed</value>
+  </data>
+  <data name="NotePreconditionFailedDetail" xml:space="preserve">
+    <value>If-Match does not name the note's current version. Read it again and reapply your change.</value>
+  </data>
+  <data name="NoteEditConflictTitle" xml:space="preserve">
+    <value>Edit conflict</value>
+  </data>
+  <data name="NoteEditConflictDetail" xml:space="preserve">
+    <value>The note changed since you read it. Read it again and reapply your change.</value>
+  </data>
+  <data name="NoteDuplicateTitleTitle" xml:space="preserve">
+    <value>Duplicate title</value>
+  </data>
+  <data name="NoteDuplicateTitleDetail" xml:space="preserve">
+    <value>A note with this title already exists.</value>
+  </data>
+</root>

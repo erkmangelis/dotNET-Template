@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.FeatureManagement.AspNetCore;
 
 namespace Acme.Notes.Api.Features.Notes;
 
@@ -32,7 +33,7 @@ internal static class NoteEndpoints
         notes.MapGet("/{id:guid}/history", HistoryAsync).RequireAuthorization(NotePolicies.Read).WithName("GetNoteHistory").WithSummary("List a note's changes, newest first");
         notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
-        notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+        notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithFeatureGate(FeatureFlags.NoteExport).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
         notes.MapNoteDocumentEndpoints();
 
         return notes;
@@ -71,6 +72,7 @@ internal static class NoteEndpoints
         {
             return DuplicateTitle();
         }
+
 
         http.Response.Headers.ETag = ETags.For(note.Version);
         return TypedResults.Created(ApiVersions.PathFor(http, $"notes/{note.Id}"), NoteResponse.From(note));
@@ -194,11 +196,12 @@ internal static class NoteEndpoints
         INoteStore store,
         ClaimsPrincipal user,
         IAuthorizationService authorization,
-        CancellationToken cancellationToken)
-    {
-        var note = await store.FindAsync(id, cancellationToken);
-        return note is not null && (await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded ? note : null;
-    }
+        CancellationToken cancellationToken) =>
+        await OwnedOrNullAsync(await store.FindAsync(id, cancellationToken), user, authorization);
+
+    /// <summary><paramref name="note"/> when <paramref name="user"/> owns it, otherwise null.</summary>
+    private static async Task<Note?> OwnedOrNullAsync(Note? note, ClaimsPrincipal user, IAuthorizationService authorization) =>
+        note is not null && (await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded ? note : null;
 
     private static ProblemHttpResult PreconditionFailed() => TypedResults.Problem(
         statusCode: StatusCodes.Status412PreconditionFailed,

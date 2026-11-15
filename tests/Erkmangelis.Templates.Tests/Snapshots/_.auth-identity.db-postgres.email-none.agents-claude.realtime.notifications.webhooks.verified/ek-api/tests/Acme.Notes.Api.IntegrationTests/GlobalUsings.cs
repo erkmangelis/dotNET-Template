@@ -9,5 +9,6 @@ global using Acme.Notes.Api.Features.Notifications;
 global using Acme.Notes.Api.Features.Profiles;
 global using Acme.Notes.Api.Features.Realtime;
 global using Acme.Notes.Api.Features.Webhooks;
+global using Acme.Notes.Api.Infrastructure;
 global using Acme.Notes.Api.Infrastructure.Idempotency;
 global using Acme.Notes.Api.IntegrationTests.Webhooks;

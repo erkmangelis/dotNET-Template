@@ -17,6 +17,7 @@
     <!-- Snapshots are generated projects to compare, not code of this project. -->
     <Compile Remove="Snapshots/**" />
     <None Remove="Snapshots/**" />
+    <EmbeddedResource Remove="Snapshots/**" />
   </ItemGroup>
 
 </Project>

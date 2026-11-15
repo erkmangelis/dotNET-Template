@@ -32,6 +32,9 @@ global using MyProject.Api.Features.Realtime;
 global using MyProject.Api.Features.Webhooks;
 #endif
 global using MyProject.Api.Infrastructure;
+#if (UseCache)
+global using MyProject.Api.Infrastructure.Caching;
+#endif
 #if (UseDocuments)
 global using MyProject.Api.Infrastructure.Documents;
 #endif
@@ -46,3 +49,4 @@ global using MyProject.Api.Infrastructure.Jobs;
 #if (UseStorage)
 global using MyProject.Api.Infrastructure.Storage;
 #endif
+global using MyProject.Api.Resources;

@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 #endif
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.FeatureManagement.AspNetCore;
 
 namespace MyProject.Api.Features.Notes;
 
@@ -17,6 +18,9 @@ internal static class NoteEndpoints
         services.AddScoped<INoteStore, EfNoteStore>();
 #else
         services.AddSingleton<INoteStore, InMemoryNoteStore>();
+#endif
+#if (UseCache)
+        services.AddSingleton<NoteCache>();
 #endif
 #if (UseAuth)
         services.AddSingleton<IAuthorizationHandler, NoteOwnerHandler>();
@@ -49,7 +53,7 @@ internal static class NoteEndpoints
 #endif
         notes.MapGet("/", ListAsync).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).RequireAuthorization(NotePolicies.Read).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
-        notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+        notes.MapGet("/export", Export).RequireAuthorization(NotePolicies.Read).WithFeatureGate(FeatureFlags.NoteExport).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 #if (UseJobs)
         notes.MapPost("/imports", ImportAsync).RequireAuthorization(NotePolicies.Write).WithIdempotency().WithName("ImportNotes").WithSummary("Create up to 100 notes in a background job");
 #endif
@@ -63,7 +67,7 @@ internal static class NoteEndpoints
 #endif
         notes.MapGet("/", ListAsync).MapToApiVersion(ApiVersions.V1).WithName("ListNotes").WithSummary("List notes: filter by title or creation time, sort, page");
         notes.MapGet("/", ListV2Async).MapToApiVersion(ApiVersions.V2).WithName("ListNotesV2").WithSummary("List notes: filter, sort, page, without the total count");
-        notes.MapGet("/export", Export).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
+        notes.MapGet("/export", Export).WithFeatureGate(FeatureFlags.NoteExport).WithName("ExportNotes").WithSummary("Stream every matching note as one JSON array");
 #if (UseJobs)
         notes.MapPost("/imports", ImportAsync).WithIdempotency().WithName("ImportNotes").WithSummary("Create up to 100 notes in a background job");
 #endif
@@ -100,6 +104,9 @@ internal static class NoteEndpoints
 #if (UseAppEvents)
         AppEvents events,
 #endif
+#if (UseCache)
+        NoteCache cache,
+#endif
         CancellationToken cancellationToken)
     {
         // The store fills in the record metadata when it saves.
@@ -117,6 +124,11 @@ internal static class NoteEndpoints
         {
             return DuplicateTitle();
         }
+
+#if (UseCache)
+        // A read of this id before it existed may have cached "not found".
+        await cache.ForgetAsync(note.Id, cancellationToken);
+#endif
 
         http.Response.Headers.ETag = ETags.For(note.Version);
 #if (UseAppEvents)
@@ -153,9 +165,18 @@ internal static class NoteEndpoints
         ClaimsPrincipal user,
         IAuthorizationService authorization,
 #endif
+#if (UseCache)
+        NoteCache cache,
+#endif
         CancellationToken cancellationToken)
     {
+#if (UseCache)
+        // Through the cache: see NoteCache and docs/caching.md for how fresh it is.
+        var note = await cache.FindAsync(id, store, cancellationToken);
 #if (UseAuth)
+        note = await OwnedOrNullAsync(note, user, authorization);
+#endif
+#elif (UseAuth)
         var note = await FindOwnAsync(id, store, user, authorization, cancellationToken);
 #else
         var note = await store.FindAsync(id, cancellationToken);
@@ -182,6 +203,9 @@ internal static class NoteEndpoints
 #endif
 #if (UseAppEvents)
         AppEvents events,
+#endif
+#if (UseCache)
+        NoteCache cache,
 #endif
         CancellationToken cancellationToken)
     {
@@ -212,6 +236,9 @@ internal static class NoteEndpoints
         var result = await store.TryUpdateAsync(note, cancellationToken);
         if (result == NoteSaveResult.Saved)
         {
+#if (UseCache)
+            await cache.ForgetAsync(note.Id, cancellationToken);
+#endif
             http.Response.Headers.ETag = ETags.For(note.Version);
 #if (UseAppEvents)
             await events.PublishAsync(NoteEvent(AppEventTypes.NoteUpdated, note), cancellationToken);
@@ -238,6 +265,9 @@ internal static class NoteEndpoints
 #if (UseAppEvents)
         AppEvents events,
 #endif
+#if (UseCache)
+        NoteCache cache,
+#endif
         CancellationToken cancellationToken)
     {
 #if (UseAuth)
@@ -256,13 +286,16 @@ internal static class NoteEndpoints
             return PreconditionFailed();
         }
 
-#if (UseAppEvents)
+#if (UseAppEvents || UseCache)
         var result = await store.TryDeleteAsync(note, cancellationToken);
         if (result == NoteSaveResult.Saved)
         {
-#if (UseAuth)
+#if (UseCache)
+            await cache.ForgetAsync(note.Id, cancellationToken);
+#endif
+#if (UseAppEvents && UseAuth)
             await events.PublishAsync(new AppEvent(AppEventTypes.NoteDeleted, note.OwnerId, new NoteDeletedEvent(note.Id)), cancellationToken);
-#else
+#elif (UseAppEvents)
             await events.PublishAsync(new AppEvent(AppEventTypes.NoteDeleted, UserId: null, new NoteDeletedEvent(note.Id)), cancellationToken);
 #endif
         }
@@ -325,11 +358,12 @@ internal static class NoteEndpoints
         INoteStore store,
         ClaimsPrincipal user,
         IAuthorizationService authorization,
-        CancellationToken cancellationToken)
-    {
-        var note = await store.FindAsync(id, cancellationToken);
-        return note is not null && (await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded ? note : null;
-    }
+        CancellationToken cancellationToken) =>
+        await OwnedOrNullAsync(await store.FindAsync(id, cancellationToken), user, authorization);
+
+    /// <summary><paramref name="note"/> when <paramref name="user"/> owns it, otherwise null.</summary>
+    private static async Task<Note?> OwnedOrNullAsync(Note? note, ClaimsPrincipal user, IAuthorizationService authorization) =>
+        note is not null && (await authorization.AuthorizeAsync(user, note, NotePolicies.Owner)).Succeeded ? note : null;
 #endif
 
     private static ProblemHttpResult PreconditionFailed() => TypedResults.Problem(

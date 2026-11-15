@@ -176,6 +176,25 @@ public sealed partial class TemplateSnapshotTests
             "--notifications true --auth none --db none");
     }
 
+    /// <summary><c>--cache</c> (memory or Redis) and <c>--monitoring</c>, alone and with the options they touch.</summary>
+    public static TheoryData<string, string, string, bool, bool, bool> OperationsCombinations => new()
+    {
+        { "none", "none", "memory", false, false, false },
+        { "none", "none", "redis", false, false, false },
+        { "none", "none", "none", true, false, false },
+        { "identity", "postgres", "redis", true, false, false },
+        { "none", "postgres", "redis", true, true, true },
+        { "oidc", "sqlite", "memory", true, false, false },
+    };
+
+    [Theory]
+    [MemberData(nameof(OperationsCombinations))]
+    public Task Cache_and_monitoring_match_their_snapshots(string auth, string db, string cache, bool monitoring, bool worker, bool aspire) =>
+        VerifyAsync(
+            Scenario(auth, db, "none", "claude") + (worker ? ".worker" : "") + (aspire ? ".aspire" : "")
+                + (cache == "none" ? "" : $".cache-{cache}") + (monitoring ? ".monitoring" : ""),
+            auth, db, "none", "claude", "none", worker, aspire: aspire, cache: cache, monitoring: monitoring);
+
     /// <summary>The snapshot folder's name. <c>--jobs none</c> leaves the name as it was before the option existed.</summary>
     private static string Scenario(string auth, string db, string email, string agents, string jobs = "none") =>
         jobs == "none" ? $"auth-{auth}.db-{db}.email-{email}.agents-{agents}" : $"auth-{auth}.db-{db}.email-{email}.agents-{agents}.jobs-{jobs}";
@@ -209,13 +228,16 @@ public sealed partial class TemplateSnapshotTests
         bool documents = false,
         bool realtime = false,
         bool notifications = false,
-        bool webhooks = false)
+        bool webhooks = false,
+        string cache = "none",
+        bool monitoring = false)
     {
         string[] templateArgs =
         [
             "--auth", auth, "--db", db, "--email", email, "--jobs", jobs,
             "--storage", storage, "--documents", documents ? "true" : "false",
             "--realtime", realtime ? "true" : "false", "--notifications", notifications ? "true" : "false", "--webhooks", webhooks ? "true" : "false",
+            "--cache", cache, "--monitoring", monitoring ? "true" : "false",
             "--worker", worker ? "true" : "false", "--aspire", aspire ? "true" : "false", "--agents", agents,
         ];
         var options = new TemplateVerifierOptions(templateName: "ek-api")

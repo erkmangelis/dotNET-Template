@@ -1,0 +1,56 @@
+﻿# Local run and the Raspberry Pi or VPS deployment. See docs/deployment.md.
+#   cp .env.example .env    # then fill it in
+#   docker compose up -d --build
+# With the HTTPS tunnel: docker compose --profile tunnel up -d --build
+name: acme-notes
+
+services:
+  api:
+    build:
+      context: .
+      target: final
+    image: ${API_IMAGE:-acme-notes-api}:${API_TAG:-local}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # TLS ends at the tunnel; trust X-Forwarded-* only from the compose network.
+      ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+      Api__UseHttpsRedirection: "false"
+      ConnectionStrings__Cache: cache:6379,password=${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Load tests from one address turn it off (see docs/load-testing.md); keep it on in production.
+      RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    stop_grace_period: 35s
+    depends_on:
+      cache:
+        condition: service_healthy
+
+  # The shared cache: Valkey, the BSD-licensed continuation of Redis, which the Redis client speaks to
+  # unchanged. A cache only: nothing is written to disk, and the least recently used keys go when it
+  # is full, so losing it costs only slower reads until it fills again.
+  cache:
+    image: valkey/valkey:9.1.3-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--requirepass", "${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}", "--maxmemory", "${CACHE_MAX_MEMORY:-128mb}", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    environment:
+      REDISCLI_AUTH: ${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}
+    # Loopback only: reachable from `dotnet run` on this machine, never from the network.
+    ports:
+      - "127.0.0.1:${CACHE_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      - api

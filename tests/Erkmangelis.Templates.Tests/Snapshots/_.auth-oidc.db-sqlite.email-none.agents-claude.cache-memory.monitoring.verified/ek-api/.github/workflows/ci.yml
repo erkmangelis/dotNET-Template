@@ -1,0 +1,71 @@
+﻿name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore
+      - name: Build (warnings are errors)
+        run: dotnet build --no-restore -c Release -warnaserror
+      - name: Format check
+        run: dotnet format --verify-no-changes --no-restore
+      - name: Test
+        run: dotnet test --no-build -c Release
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Start with docker compose
+        run: |
+          touch .env
+          # One machine sends all the load, so the rate limit would answer most of it with 429.
+          echo "RATE_LIMITING_ENABLED=false" >> .env
+          docker compose up -d --build
+      - name: Wait for /health/ready
+        run: |
+          for i in $(seq 1 60); do
+            curl -fsS http://localhost:8080/health/ready && exit 0
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      # Without a TOKEN or API_KEY the script measures the health check only; see docs/load-testing.md.
+      - name: Load test with k6 (fails when its thresholds are missed)
+        run: docker run --rm -i --network host -e VUS=10 -e DURATION=20s grafana/k6:2.4.0 run - < loadtest/notes.js
+      - name: Logs
+        if: failure()
+        run: docker compose logs
+      - name: Stop
+        if: always()
+        run: docker compose down -v
+
+  monitoring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - name: Prometheus configuration and alert rule tests
+        run: |
+          docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 test rules /etc/prometheus/alerts.test.yml
+      - name: Alertmanager configuration
+        run: docker run --rm -v ./monitoring/alertmanager:/etc/alertmanager:ro --entrypoint amtool prom/alertmanager:v0.35.0 check-config /etc/alertmanager/alertmanager.yml

@@ -1,0 +1,73 @@
+﻿# Acme.Notes
+
+An HTTP API on .NET 10, generated from the `ek-api` template (see `template-origin.json`).
+
+## Run it
+
+```bash
+docker compose up -d cache           # set CACHE_PASSWORD in .env first
+dotnet user-secrets set ConnectionStrings:Cache "localhost:6379,password=<the same password>" --project src/Acme.Notes.Api
+dotnet run --project src/Acme.Notes.Api
+```
+
+Open <http://localhost:5080/scalar> for the API reference. Health: `/health/live` and `/health/ready`.
+[docs/api.md](docs/api.md) covers paging, filtering, concurrent edits and safe retries, and
+[docs/background-work.md](docs/background-work.md) covers work that runs outside requests.
+[docs/outbound-http.md](docs/outbound-http.md) covers calling other services safely.
+[docs/caching.md](docs/caching.md) covers HybridCache, output caching and how fresh cached data is.
+[docs/localization.md](docs/localization.md) covers answering in English, Turkish or another language,
+and [docs/feature-flags.md](docs/feature-flags.md) turning features on and off without a deploy.
+
+## Test it
+
+```bash
+dotnet build
+dotnet format --verify-no-changes
+dotnet test
+```
+
+Integration tests start a throwaway Valkey container for the cache, so Docker must be running.
+CI (`.github/workflows/ci.yml`) runs the same commands with warnings as errors, then starts the
+container and runs the k6 load test in `loadtest/` against it ([docs/load-testing.md](docs/load-testing.md)).
+`.github/workflows/security.yml` and `codeql.yml` check for vulnerable packages, leaked secrets
+and code flaws ([docs/security-scanning.md](docs/security-scanning.md)).
+
+## Layout
+
+```text
+src/Acme.Notes.Api/
+  Program.cs              composition root
+  Infrastructure/         options, ProblemDetails, OpenAPI, rate limits, CORS, security headers, telemetry,
+                          health, languages, feature flags
+  Infrastructure/Idempotency/  Idempotency-Key handling for retried writes
+  Infrastructure/Http/    clients for other services: timeouts, retries, allowed hosts
+  Infrastructure/Jobs/    background work: the scoped background loop
+  Infrastructure/Caching/ HybridCache and output caching setup
+  Common/                 shared types: paging, sorting, record metadata, soft delete
+  Resources/              messages in English (Messages.resx) and Turkish (Messages.tr.resx)
+  Features/Notes/         the example feature: contracts, endpoints, storage
+tests/Acme.Notes.Api.UnitTests/
+tests/Acme.Notes.Api.IntegrationTests/
+loadtest/                 k6 load test
+```
+
+Add a feature as a new folder under `Features/` with its own endpoints, contracts and storage, and
+register it in `Program.cs` the way Notes is.
+
+## Ship it
+
+`docker compose up -d --build` runs the production image locally. [docs/deployment.md](docs/deployment.md)
+covers the Raspberry Pi or VPS setup with HTTPS through a Cloudflare Tunnel.
+
+## Secrets
+
+Nothing secret lives in the repository. Development uses user secrets; containers read environment
+variables from `.env`, which git ignores. The app refuses to start when a required setting is
+missing or invalid.
+
+## Update from the template
+
+`template-origin.json` records the template version and options this project was generated with.
+With the [`ek` tool](https://github.com/erkmangelis/dotNET-Template/blob/main/docs/cli.md), run
+`ek update` on a clean git working tree to take a newer template version's changes: it merges them
+into your files, marks conflicts for review and never overwrites what you changed.

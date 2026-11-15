@@ -11,4 +11,10 @@ for received in "$snapshots"/*.received; do
   rm -rf "${received%.received}.verified"
   mv "$received" "${received%.received}.verified"
 done
+# Verify replaces the home folder's path with {UserProfile}. With HOME=/root that rewrites the
+# closing </root> tag of every .resx file, so the snapshots would only pass on that machine.
+if grep -rl '{UserProfile}' "$snapshots"; then
+  echo "Snapshots above contain {UserProfile}: run this script with HOME set to another folder." >&2
+  exit 1
+fi
 dotnet test tests/Erkmangelis.Templates.Tests

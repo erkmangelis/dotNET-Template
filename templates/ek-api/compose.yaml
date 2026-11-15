@@ -53,7 +53,20 @@ services:
       Files__Scanning__Enabled: ${FILES_SCANNING:-false}
       Files__Scanning__Host: clamav
 #endif
+#if (UseRedis)
+      ConnectionStrings__Cache: cache:6379,password=${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}
+#endif
+#if (UseMonitoring)
+      # Metrics for Prometheus on port 9464, which is not published: only the compose network reaches it.
+      ASPNETCORE_HTTP_PORTS: "8080;9464"
+      Monitoring__Prometheus__Enabled: "true"
+      # Traces and logs go to the monitoring profile's collector. Set it empty in .env to send nothing.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://otel-collector:4317}
+#else
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+#endif
+      # Load tests from one address turn it off (see docs/load-testing.md); keep it on in production.
+      RateLimiting__Enabled: ${RATE_LIMITING_ENABLED:-true}
     ports:
       - "${API_PORT:-8080}:8080"
     stop_grace_period: 35s
@@ -76,6 +89,14 @@ services:
       storage:
         condition: service_healthy
 #endif
+#if (UseRedis)
+      cache:
+        condition: service_healthy
+#endif
+#elif (UseRedis)
+    depends_on:
+      cache:
+        condition: service_healthy
 #endif
 #if (UseWorker)
 
@@ -103,7 +124,16 @@ services:
       Email__Smtp__UserName: ${SMTP_USERNAME:-}
       Email__Smtp__Password: ${SMTP_PASSWORD:-}
 #endif
+#if (UseRedis)
+      ConnectionStrings__Cache: cache:6379,password=${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}
+#endif
+#if (UseMonitoring)
+      ASPNETCORE_HTTP_PORTS: "8080;9464"
+      Monitoring__Prometheus__Enabled: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://otel-collector:4317}
+#else
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+#endif
     stop_grace_period: 35s
 #if (UseSqlite)
     volumes:
@@ -112,6 +142,10 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+#if (UseRedis)
+      cache:
+        condition: service_healthy
+#endif
 #endif
 #if (UseDatabase)
 
@@ -241,6 +275,107 @@ services:
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
 
 #endif
+#if (UseRedis)
+  # The shared cache: Valkey, the BSD-licensed continuation of Redis, which the Redis client speaks to
+  # unchanged. A cache only: nothing is written to disk, and the least recently used keys go when it
+  # is full, so losing it costs only slower reads until it fills again.
+  cache:
+    image: valkey/valkey:9.1.3-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--requirepass", "${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}", "--maxmemory", "${CACHE_MAX_MEMORY:-128mb}", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    environment:
+      REDISCLI_AUTH: ${CACHE_PASSWORD:?set CACHE_PASSWORD in .env}
+    # Loopback only: reachable from `dotnet run` on this machine, never from the network.
+    ports:
+      - "127.0.0.1:${CACHE_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+#endif
+#if (UseMonitoring)
+  # Monitoring: docker compose --profile monitoring up -d. Grafana at http://localhost:3000 shows the
+  # API overview dashboard, traces (Tempo), logs (Loki) and alerts. See docs/monitoring.md.
+  otel-collector:
+    image: otel/opentelemetry-collector:0.165.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    # Loopback only: lets `dotnet run` on this machine send telemetry too.
+    ports:
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
+    depends_on:
+      - tempo
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.9.1
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}"]
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.35.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"
+
+  tempo:
+    image: grafana/tempo:3.1.1
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./monitoring/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+
+  loki:
+    image: grafana/loki:3.7.10
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./monitoring/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      # Set GRAFANA_ADMIN_PASSWORD in .env; with the default, Grafana asks for a new one at first sign-in.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    # Loopback only. Reach it from elsewhere through the tunnel, behind Cloudflare Access.
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
+#endif
   tunnel:
     image: cloudflare/cloudflared:2026.9.3
     profiles: ["tunnel"]
@@ -258,9 +393,19 @@ volumes:
 
 volumes:
   app-data:
+#elif (UseMonitoring)
+
+volumes:
 #endif
 #if (UseStorage)
   storage-data:
   upload-data:
   clamav-data:
+#endif
+#if (UseMonitoring)
+  prometheus-data:
+  alertmanager-data:
+  tempo-data:
+  loki-data:
+  grafana-data:
 #endif

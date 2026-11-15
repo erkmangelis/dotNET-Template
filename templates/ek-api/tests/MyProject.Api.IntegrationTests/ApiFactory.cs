@@ -24,6 +24,9 @@ using Microsoft.Extensions.DependencyInjection;
 #if (UseHangfire)
 using Microsoft.Extensions.DependencyInjection.Extensions;
 #endif
+#if (UseWebhooks || UseNotifications)
+using Microsoft.Extensions.Hosting;
+#endif
 using Microsoft.Extensions.Logging;
 #if (UseHangfire)
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,6 +39,9 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Testcontainers.PostgreSql;
 #elif (UseSqlServer)
 using Testcontainers.MsSql;
+#endif
+#if (UseRedis)
+using Testcontainers.Redis;
 #endif
 
 [assembly: AssemblyFixture(typeof(MyProject.Api.IntegrationTests.ApiFactory))]
@@ -62,6 +68,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
 #elif (UseSqlite)
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"MyProject-tests-{Guid.NewGuid():N}.db");
+
+#endif
+#if (UseRedis)
+    // Valkey, the same Redis-compatible cache compose runs.
+    private readonly RedisContainer _cache = new RedisBuilder("valkey/valkey:9.1.3-alpine").Build();
+
+    internal string CacheConnectionString => _cache.GetConnectionString();
 
 #endif
 #if (UseStorage)
@@ -102,9 +115,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public HandledWebhooks HandledWebhooks { get; } = new();
 
 #endif
-#if (UseHangfire)
-    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no Hangfire
-    // server, so they never take this app's jobs and stop in the middle of one.
+#if (UseHangfire || UseWebhooks || UseNotifications)
+    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no
+    // background workers of their own (see WithoutDeliveryLoops and Jobs:RunServer), so they never
+    // claim this app's work and stop in the middle of it, leaving it leased until the claim expires.
     private bool _started;
 
 #endif
@@ -117,10 +131,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #if (UseStorage)
         await _storage.StartAsync();
 #endif
+#if (UseRedis)
+        await _cache.StartAsync();
+#endif
 
         // Starts the host, which applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
     }
@@ -129,6 +146,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await base.DisposeAsync();
         await _database.DisposeAsync();
+#if (UseRedis)
+        await _cache.DisposeAsync();
+#endif
 #if (UseStorage)
         await _storage.DisposeAsync();
         if (Directory.Exists(_uploadDirectory))
@@ -138,14 +158,19 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #endif
     }
 #elif (UseSqlite)
-#if (UseStorage)
+#if (UseStorage || UseRedis)
     public async ValueTask InitializeAsync()
     {
+#if (UseStorage)
         await _storage.StartAsync();
+#endif
+#if (UseRedis)
+        await _cache.StartAsync();
+#endif
 
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
     }
@@ -154,7 +179,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         // Starts the host, which creates the file and applies the migrations.
         _ = Server;
-#if (UseHangfire)
+#if (UseHangfire || UseWebhooks || UseNotifications)
         _started = true;
 #endif
         return ValueTask.CompletedTask;
@@ -164,6 +189,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
+#if (UseRedis)
+        await _cache.DisposeAsync();
+#endif
 #if (UseStorage)
         await _storage.DisposeAsync();
         if (Directory.Exists(_uploadDirectory))
@@ -185,6 +213,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         }
 #endif
     }
+#elif (UseRedis)
+    public async ValueTask InitializeAsync()
+    {
+        await _cache.StartAsync();
+        _ = Server;
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _cache.DisposeAsync();
+    }
 #else
     public ValueTask InitializeAsync()
     {
@@ -205,6 +245,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
 #endif
         builder.UseSetting("Database:MigrateOnStartup", "true");
+#endif
+#if (UseRedis)
+        builder.UseSetting("ConnectionStrings:Cache", _cache.GetConnectionString());
 #endif
 #if (UseStorage)
         builder.UseSetting("Storage:ServiceUrl", StorageUrl);
@@ -269,6 +312,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 #if (UseHangfire)
             WithoutHangfireLogs(services);
 #endif
+#if (UseWebhooks || UseNotifications)
+            if (_started)
+            {
+                WithoutDeliveryLoops(services);
+            }
+#endif
 #if (UseIdentity && UseSmtp)
             services.AddSingleton<IEmailTransport>(Emails);
 #elif (UseIdentity)
@@ -293,6 +342,27 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
 #endif
     }
+#if (UseWebhooks || UseNotifications)
+
+    /// <summary>Removes the loops that claim outbox rows, for apps a test starts next to the shared one.</summary>
+    private static void WithoutDeliveryLoops(IServiceCollection services)
+    {
+        Type[] loops =
+        [
+#if (UseWebhooks)
+            typeof(WebhookDispatchLoop),
+            typeof(IncomingWebhookLoop),
+#endif
+#if (UseNotifications)
+            typeof(NotificationDispatchLoop),
+#endif
+        ];
+        foreach (var loop in services.Where(service => service.ServiceType == typeof(IHostedService) && loops.Contains(service.ImplementationType)).ToList())
+        {
+            services.Remove(loop);
+        }
+    }
+#endif
 #if (UseHangfire)
 
     /// <summary>

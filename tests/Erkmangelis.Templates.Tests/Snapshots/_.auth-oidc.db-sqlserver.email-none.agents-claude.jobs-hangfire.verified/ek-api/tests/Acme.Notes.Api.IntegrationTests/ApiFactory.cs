@@ -24,8 +24,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly MsSqlContainer _database = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU21-ubuntu-22.04").Build();
 
-    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no Hangfire
-    // server, so they never take this app's jobs and stop in the middle of one.
+    // Set once this app is up. Apps that tests start from it (WithWebHostBuilder) then run no
+    // background workers of their own (see WithoutDeliveryLoops and Jobs:RunServer), so they never
+    // claim this app's work and stop in the middle of it, leaving it leased until the claim expires.
     private bool _started;
 
     public FakeLogCollector Logs => Services.GetFakeLogCollector();

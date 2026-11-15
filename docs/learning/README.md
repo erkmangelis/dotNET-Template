@@ -17,6 +17,7 @@ until its learning doc is written.
 | R05 | 0.5.0 | [Generator tooling](r05-generator-tooling.md) | Why a CLI on top of `dotnet new`, catalogs and rules, presets, specs, pairwise testing, the three-way merge behind `ek update` |
 | R06 | 0.6.0 | [Files and documents](r06-files-documents.md) | Object storage and S3, signed links, resumable uploads, trusting bytes not names, choosing libraries by licence, CSV injection, PDF fonts |
 | R07 | 0.7.0 | [Communication and real-time](r07-communication-realtime.md) | Resilient HTTP clients, SSRF, SignalR vs SSE vs WebSockets, protocol versioning, WebSocket hijacking, back-pressure, signed webhooks and replays, a database outbox, push and SMS without SDKs |
+| R08 | 0.8.0 | [Operations and performance](r08-operations-performance.md) | HybridCache and cache invalidation, Redis vs Valkey, output caching, Prometheus vs OTLP, a monitoring stack per signal, alerting on symptoms, load testing with k6, security scanning, localization and the Turkish i, feature flags |
 
 ## How to read them
 
