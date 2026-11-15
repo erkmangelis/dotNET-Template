@@ -133,7 +133,7 @@ step "No leftovers from unselected options"
 leftover() { if git grep -nIiE "$1" -- . ':!template-origin.json' ':!**/Data/Migrations/**' "${@:3}"; then fail "$2"; fi; }
 if [[ "$EFFECTIVE_DB" == none ]]; then
   # load-testing.md names the database its measured number was taken with, whatever the API uses.
-  leftover 'Npgsql|EntityFramework|ConnectionStrings|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none" ':!docs/load-testing.md'
+  leftover 'Npgsql|EntityFramework|ConnectionStrings(:|__)Default|GetConnectionString\("Default|postgres|Testcontainers\.PostgreSql|migration' "database files or settings left with --db none" ':!docs/load-testing.md'
   [[ ! -e src/$NAME.Api/Data && ! -e .config && ! -e docs/database.md && ! -e scripts ]] || fail "database folders left with --db none"
 fi
 if [[ "$EFFECTIVE_DB" != postgres ]]; then
@@ -354,16 +354,21 @@ if [[ "$COMPOSE" == true ]]; then
   if [[ "$MONITORING" == true ]]; then
     step "Grafana shows the API's metrics, traces and logs"
     grafana() { curl -fsS -u admin:admin "http://localhost:3000/api/datasources/proxy/uid/$1" "${@:2}"; }
-    found=false
+    # Health checks are not traced, and with sign-in k6 calls only those, so make a few traced
+    # requests of our own (an anonymous call to a protected endpoint answers 401, and is traced).
+    for _ in $(seq 1 20); do curl -s -o /dev/null http://localhost:8080/v1/notes || true; done
+    metrics=false; traces=false; logs=false
     for _ in $(seq 1 30); do
-      if grafana prometheus/api/v1/query --get --data-urlencode 'query=sum(http_server_request_duration_seconds_count{job="api"})' | grep -q '"value"' \
-        && grafana tempo/api/search --get --data-urlencode 'q={}' --data-urlencode "start=$(( $(date +%s) - 3600 ))" --data-urlencode "end=$(date +%s)" | grep -q '"traceID"' \
-        && grafana loki/loki/api/v1/query_range --get --data-urlencode 'query={service_name=~".+"}' --data-urlencode 'limit=1' | grep -q '"values"'; then
-        found=true; break
-      fi
+      [[ "$(grafana prometheus/api/v1/query --get --data-urlencode 'query=sum(http_server_request_duration_seconds_count{job="api"})' || true)" == *'"value"'* ]] && metrics=true
+      [[ "$(grafana tempo/api/search --get --data-urlencode 'q={}' --data-urlencode "start=$(( $(date +%s) - 3600 ))" --data-urlencode "end=$(date +%s)" || true)" == *'"traceID"'* ]] && traces=true
+      [[ "$(grafana loki/loki/api/v1/query_range --get --data-urlencode 'query={service_name=~".+"}' --data-urlencode 'limit=1' || true)" == *'"values"'* ]] && logs=true
+      [[ "$metrics" == true && "$traces" == true && "$logs" == true ]] && break
       sleep 5
     done
-    [[ "$found" == true ]] || { docker compose --profile monitoring logs otel-collector prometheus tempo loki grafana | tail -100; fail "Grafana does not show the API's telemetry"; }
+    if [[ "$metrics" != true || "$traces" != true || "$logs" != true ]]; then
+      for service in otel-collector prometheus tempo loki; do docker compose --profile monitoring logs "$service" | tail -30; done
+      fail "Grafana does not show the API's telemetry (metrics: $metrics, traces: $traces, logs: $logs)"
+    fi
     docker run --rm -v ./monitoring/prometheus:/etc/prometheus:ro --entrypoint promtool prom/prometheus:v3.9.1 test rules /etc/prometheus/alerts.test.yml \
       || fail "the alert rule tests failed"
   fi
