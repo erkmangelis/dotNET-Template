@@ -2,6 +2,46 @@
 
 All notable changes to the template package. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - Unreleased
+
+R08, operations and performance.
+
+### Added
+
+- `--cache memory|redis`: HybridCache (Microsoft.Extensions.Caching.Hybrid, MIT) with stampede
+  protection, tags and a size limit, and output caching with a `shared` policy (on the OpenAPI
+  document). `GET /v1/notes/{id}` reads through `NoteCache`; every save removes the entry, writes never
+  read the cache, and ownership is checked on the cached note. `redis` adds Redis as the shared second
+  level through one `IConnectionMultiplexer`, a `cache` readiness check, Valkey 9 in compose (no
+  persistence, LRU eviction, password), Aspire and the integration tests.
+  [docs/caching.md](templates/ek-api/docs/caching.md) in generated projects.
+- `--monitoring`: a `monitoring` compose profile with the OpenTelemetry Collector, Prometheus
+  (scraping `/metrics` on port 9464, which the main port refuses), Alertmanager, Tempo, Loki and
+  Grafana with provisioned data sources (trace and log links) and an API overview dashboard. Four
+  alert rules (API down, error rate, p95 latency, thread pool starvation) with promtool tests run in
+  CI. With Prometheus on, OTLP carries only traces and logs. [docs/monitoring.md](templates/ek-api/docs/monitoring.md).
+- Every project: problem responses in the caller's language. English and Turkish resources
+  (`Resources/Messages.resx`), `Accept-Language` as the only culture source, `Content-Language` on
+  responses, and the formatting culture kept invariant. Framework and validation messages are matched
+  by pattern, so code keeps writing English. [docs/localization.md](templates/ek-api/docs/localization.md).
+- Every project: feature flags with Microsoft.FeatureManagement (MIT) from configuration, with user
+  and role targeting when there is sign-in. The notes export is gated by `NoteExport`.
+  [docs/feature-flags.md](templates/ek-api/docs/feature-flags.md).
+- Every project: a k6 load test (`loadtest/notes.js`) with thresholds, run by CI against the
+  production container; a measured number in [docs/load-testing.md](templates/ek-api/docs/load-testing.md).
+  `RATE_LIMITING_ENABLED` in `.env` turns rate limiting off for it.
+- Every project: `security.yml` (vulnerable packages, direct and transitive, and gitleaks over the
+  whole history, also weekly) and `codeql.yml` (C# and workflows, `security-extended`), with a
+  `.gitleaks.toml` allowlist. [docs/security-scanning.md](templates/ek-api/docs/security-scanning.md).
+- The acceptance test runs gitleaks and k6 with compose, checks Grafana for the API's metrics, traces
+  and logs with `--monitoring`, and fails on any vulnerable package. `saas-api` now has
+  `--cache redis --monitoring`, `api-worker` `--monitoring`, `single-box` and `realtime` `--cache memory`.
+
+### Changed
+
+- Microsoft.* 10.0.14 packages to 10.0.15, because System.Formats.Cbor 10.0.14 has a published
+  advisory; Aspire 13.6.4 to 13.6.5 for the same reason.
+
 ## [0.7.0] - Unreleased
 
 R07, communication and real-time.

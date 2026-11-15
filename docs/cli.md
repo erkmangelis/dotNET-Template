@@ -44,11 +44,11 @@ Running that command gives the same files (CI checks this for every preset). Oth
 | Preset | For | Options |
 | --- | --- | --- |
 | `minimal` | The hardened API alone, notes in memory | everything `none`/`false` |
-| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --storage s3 --documents --notifications --webhooks --agents claude` |
-| `api-worker` (alias `ek-worker`) | An API plus a worker that runs its jobs | `--db postgres --jobs hangfire --worker --aspire` |
+| `saas-api` | A product with user accounts | `--auth identity --db postgres --email smtp --jobs hangfire --storage s3 --documents --notifications --webhooks --cache redis --monitoring --agents claude` |
+| `api-worker` (alias `ek-worker`) | An API plus a worker that runs its jobs | `--db postgres --jobs hangfire --monitoring --worker --aspire` |
 | `sso-api` | Accounts in your identity provider | `--auth oidc --db postgres` |
-| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted --storage s3` |
-| `realtime` | Live updates and notifications for signed-in users | `--auth identity --db postgres --jobs hosted --realtime --notifications` |
+| `single-box` | One small machine such as a Raspberry Pi | `--auth identity --db sqlite --email smtp --jobs hosted --storage s3 --cache memory` |
+| `realtime` | Live updates and notifications for signed-in users | `--auth identity --db postgres --jobs hosted --realtime --notifications --cache memory` |
 
 `ek list` prints the options, rules and presets. Presets live in
 [catalog/presets.json](../catalog/presets.json); options given next to a preset win over its values.

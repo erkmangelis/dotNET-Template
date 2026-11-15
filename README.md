@@ -1,18 +1,18 @@
 # Erkmangelis .NET templates
 
 `dotnet new` templates for .NET 10, and `ek`, a tool that generates and updates projects from them.
-Release 0.6 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API that fixes the
+Release 0.8 has one template: **`ek-api`**, a hardened ASP.NET Core HTTP API that fixes the
 security, testing and secrets gaps that come up again and again in project reviews.
 
 ```bash
-dotnet new install Erkmangelis.Templates.0.6.0.nupkg
+dotnet new install Erkmangelis.Templates.0.8.0.nupkg
 dotnet new ek-api -n RideSense --auth identity --db postgres --agents claude
 ```
 
 Or with the tool, which asks what you need, offers presets and rejects unsupported combinations:
 
 ```bash
-dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.6.0.nupkg>
+dotnet tool install --global Erkmangelis.Ek --add-source <folder with Erkmangelis.Ek.0.8.0.nupkg>
 ek new RideSense --preset saas-api
 ek update        # later, inside the project: merge a newer template version's changes
 ```
@@ -33,6 +33,8 @@ Why it is built this way, release by release: [docs/learning](docs/learning/READ
 | `--realtime` | `false`, `true` | `false` | Changes pushed to connected clients over SignalR (`/v1/realtime/hub`), server-sent events (`/v1/realtime/events`) and raw WebSockets (`/v1/realtime/ws`, JSON frames with a version handshake), per user with `--auth`, with an origin check against cross-site WebSocket hijacking and a bounded queue per connection. |
 | `--notifications` | `false`, `true` | `false` | An in-app inbox with read status, per-user channel preferences, and delivery in the background by email (with `--email smtp`), mobile push (Firebase Cloud Messaging and Apple Push Notification service, called over HTTP) and SMS (Twilio), with retries and dead-device cleanup. Means local accounts when `--auth` is `none`. |
 | `--webhooks` | `false`, `true` | `false` | Standard Webhooks in both directions: incoming with signature and timestamp checks, duplicate detection and queued handlers; outgoing subscriptions to API events with signed deliveries, retries, a delivery log and SSRF-safe sending. Turns PostgreSQL on when `--db` is `none`. |
+| `--cache` | `none`, `memory`, `redis` | `none` | HybridCache (MIT) for values, with stampede protection and tags, plus output caching for same-for-everyone responses; the notes read path is the example, with removal after every save. `memory`: each instance's memory. `redis`: Redis as a shared second level (Valkey 9 in compose, Aspire and tests), with a readiness check. |
+| `--monitoring` | `false`, `true` | `false` | A `monitoring` compose profile: an OpenTelemetry Collector, Prometheus scraping `/metrics` on a separate port, Alertmanager with four tested alert rules, Tempo for traces, Loki for logs and Grafana with the data sources and an API dashboard provisioned. |
 | `--worker` | `false`, `true` | `false` | A worker project and image that runs the jobs while the API only queues them. Means `--jobs hangfire`. |
 | `--aspire` | `false`, `true` | `false` | A .NET Aspire AppHost (MIT) that starts the database, the API and the worker for local development, with the Aspire dashboard. |
 | `--agents` | `none`, `shared`, `claude` | `shared` | `AGENTS.md` written for the chosen options; `claude` adds a `CLAUDE.md` that imports it. |
@@ -49,7 +51,7 @@ breaks one, with the reason. Presets (`minimal`, `saas-api`, `api-worker` alias 
 
 Every combination the catalog's rules accept is supported, and CI tests a set chosen from the
 catalog by `ek matrix`: every preset, plus combinations that cover every pair of option values that
-can occur together (17 in all, instead of the hundreds of possible combinations). For each, CI runs
+can occur together (20 in all, instead of the hundreds of possible combinations). For each, CI runs
 the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
 
 1. generates the project outside the source tree from the packed `.nupkg`,
@@ -62,9 +64,13 @@ the acceptance test ([scripts/acceptance.sh](scripts/acceptance.sh)):
    local accounts, that registering sends a confirmation email to the bundled Mailpit, and with
    `--jobs` (or `--worker`) and no sign-in, that a background job imports notes in the containers,
    and with `--storage s3` and no sign-in, that a file uploads to the bundled storage and downloads
-   again through the API and a signed link.
+   again through the API and a signed link,
+7. with compose, also scans the history for secrets (gitleaks), runs the k6 load test against the
+   containers, and with `--monitoring` checks that Grafana shows the API's metrics, traces and logs.
 
-CI also generates projects with released versions (0.1.0, 0.3.0, 0.4.0 and 0.5.0), commits a file of
+It also fails on any package with a known vulnerability.
+
+CI also generates projects with released versions (0.1.0, 0.3.0, 0.4.0, 0.5.0, 0.6.0 and 0.7.0), commits a file of
 the team's own, runs `ek update` to the current version and runs the same acceptance test on the
 result, and builds the API and worker images for amd64 and arm64.
 
@@ -82,10 +88,13 @@ merge. `--agents` only adds or removes `AGENTS.md` and `CLAUDE.md`, which a snap
 - OpenAPI with the Scalar UI (Development by default), `/v1` routes, paging
 - Per-caller rate limiting, CORS and forwarded headers from settings, HTTPS redirect, HSTS, security headers
 - JSON logs with trace ids, OpenTelemetry traces and metrics (OTLP), live and ready health checks
+- Problem responses in the caller's language (English and Turkish resources, `Accept-Language`)
+- Feature flags from configuration (Microsoft.FeatureManagement, MIT), with targeting when there is sign-in
 - `TimeProvider`, graceful shutdown
 - Unit and integration tests (xUnit v3, `WebApplicationFactory`)
 - A multi-arch Docker image (amd64 and arm64), Docker Compose, and a Raspberry Pi or VPS recipe with HTTPS through a Cloudflare Tunnel
-- CI, container publishing with signed provenance, and Dependabot
+- CI with a k6 load test against the container, container publishing with signed provenance, and Dependabot
+- Security scanning: vulnerable packages, secrets in the history (gitleaks) and CodeQL
 
 No default dependency needs a commercial licence: no MediatR, no AutoMapper, no Hangfire Pro.
 
