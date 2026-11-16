@@ -13,6 +13,15 @@ updates:
     directory: /templates/ek-api
     schedule:
       interval: weekly
+    # A new .NET major version (11 on top of 10) is a release of its own: Docker images,
+    # target framework and snapshots change together, so Dependabot leaves it alone.
+    ignore:
+      - dependency-name: "Microsoft.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "System.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet-ef"
+        update-types: ["version-update:semver-major"]
     groups:
       dotnet:
         patterns: ["Microsoft.*", "System.*", "dotnet-ef"]
@@ -24,6 +33,9 @@ updates:
     directory: /templates/ek-api
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*dotnet/*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker-compose
     directory: /templates/ek-api
     schedule:
