@@ -220,7 +220,7 @@ services:
   # STORAGE_* values in .env. Signed links point at STORAGE_PUBLIC_URL, so clients must reach it:
   # route a hostname to storage:9000 through the tunnel, as for the API.
   storage:
-    image: rustfs/rustfs:1.0.4
+    image: rustfs/rustfs:1.0.5
     restart: unless-stopped
     environment:
       RUSTFS_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?set STORAGE_ACCESS_KEY in .env}
