@@ -95,7 +95,7 @@
 <!--#if (UseDocuments) -->
   <ItemGroup Label="Documents">
     <!-- Apache-2.0. Not ClosedXML (it needs SixLabors.Fonts) and not PDFsharp 6.5+ (AGPL) or QuestPDF (paid above a revenue limit). -->
-    <PackageVersion Include="MiniExcel" Version="1.46.0" />
+    <PackageVersion Include="MiniExcel" Version="1.47.1" />
     <PackageVersion Include="PdfPig" Version="0.1.16" />
   </ItemGroup>
 <!--#endif -->
